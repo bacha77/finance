@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import FundAccounting from './components/FundAccounting';
@@ -12,9 +12,12 @@ import Budget from './components/Budget';
 import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
 import Pricing from './components/Pricing';
+import PaymentWall from './components/PaymentWall';
 import { supabase } from './lib/supabase';
-import { getTrialStatus, TRIAL_CONFIG } from './lib/trialConfig';
-import { Search, Moon, Sun, Zap, ArrowRight, User, Shield, PieChart, LogOut, AlertTriangle, Clock } from 'lucide-react';
+import { TRIAL_CONFIG } from './lib/trialConfig';
+import { getSubscriptionStatus, getMsUntilMidnight } from './lib/subscriptionConfig';
+import type { SubscriptionStatus } from './lib/subscriptionConfig';
+import { Search, Moon, Sun, Zap, ArrowRight, User, Shield, PieChart, LogOut, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function App() {
@@ -25,6 +28,8 @@ function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [showCommandCenter, setShowCommandCenter] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
+  const midnightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -106,7 +111,40 @@ function App() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setProfile(null);
+    setSubStatus(null);
+    if (midnightTimerRef.current) clearTimeout(midnightTimerRef.current);
   };
+
+  // ── Subscription Status & Midnight Timer ─────────────────────────────────
+  // Recalculate subscription status whenever the profile/church changes.
+  // Also schedule a precise timer to fire at midnight so access is revoked
+  // automatically when a subscription expires, without needing a page reload.
+  useEffect(() => {
+    const church = profile?.churches;
+    if (!church) { setSubStatus(null); return; }
+
+    const status = getSubscriptionStatus(church);
+    setSubStatus(status);
+
+    // Clear any existing midnight timer before scheduling a new one
+    if (midnightTimerRef.current) clearTimeout(midnightTimerRef.current);
+
+    // Schedule a re-check at next midnight (cascades — each midnight schedules the next)
+    const scheduleMidnightCheck = () => {
+      const msUntilMidnight = getMsUntilMidnight();
+      midnightTimerRef.current = setTimeout(() => {
+        // Re-fetch the church record fresh from DB (in case renewal happened)
+        if (session?.user?.id) fetchProfile(session.user.id);
+        scheduleMidnightCheck(); // Schedule the next midnight
+      }, msUntilMidnight);
+    };
+    scheduleMidnightCheck();
+
+    return () => {
+      if (midnightTimerRef.current) clearTimeout(midnightTimerRef.current);
+    };
+  }, [profile]);
 
   // Shortcut for Command Center
   useEffect(() => {
@@ -122,7 +160,6 @@ function App() {
   }, []);
 
   const church = profile?.churches;
-  const trialStatus = church ? getTrialStatus(church) : null;
 
   const renderContent = () => {
     switch (activeTab) {
@@ -151,75 +188,67 @@ function App() {
     }
   };
 
-  // Trial banner shown when on trial plan
-  const renderTrialBanner = () => {
-    if (!trialStatus || !church || church.plan !== 'trial') return null;
-    const { daysRemaining, isExpired } = trialStatus;
-    if (isExpired) {
-      return (
-        <div style={{
-          position: 'sticky', top: 0, zIndex: 500,
-          background: 'linear-gradient(90deg, #ef4444, #dc2626)',
-          padding: '0.65rem 2rem',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'white', fontSize: '0.875rem', fontWeight: 700 }}>
-            <AlertTriangle size={16} />
-            Your free trial has expired. Upgrade to continue using Storehouse Finance.
-          </div>
-          <button
-            onClick={() => setActiveTab('pricing')}
-            style={{ background: 'white', color: '#dc2626', border: 'none', borderRadius: '8px', padding: '6px 16px', fontWeight: 800, cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
-          >
-            View Plans
-          </button>
-        </div>
-      );
-    }
-    if (daysRemaining <= 7) {
+  // Trial/subscription status banner (shown when active — not when blocked)
+  const renderStatusBanner = () => {
+    if (!subStatus || !church || subStatus.isBlocked) return null;
+    const { accessStatus, daysRemaining } = subStatus;
+
+    if (accessStatus === 'trial_warning') {
       return (
         <div style={{
           position: 'sticky', top: 0, zIndex: 500,
           background: 'linear-gradient(90deg, rgba(245,158,11,0.95), rgba(217,119,6,0.95))',
-          backdropFilter: 'blur(10px)',
           padding: '0.65rem 2rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'white', fontSize: '0.875rem', fontWeight: 700 }}>
             <Clock size={16} />
-            {daysRemaining === 1 ? '1 day remaining' : `${daysRemaining} days remaining`} in your free trial.
+            ⚠️ Trial ending in <strong>{daysRemaining} {daysRemaining === 1 ? 'day' : 'days'}</strong> — add a payment method to keep your data.
           </div>
-          <button
-            onClick={() => setActiveTab('pricing')}
-            style={{ background: 'white', color: '#b45309', border: 'none', borderRadius: '8px', padding: '6px 16px', fontWeight: 800, cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
-          >
+          <button onClick={() => setActiveTab('pricing')}
+            style={{ background: 'white', color: '#b45309', border: 'none', borderRadius: '8px', padding: '6px 16px', fontWeight: 800, cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>
             Upgrade Now
           </button>
         </div>
       );
     }
-    // Show normal trial info bar
-    return (
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 500,
-        background: 'linear-gradient(90deg, rgba(99,102,241,0.15), rgba(124,58,237,0.1))',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid rgba(99,102,241,0.2)',
-        padding: '0.5rem 2rem',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>
-          <Clock size={14} style={{ color: 'var(--primary-light)' }} />
-          Free trial · <strong style={{ color: 'var(--primary-light)' }}>{daysRemaining} days remaining</strong> · Up to {TRIAL_CONFIG.TRIAL_MEMBER_LIMIT} members
+    if (accessStatus === 'paid_expiring') {
+      return (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 500,
+          background: 'linear-gradient(90deg, rgba(245,158,11,0.95), rgba(217,119,6,0.95))',
+          padding: '0.65rem 2rem',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'white', fontSize: '0.875rem', fontWeight: 700 }}>
+            <Clock size={16} />
+            Subscription renews in <strong>{daysRemaining} {daysRemaining === 1 ? 'day' : 'days'}</strong>.
+          </div>
         </div>
-        <button
-          onClick={() => setActiveTab('pricing')}
-          style={{ background: 'none', border: '1px solid rgba(99,102,241,0.4)', color: 'var(--primary-light)', borderRadius: '8px', padding: '4px 12px', fontWeight: 700, cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}
-        >
-          See Plans
-        </button>
-      </div>
-    );
+      );
+    }
+    if (accessStatus === 'active_trial') {
+      return (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 500,
+          background: 'linear-gradient(90deg, rgba(99,102,241,0.15), rgba(124,58,237,0.1))',
+          backdropFilter: 'blur(10px)',
+          borderBottom: '1px solid rgba(99,102,241,0.2)',
+          padding: '0.5rem 2rem',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>
+            <Clock size={14} style={{ color: 'var(--primary-light)' }} />
+            Free trial · <strong style={{ color: 'var(--primary-light)' }}>{daysRemaining} days remaining</strong> · Up to {TRIAL_CONFIG.TRIAL_MEMBER_LIMIT} members
+          </div>
+          <button onClick={() => setActiveTab('pricing')}
+            style={{ background: 'none', border: '1px solid rgba(99,102,241,0.4)', color: 'var(--primary-light)', borderRadius: '8px', padding: '4px 12px', fontWeight: 700, cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}>
+            See Plans
+          </button>
+        </div>
+      );
+    }
+    return null;
   };
 
   if (!session) return <Auth />;
@@ -242,6 +271,18 @@ function App() {
     );
   }
 
+  // ── PAYMENT WALL — blocks all access when subscription is expired ─────────
+  if (subStatus?.isBlocked && church) {
+    return (
+      <PaymentWall
+        churchId={church.id}
+        churchName={church.name}
+        subStatus={subStatus}
+        onPaymentSuccess={() => fetchProfile(session.user.id)}
+      />
+    );
+  }
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: 'var(--bg-dark)' }}>
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
@@ -254,8 +295,8 @@ function App() {
         position: 'relative',
         backgroundColor: 'var(--bg-main)'
       }}>
-        {/* Trial Status Banner */}
-        {renderTrialBanner()}
+        {/* Status Banner (trial countdown / renewal warning) */}
+        {renderStatusBanner()}
 
         {/* Ambient background glows */}
         <div style={{
