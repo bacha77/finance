@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SanctuaryOS — Church Finance, Reimagined</title>
+    <meta name="description" content="The all-in-one financial operating system for modern churches. Manage funds, payroll, members, budgets, and giving — all in one beautifully simple platform." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <style>
+        :root {
+            --primary: #7c3aed;
+            --primary-light: #a78bfa;
+            --primary-glow: rgba(124, 58, 237, 0.3);
+            --accent: #06b6d4;
+            --bg-dark: #020617;
+            --bg-card: #0f172a;
+            --bg-card-hover: #1e293b;
+            --border: rgba(255,255,255,0.07);
+            --text-main: #f1f5f9;
+            --text-muted: #64748b;
+            --text-secondary: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --radius: 16px;
+            --radius-lg: 24px;
+            --radius-xl: 32px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ============ NAVBAR ============ */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0;
+            z-index: 100;
+            padding: 1.25rem 4rem;
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(2, 6, 23, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-logo {
+            display: flex; align-items: center; gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .nav-logo-icon {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .nav-logo-text {
+            font-size: 1.3rem; font-weight: 800;
+            background: linear-gradient(135deg, #fff, var(--primary-light));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex; align-items: center; gap: 2.5rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem; font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover { color: white; }
+
+        .nav-ctas { display: flex; align-items: center; gap: 1rem; }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px; border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem; font-weight: 700;
+            cursor: pointer; transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover { border-color: rgba(255,255,255,0.2); color: white; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            color: white;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 30px var(--primary-glow);
+        }
+
+        .btn-large {
+            padding: 1rem 2.5rem;
+            font-size: 1.05rem;
+            border-radius: 14px;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.4);
+        }
+
+        /* ============ HERO ============ */
+        .hero {
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            text-align: center;
+            padding: 8rem 2rem 6rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 50% -10%, rgba(124,58,237,0.2) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 80% 100%, rgba(6,182,212,0.08) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            background: rgba(124, 58, 237, 0.1);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 100px;
+            padding: 0.4rem 1.2rem;
+            font-size: 0.8rem; font-weight: 700;
+            color: var(--primary-light);
+            letter-spacing: 0.05em; text-transform: uppercase;
+            margin-bottom: 2rem;
+            animation: fadeSlideDown 0.6s ease both;
+        }
+
+        .hero-badge .dot {
+            width: 6px; height: 6px;
+            background: var(--success); border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 7vw, 6rem);
+            font-weight: 900; letter-spacing: -0.04em;
+            line-height: 1.05;
+            margin-bottom: 1.5rem;
+            animation: fadeSlideDown 0.7s ease 0.1s both;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            color: var(--text-secondary);
+            max-width: 640px; margin: 0 auto 2.5rem;
+            line-height: 1.7;
+            animation: fadeSlideDown 0.7s ease 0.2s both;
+        }
+
+        .hero-ctas {
+            display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+            animation: fadeSlideDown 0.7s ease 0.3s both;
+            margin-bottom: 4rem;
+        }
+
+        .hero-proof {
+            display: flex; align-items: center; gap: 1.5rem;
+            font-size: 0.8rem; color: var(--text-muted);
+            animation: fadeSlideDown 0.7s ease 0.4s both;
+        }
+
+        .hero-proof-item {
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+
+        .hero-proof-item svg { color: var(--success); }
+
+        .hero-mockup {
+            margin-top: 5rem;
+            position: relative;
+            animation: fadeSlideUp 0.8s ease 0.5s both;
+        }
+
+        .hero-mockup img {
+            width: 100%; max-width: 1000px;
+            border-radius: var(--radius-xl);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow:
+                0 0 0 1px rgba(124,58,237,0.1),
+                0 50px 100px -20px rgba(0,0,0,0.8),
+                0 0 80px -20px rgba(124,58,237,0.3);
+        }
+
+        .mockup-glow {
+            position: absolute; inset: -20px;
+            background: radial-gradient(ellipse at center, rgba(124,58,237,0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        @keyframes fadeSlideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ============ SECTIONS ============ */
+        section { padding: 7rem 2rem; }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .section-label {
+            font-size: 0.75rem; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.1em;
+            color: var(--primary-light);
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 900; letter-spacing: -0.03em;
+            margin-bottom: 1.25rem;
+            line-height: 1.15;
+        }
+
+        .section-subtitle {
+            font-size: 1.1rem; color: var(--text-secondary);
+            max-width: 560px; line-height: 1.7;
+        }
+
+        .section-header { margin-bottom: 4rem; }
+
+        .section-header.centered { text-align: center; }
+        .section-header.centered .section-subtitle { margin: 0 auto; }
+
+        /* ============ LOGOS ============ */
+        .logos-strip {
+            background: rgba(255,255,255,0.02);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 2.5rem 2rem;
+        }
+
+        .logos-strip p {
+            text-align: center;
+            font-size: 0.75rem; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--text-muted);
+            margin-bottom: 2rem; font-weight: 600;
+        }
+
+        .logos-row {
+            display: flex; justify-content: center;
+            gap: 4rem; flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .church-logo {
+            color: rgba(255,255,255,0.2);
+            font-size: 0.9rem; font-weight: 700;
+            letter-spacing: 0.05em; text-transform: uppercase;
+        }
+
+        /* ============ FEATURES ============ */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(124,58,237,0.05) 0%, transparent 60%);
+            opacity: 0; transition: opacity 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(124,58,237,0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 30px rgba(124,58,237,0.1);
+        }
+
+        .feature-card:hover::before { opacity: 1; }
+
+        .feature-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.15rem; font-weight: 800;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary); font-size: 0.9rem; line-height: 1.7;
+        }
+
+        /* ============ STATS ============ */
+        .stats-section {
+            background: linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(6,182,212,0.04) 100%);
+            border-top: 1px solid rgba(124,58,237,0.1);
+            border-bottom: 1px solid rgba(124,58,237,0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem; text-align: center;
+        }
+
+        .stat-number {
+            font-size: 3rem; font-weight: 900;
+            letter-spacing: -0.04em;
+            background: linear-gradient(135deg, white, var(--primary-light));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.85rem; color: var(--text-secondary);
+            margin-top: 0.5rem; font-weight: 500;
+        }
+
+        /* ============ PRICING ============ */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .pricing-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .pricing-card.popular {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(124,58,237,0.08) 0%, var(--bg-card) 100%);
+            box-shadow: 0 0 40px rgba(124,58,237,0.15);
+            transform: scale(1.04);
+        }
+
+        .popular-badge {
+            position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            color: white; font-size: 0.7rem; font-weight: 800;
+            letter-spacing: 0.1em; text-transform: uppercase;
+            padding: 0.3rem 1rem; border-radius: 100px;
+            white-space: nowrap;
+        }
+
+        .pricing-plan { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 0.75rem; }
+
+        .pricing-price {
+            display: flex; align-items: flex-end; gap: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-price .amount {
+            font-size: 3.5rem; font-weight: 900; letter-spacing: -0.04em; line-height: 1;
+        }
+
+        .pricing-price .currency { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .pricing-price .period { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; }
+
+        .pricing-desc { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 2rem; line-height: 1.6; }
+
+        .pricing-divider { border: none; border-top: 1px solid var(--border); margin-bottom: 2rem; }
+
+        .pricing-features { list-style: none; display: flex; flex-direction: column; gap: 0.85rem; margin-bottom: 2rem; }
+
+        .pricing-features li {
+            display: flex; align-items: flex-start; gap: 0.75rem;
+            font-size: 0.875rem; color: var(--text-secondary);
+        }
+
+        .pricing-features li .check {
+            color: var(--success); font-size: 1rem; flex-shrink: 0; margin-top: 1px;
+        }
+
+        .pricing-features li .cross { color: var(--text-muted); flex-shrink: 0; }
+
+        /* ============ TESTIMONIALS ============ */
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .testimonial-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+
+        .testimonial-card:hover {
+            border-color: rgba(124,58,237,0.3);
+            transform: translateY(-4px);
+        }
+
+        .stars { color: #f59e0b; font-size: 1rem; margin-bottom: 1.25rem; letter-spacing: 2px; }
+
+        .testimonial-text {
+            font-size: 0.9rem; line-height: 1.7;
+            color: var(--text-secondary); margin-bottom: 1.5rem;
+            font-style: italic;
+        }
+
+        .testimonial-author { display: flex; align-items: center; gap: 0.75rem; }
+
+        .author-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.85rem; color: white; flex-shrink: 0;
+        }
+
+        .author-name { font-weight: 700; font-size: 0.875rem; }
+        .author-role { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* ============ FAQ ============ */
+        .faq-list { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .faq-q {
+            width: 100%; background: none; border: none; color: white;
+            padding: 1.5rem; text-align: left; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem; font-weight: 700;
+            transition: background 0.2s;
+        }
+
+        .faq-q:hover { background: rgba(255,255,255,0.03); }
+
+        .faq-q .arrow { transition: transform 0.3s; font-size: 1.1rem; color: var(--text-muted); }
+        .faq-item.open .faq-q .arrow { transform: rotate(180deg); }
+
+        .faq-a {
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            font-size: 0.875rem; color: var(--text-secondary); line-height: 1.7;
+        }
+
+        .faq-item.open .faq-a { max-height: 300px; padding: 0 1.5rem 1.5rem; }
+
+        /* ============ CTA SECTION ============ */
+        .cta-section {
+            padding: 7rem 2rem;
+        }
+
+        .cta-card {
+            background: linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(79,70,229,0.1) 50%, rgba(6,182,212,0.08) 100%);
+            border: 1px solid rgba(124,58,237,0.2);
+            border-radius: var(--radius-xl);
+            padding: 5rem;
+            text-align: center;
+            position: relative; overflow: hidden;
+        }
+
+        .cta-card::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at 50% -30%, rgba(124,58,237,0.2) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .cta-card h2 {
+            font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 900; letter-spacing: -0.04em;
+            margin-bottom: 1.25rem;
+        }
+
+        .cta-card p { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 2.5rem; max-width: 500px; margin-left: auto; margin-right: auto; }
+
+        /* ============ FOOTER ============ */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 3rem 4rem;
+        }
+
+        .footer-inner {
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 1.5rem;
+        }
+
+        .footer-links {
+            display: flex; gap: 2rem; list-style: none;
+        }
+
+        .footer-links a {
+            color: var(--text-muted); text-decoration: none;
+            font-size: 0.85rem; transition: color 0.2s;
+        }
+
+        .footer-links a:hover { color: white; }
+
+        .footer-copy { color: var(--text-muted); font-size: 0.8rem; }
+
+        /* ============ RESPONSIVE ============ */
+        @media (max-width: 900px) {
+            nav { padding: 1rem 1.5rem; }
+            .nav-links { display: none; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .pricing-grid { grid-template-columns: 1fr; }
+            .pricing-card.popular { transform: none; }
+            .testimonials-grid { grid-template-columns: 1fr; }
+            .cta-card { padding: 3rem 2rem; }
+            footer { padding: 2rem 1.5rem; }
+            .footer-inner { flex-direction: column; text-align: center; }
+        }
+
+        @media (max-width: 600px) {
+            .features-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav>
+        <a href="#" class="nav-logo">
+            <div class="nav-logo-icon">⛪</div>
+            <span class="nav-logo-text">SanctuaryOS</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#testimonials">Testimonials</a></li>
+            <li><a href="#faq">FAQ</a></li>
+        </ul>
+        <div class="nav-ctas">
+            <a href="#" class="btn btn-ghost">Sign In</a>
+            <a href="#pricing" class="btn btn-primary">Start Free Trial</a>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-badge"><span class="dot"></span> Purpose-built for churches</div>
+        <h1>The Financial OS<br />Your Church <span class="gradient-text">Deserves</span></h1>
+        <p>Automate payroll, track giving, manage funds, and empower every church with a complete financial dashboard — all in one powerful platform.</p>
+        <div class="hero-ctas">
+            <a href="#pricing" class="btn btn-primary btn-large">
+                🚀 Start Free 30-Day Trial
+            </a>
+            <a href="#features" class="btn btn-outline btn-large">
+                See How It Works
+            </a>
+        </div>
+        <div class="hero-proof">
+            <div class="hero-proof-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                No credit card required
+            </div>
+            <div class="hero-proof-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Setup in under 10 minutes
+            </div>
+            <div class="hero-proof-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Cancel anytime
+            </div>
+        </div>
+        <div class="hero-mockup">
+            <div class="mockup-glow"></div>
+            <img src="https://placehold.co/1000x580/0f172a/7c3aed?text=SanctuaryOS+Dashboard" alt="SanctuaryOS Dashboard Preview" loading="lazy" />
+        </div>
+    </section>
+
+    <!-- LOGOS -->
+    <div class="logos-strip">
+        <p>Trusted by growing churches across the country</p>
+        <div class="logos-row">
+            <span class="church-logo">Grace Fellowship</span>
+            <span class="church-logo">Kingdom Life Church</span>
+            <span class="church-logo">New Hope Ministry</span>
+            <span class="church-logo">Cornerstone Church</span>
+            <span class="church-logo">Living Word</span>
+            <span class="church-logo">Faith Community</span>
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <section class="stats-section">
+        <div class="container">
+            <div class="stats-grid">
+                <div>
+                    <div class="stat-number">$2.4M+</div>
+                    <div class="stat-label">Tithes Tracked Monthly</div>
+                </div>
+                <div>
+                    <div class="stat-number">500+</div>
+                    <div class="stat-label">Churches On Platform</div>
+                </div>
+                <div>
+                    <div class="stat-number">99.9%</div>
+                    <div class="stat-label">Platform Uptime</div>
+                </div>
+                <div>
+                    <div class="stat-number">40hrs</div>
+                    <div class="stat-label">Saved per Month, per Church</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Everything You Need</div>
+                <h2 class="section-title">One platform. Every financial<br />need your church has.</h2>
+                <p class="section-subtitle">Stop juggling spreadsheets and disconnected tools. SanctuaryOS brings your entire ministry's finances into one beautifully simple system.</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(124,58,237,0.1); color: var(--primary-light);">💰</div>
+                    <h3>Fund Accounting</h3>
+                    <p>Track every fund independently — tithes, building fund, missions, special offerings. Real-time balances with a complete audit trail.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(16,185,129,0.1); color: #34d399;">👥</div>
+                    <h3>Member Portal</h3>
+                    <p>Manage your entire congregation. Track active members, send giving statements, and monitor engagement — all in one place.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(245,158,11,0.1); color: #fbbf24;">📋</div>
+                    <h3>Automated Payroll</h3>
+                    <p>Pay your staff and contractors with confidence. Supports monthly, bi-weekly, and twice-daily cycles with built-in tax calculations.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(239,68,68,0.1); color: #f87171;">🧾</div>
+                    <h3>Expense Tracking</h3>
+                    <p>Log, categorize, and approve every expense. Attach receipts by photo and access a full audit trail for complete transparency.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(6,182,212,0.1); color: #22d3ee;">📊</div>
+                    <h3>Budget Planning</h3>
+                    <p>Set annual budgets by department, visualize actuals vs. targets, and get ahead of financial surprises before they happen.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(167,139,250,0.1); color: var(--primary-light);">🎁</div>
+                    <h3>Smart Giving</h3>
+                    <p>Accept online tithes and offerings with ease. Track individual donor history, send reminders, and generate end-of-year statements automatically.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(124,58,237,0.1); color: var(--primary-light);">📈</div>
+                    <h3>Financial Reports</h3>
+                    <p>Generate balance sheets, income statements, giving reports, and tax forms on demand. Export to PDF or Excel in one click.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(16,185,129,0.1); color: #34d399;">🔐</div>
+                    <h3>Bank-Grade Security</h3>
+                    <p>Role-based access control, end-to-end encryption, and real-time audit logs ensure your financial data stays protected at all times.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(245,158,11,0.1); color: #fbbf24;">⚡</div>
+                    <h3>Real-Time Sync</h3>
+                    <p>All data updates in real-time across every device. Multiple admins can work simultaneously — never worry about stale data again.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRICING -->
+    <section id="pricing" style="background: rgba(255,255,255,0.01);">
+        <div class="container">
+            <div class="section-header centered">
+                <div class="section-label">Transparent Pricing</div>
+                <h2 class="section-title">Simple plans for every<br /><span class="gradient-text">size of congregation</span></h2>
+                <p class="section-subtitle">No hidden fees. No surprise charges. Just powerful tools at a fair monthly price.</p>
+            </div>
+
+            <div class="pricing-grid">
+                <!-- Starter -->
+                <div class="pricing-card">
+                    <div class="pricing-plan">Starter</div>
+                    <div class="pricing-price">
+                        <span class="currency">$</span>
+                        <span class="amount">49</span>
+                        <span class="period">&nbsp;/ month</span>
+                    </div>
+                    <p class="pricing-desc">Perfect for small congregations just getting started with digital finance management.</p>
+                    <hr class="pricing-divider" />
+                    <ul class="pricing-features">
+                        <li><span class="check">✓</span> Up to 150 members</li>
+                        <li><span class="check">✓</span> Fund accounting (3 funds)</li>
+                        <li><span class="check">✓</span> Expense tracking</li>
+                        <li><span class="check">✓</span> Basic giving reports</li>
+                        <li><span class="check">✓</span> 2 admin users</li>
+                        <li><span class="check">✓</span> Email support</li>
+                        <li><span class="cross" style="color:var(--text-muted)">✗</span> <span style="color:var(--text-muted)">Payroll automation</span></li>
+                        <li><span class="cross" style="color:var(--text-muted)">✗</span> <span style="color:var(--text-muted)">Custom domain</span></li>
+                    </ul>
+                    <a href="#" class="btn btn-outline" style="width:100%; justify-content:center;">Get Started →</a>
+                </div>
+
+                <!-- Growth (Popular) -->
+                <div class="pricing-card popular">
+                    <div class="popular-badge">✦ Most Popular</div>
+                    <div class="pricing-plan">Growth</div>
+                    <div class="pricing-price">
+                        <span class="currency">$</span>
+                        <span class="amount" style="background: linear-gradient(135deg, white, var(--primary-light)); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">99</span>
+                        <span class="period">&nbsp;/ month</span>
+                    </div>
+                    <p class="pricing-desc">For growing churches that need the complete system including payroll and smart giving.</p>
+                    <hr class="pricing-divider" />
+                    <ul class="pricing-features">
+                        <li><span class="check">✓</span> Up to 500 members</li>
+                        <li><span class="check">✓</span> Unlimited fund accounting</li>
+                        <li><span class="check">✓</span> Full payroll automation</li>
+                        <li><span class="check">✓</span> Smart Giving portal</li>
+                        <li><span class="check">✓</span> Budget planning</li>
+                        <li><span class="check">✓</span> All financial reports</li>
+                        <li><span class="check">✓</span> 10 admin users</li>
+                        <li><span class="check">✓</span> Priority support</li>
+                    </ul>
+                    <a href="#" class="btn btn-primary" style="width:100%; justify-content:center;">Start Free Trial →</a>
+                </div>
+
+                <!-- Enterprise -->
+                <div class="pricing-card">
+                    <div class="pricing-plan">Enterprise</div>
+                    <div class="pricing-price">
+                        <span class="currency">$</span>
+                        <span class="amount">199</span>
+                        <span class="period">&nbsp;/ month</span>
+                    </div>
+                    <p class="pricing-desc">For large ministries and multi-campus organizations that require full white-glove service.</p>
+                    <hr class="pricing-divider" />
+                    <ul class="pricing-features">
+                        <li><span class="check">✓</span> Unlimited members</li>
+                        <li><span class="check">✓</span> Multi-campus support</li>
+                        <li><span class="check">✓</span> Everything in Growth</li>
+                        <li><span class="check">✓</span> Custom domain & branding</li>
+                        <li><span class="check">✓</span> Dedicated account manager</li>
+                        <li><span class="check">✓</span> Onboarding & data migration</li>
+                        <li><span class="check">✓</span> Unlimited admin users</li>
+                        <li><span class="check">✓</span> 24/7 phone & chat support</li>
+                    </ul>
+                    <a href="#" class="btn btn-outline" style="width:100%; justify-content:center;">Contact Sales →</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TESTIMONIALS -->
+    <section id="testimonials">
+        <div class="container">
+            <div class="section-header centered">
+                <div class="section-label">What Pastors Say</div>
+                <h2 class="section-title">Trusted by church leaders<br /><span class="gradient-text">across the country</span></h2>
+            </div>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <div class="stars">★★★★★</div>
+                    <p class="testimonial-text">"SanctuaryOS completely transformed how we handle finances. What used to take our treasurer half a day now takes 20 minutes. The real-time sync is a game changer."</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">PT</div>
+                        <div>
+                            <div class="author-name">Pastor Thomas Reed</div>
+                            <div class="author-role">Senior Pastor, Grace Fellowship</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card" style="border-color: rgba(124,58,237,0.3);">
+                    <div class="stars">★★★★★</div>
+                    <p class="testimonial-text">"The payroll automation alone is worth every penny. Our staff gets paid on time every single time, and the tax reporting makes our accountant's life so much easier."</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar" style="background: linear-gradient(135deg, #06b6d4, #4f46e5);">ML</div>
+                        <div>
+                            <div class="author-name">Minister Linda Cross</div>
+                            <div class="author-role">Finance Director, Kingdom Life</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="stars">★★★★★</div>
+                    <p class="testimonial-text">"Our congregation trusts us more because we can now show them exactly where every dollar goes. The transparency that SanctuaryOS brings to our church is priceless."</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar" style="background: linear-gradient(135deg, #10b981, #059669);">RJ</div>
+                        <div>
+                            <div class="author-name">Rev. James Obinna</div>
+                            <div class="author-role">Lead Pastor, New Hope Ministry</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" style="background: rgba(255,255,255,0.01);">
+        <div class="container">
+            <div class="section-header centered">
+                <div class="section-label">FAQ</div>
+                <h2 class="section-title">Common Questions</h2>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-q" onclick="toggleFaq(this)">
+                        Do I need technical knowledge to set up SanctuaryOS?
+                        <span class="arrow">▾</span>
+                    </button>
+                    <div class="faq-a">Absolutely not. SanctuaryOS is designed for pastors and church administrators — not IT professionals. You can be fully up and running in under 10 minutes with our guided setup wizard.</div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="toggleFaq(this)">
+                        Can I migrate data from QuickBooks or spreadsheets?
+                        <span class="arrow">▾</span>
+                    </button>
+                    <div class="faq-a">Yes! We provide a simple CSV import tool for your existing data. Enterprise plan subscribers also get a hands-on onboarding call where our team migrates your data for you.</div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="toggleFaq(this)">
+                        Is our church's financial data secure?
+                        <span class="arrow">▾</span>
+                    </button>
+                    <div class="faq-a">Security is our top priority. SanctuaryOS uses bank-grade AES-256 encryption, is hosted on SOC 2 compliant infrastructure, and provides role-based access so only authorized individuals can see sensitive data.</div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="toggleFaq(this)">
+                        What happens if we grow and need to upgrade our plan?
+                        <span class="arrow">▾</span>
+                    </button>
+                    <div class="faq-a">You can upgrade your plan at any time directly from your dashboard. The change takes effect immediately and you'll only be billed the prorated difference for the current month.</div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="toggleFaq(this)">
+                        Can we cancel at any time?
+                        <span class="arrow">▾</span>
+                    </button>
+                    <div class="faq-a">Yes — no contracts, no cancellation fees. You can cancel your subscription at any time from the settings page. Your data will be available to export for 30 days after cancellation.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-card">
+                <div class="section-label" style="margin-bottom:1rem;">Limited Time Offer</div>
+                <h2>Ready to transform your<br /><span class="gradient-text">church's finances?</span></h2>
+                <p>Join hundreds of churches who have made the switch. Start your free 30-day trial today — no credit card required.</p>
+                <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
+                    <a href="#pricing" class="btn btn-primary btn-large">🚀 Start Free Trial</a>
+                    <a href="mailto:hello@sanctuaryos.com" class="btn btn-outline btn-large">💬 Talk to Sales</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-inner">
+            <div>
+                <a href="#" class="nav-logo" style="margin-bottom:0.5rem; display:inline-flex;">
+                    <div class="nav-logo-icon" style="width:32px; height:32px; font-size:0.9rem;">⛪</div>
+                    <span class="nav-logo-text" style="font-size:1.1rem;">SanctuaryOS</span>
+                </a>
+                <p class="footer-copy" style="margin-top:0.5rem;">© 2026 SanctuaryOS. All rights reserved.</p>
+            </div>
+            <ul class="footer-links">
+                <li><a href="#">Features</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><a href="#">Privacy Policy</a></li>
+                <li><a href="#">Terms of Service</a></li>
+                <li><a href="mailto:hello@sanctuaryos.com">Contact</a></li>
+            </ul>
+        </div>
+    </footer>
+
+    <script>
+        function toggleFaq(btn) {
+            const item = btn.closest('.faq-item');
+            const isOpen = item.classList.contains('open');
+            document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+            if (!isOpen) item.classList.add('open');
+        }
+
+        // Animate elements on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.feature-card, .pricing-card, .testimonial-card, .stat-number').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
