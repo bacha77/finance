@@ -48,7 +48,7 @@ interface ExpensesProps {
     setActiveTab: (tab: string) => void;
 }
 
-const Expenses: React.FC<ExpensesProps> = ({ setActiveTab }) => {
+const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [showAddModal, setShowAddModal] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
