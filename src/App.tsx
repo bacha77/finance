@@ -10,12 +10,15 @@ import Departments from './components/Departments';
 import Expenses from './components/Expenses';
 import Budget from './components/Budget';
 import Auth from './components/Auth';
+import Onboarding from './components/Onboarding';
 import { supabase } from './lib/supabase';
 import { Search, Moon, Sun, Zap, ArrowRight, User, Shield, PieChart, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function App() {
   const [session, setSession] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [showCommandCenter, setShowCommandCenter] = useState(false);
@@ -24,16 +27,31 @@ function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session) fetchProfile(session.user.id);
+      else setProfileLoading(false);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session) fetchProfile(session.user.id);
+      else { setProfile(null); setProfileLoading(false); }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchProfile = async (userId: string) => {
+    setProfileLoading(true);
+    const { data } = await supabase
+      .from('profiles')
+      .select('*, churches(*)')
+      .eq('id', userId)
+      .maybeSingle();
+    setProfile(data);
+    setProfileLoading(false);
+  };
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -87,8 +105,24 @@ function App() {
     }
   };
 
-  if (!session) {
-    return <Auth />;
+  if (!session) return <Auth />;
+
+  if (profileLoading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-dark)', color: 'var(--text-muted)', fontSize: '1rem' }}>
+        Loading your workspace...
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <Onboarding
+        userId={session.user.id}
+        userEmail={session.user.email || ''}
+        onComplete={() => fetchProfile(session.user.id)}
+      />
+    );
   }
 
   return (
