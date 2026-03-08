@@ -49,7 +49,7 @@ const DEFAULT_CONNECT_CARDS: ConnectCard[] = [
     { name: 'Esther Howard', received: '1 day ago', type: 'Visitor Information', status: 'Followed Up', interest: 'Youth Ministry' },
 ];
 
-const MemberPortal: React.FC = () => {
+const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }) => {
     const [activeSubTab, setActiveSubTab] = useState('members');
     const [showIntakeForm, setShowIntakeForm] = useState(false);
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -175,6 +175,11 @@ const MemberPortal: React.FC = () => {
         e.preventDefault();
         if (!newMemberName || !newMemberEmail) return;
 
+        // Enforce member limit for trial plan
+        if (memberLimit !== null && memberLimit !== undefined && members.length >= memberLimit) {
+            alert(`Your free trial is limited to ${memberLimit} members. Please upgrade your plan to add more.`);
+            return;
+        }
         const newMember = {
             name: newMemberName,
             email: newMemberEmail,
@@ -268,9 +273,21 @@ const MemberPortal: React.FC = () => {
                     <button className="btn btn-ghost" onClick={() => setShowIntakeForm(true)}>
                         <Mail size={18} /> Digital Card
                     </button>
-                    <button className="btn btn-primary" onClick={() => setShowAddMemberModal(true)}>
-                        <UserPlus size={18} /> Add Member
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => setShowAddMemberModal(true)}
+                            disabled={memberLimit !== null && memberLimit !== undefined && members.length >= memberLimit}
+                            style={{ opacity: (memberLimit !== null && memberLimit !== undefined && members.length >= memberLimit) ? 0.5 : 1 }}
+                        >
+                            <UserPlus size={18} /> Add Member
+                        </button>
+                        {memberLimit !== null && memberLimit !== undefined && (
+                            <span style={{ fontSize: '0.7rem', color: members.length >= memberLimit ? '#ef4444' : 'var(--text-muted)', fontWeight: 600 }}>
+                                {members.length} / {memberLimit} members used
+                            </span>
+                        )}
+                    </div>
                 </div>
             </header>
 

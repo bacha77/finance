@@ -243,13 +243,14 @@ function App() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-dark)' }}>
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: 'var(--bg-dark)' }}>
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
 
       <main style={{
         marginLeft: '280px',
         flex: 1,
-        minHeight: '100vh',
+        height: '100vh',
+        overflowY: 'auto',
         position: 'relative',
         backgroundColor: 'var(--bg-main)'
       }}>

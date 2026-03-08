@@ -10,15 +10,18 @@ import {
   LogOut,
   ChevronRight,
   LayoutGrid,
-  PieChart
+  PieChart,
+  Zap
 } from 'lucide-react';
+
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onLogout?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout }) => {
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { id: 'accounting', icon: Wallet, label: 'Fund Accounting' },
@@ -29,6 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
     { id: 'payroll', icon: CreditCard, label: 'Payroll' },
     { id: 'budget', icon: PieChart, label: 'Budget Configuration' },
     { id: 'reports', icon: FileText, label: 'Reports' },
+    { id: 'pricing', icon: Zap, label: 'Plans & Pricing' },
   ];
 
   return (
@@ -37,10 +41,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
       height: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      padding: '2.5rem 1.25rem',
+      padding: '1.5rem 1.25rem',
       position: 'fixed',
       left: 0,
       top: 0,
+      overflowY: 'auto',
       borderRight: '1px solid var(--border)',
       background: 'linear-gradient(180deg, var(--bg-sidebar) 0%, rgba(15, 23, 42, 0.95) 100%)',
       backdropFilter: 'blur(20px)',
@@ -49,26 +54,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
       <div className="logo" style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '1rem',
-        marginBottom: '4rem',
+        justifyContent: 'center',
+        marginBottom: '1.5rem',
         padding: '0 0.5rem'
       }}>
-        <div style={{
-          width: '44px',
-          height: '44px',
-          borderRadius: '14px',
-          background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          boxShadow: '0 8px 16px -4px var(--primary-glow)'
-        }}>
-          <HeartHandshake size={26} />
-        </div>
-        <h1 className="gradient-text" style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.03em' }}>
-          Sanctuary
-        </h1>
+        <img
+          src={`${import.meta.env.BASE_URL}logo.png`}
+          alt="Storehouse Finance"
+          style={{
+            width: '100%',
+            maxWidth: '160px',
+            height: 'auto',
+            filter: 'drop-shadow(0 4px 16px rgba(124,58,237,0.4))',
+          }}
+        />
       </div>
 
       <nav style={{ flex: 1 }}>
@@ -140,7 +139,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
           <Settings size={20} />
           <span>Settings</span>
         </button>
-        <button style={{
+        <button onClick={onLogout} style={{
           width: '100%',
           display: 'flex',
           alignItems: 'center',

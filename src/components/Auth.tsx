@@ -37,10 +37,12 @@ const Auth: React.FC = () => {
     const handleGoogleSignIn = async () => {
         setGoogleLoading(true);
         setError(null);
+        // Use the full href base so GitHub Pages (/finance/) is included in the redirect
+        const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`;
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin,
+                redirectTo,
             },
         });
         if (error) {
@@ -51,9 +53,9 @@ const Auth: React.FC = () => {
 
     return (
         <div style={{
-            minHeight: '100vh', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', background: 'var(--bg-dark)', padding: '2rem',
-            position: 'relative', overflow: 'hidden'
+            minHeight: '100vh', display: 'flex', alignItems: 'flex-start',
+            justifyContent: 'center', background: 'var(--bg-dark)', padding: '1.5rem',
+            position: 'relative', overflowY: 'auto'
         }}>
             {/* Background glow */}
             <div style={{
@@ -65,17 +67,20 @@ const Auth: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="glass-card"
-                style={{ width: '100%', maxWidth: '420px', padding: '3rem', position: 'relative', zIndex: 1 }}
+                style={{ width: '100%', maxWidth: '420px', padding: '2rem', position: 'relative', zIndex: 1, marginTop: 'auto', marginBottom: 'auto' }}
             >
                 {/* Logo / Branding */}
-                <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-                    <div style={{
-                        fontSize: '2.25rem', marginBottom: '1rem',
-                        filter: 'drop-shadow(0 0 16px rgba(124,58,237,0.5))'
-                    }}>🏛️</div>
-                    <h1 style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '0.4rem' }}>
-                        Storehouse <span style={{ background: 'linear-gradient(135deg, #a78bfa, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Finance</span>
-                    </h1>
+                <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                    <img
+                        src={`${import.meta.env.BASE_URL}logo.png`}
+                        alt="Storehouse Finance"
+                        style={{
+                            height: '60px',
+                            width: 'auto',
+                            marginBottom: '0.75rem',
+                            filter: 'drop-shadow(0 0 20px rgba(124,58,237,0.5))',
+                        }}
+                    />
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                         {isLogin ? 'Welcome back, servant leader' : 'Create your church\'s account'}
                     </p>
