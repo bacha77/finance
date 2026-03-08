@@ -11,8 +11,10 @@ import Expenses from './components/Expenses';
 import Budget from './components/Budget';
 import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
+import Pricing from './components/Pricing';
 import { supabase } from './lib/supabase';
-import { Search, Moon, Sun, Zap, ArrowRight, User, Shield, PieChart, LogOut } from 'lucide-react';
+import { getTrialStatus, TRIAL_CONFIG } from './lib/trialConfig';
+import { Search, Moon, Sun, Zap, ArrowRight, User, Shield, PieChart, LogOut, AlertTriangle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function App() {
@@ -42,14 +44,53 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, retries = 0) => {
     setProfileLoading(true);
-    const { data } = await supabase
-      .from('profiles')
-      .select('*, churches(*)')
-      .eq('id', userId)
-      .maybeSingle();
-    setProfile(data);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*, churches(*)')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) {
+        // If RLS blocks the join, try without the join
+        const { data: simpleData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (simpleData) {
+          // Fetch church separately
+          if (simpleData.church_id) {
+            const { data: churchData } = await supabase
+              .from('churches')
+              .select('*')
+              .eq('id', simpleData.church_id)
+              .maybeSingle();
+            setProfile({ ...simpleData, churches: churchData });
+          } else {
+            setProfile(simpleData);
+          }
+          setProfileLoading(false);
+          return;
+        }
+      }
+
+      if (!data && retries < 5) {
+        // Retry with exponential backoff — DB write may not be visible yet
+        setTimeout(() => fetchProfile(userId, retries + 1), 500 * (retries + 1));
+        return;
+      }
+
+      setProfile(data);
+    } catch {
+      if (retries < 5) {
+        setTimeout(() => fetchProfile(userId, retries + 1), 500 * (retries + 1));
+        return;
+      }
+    }
     setProfileLoading(false);
   };
 
@@ -80,6 +121,9 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const church = profile?.churches;
+  const trialStatus = church ? getTrialStatus(church) : null;
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -89,7 +133,7 @@ function App() {
       case 'departments':
         return <Departments />;
       case 'members':
-        return <MemberPortal />;
+        return <MemberPortal memberLimit={church?.plan === 'trial' ? TRIAL_CONFIG.TRIAL_MEMBER_LIMIT : null} />;
       case 'giving':
         return <SmartGiving />;
       case 'payroll':
@@ -100,9 +144,82 @@ function App() {
         return <Reports />;
       case 'budget':
         return <Budget setActiveTab={setActiveTab} />;
+      case 'pricing':
+        return <Pricing currentPlan={church?.plan || 'trial'} onSelectPlan={(plan) => console.log('Upgrade to:', plan)} />;
       default:
         return <Dashboard setActiveTab={setActiveTab} />;
     }
+  };
+
+  // Trial banner shown when on trial plan
+  const renderTrialBanner = () => {
+    if (!trialStatus || !church || church.plan !== 'trial') return null;
+    const { daysRemaining, isExpired } = trialStatus;
+    if (isExpired) {
+      return (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 500,
+          background: 'linear-gradient(90deg, #ef4444, #dc2626)',
+          padding: '0.65rem 2rem',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'white', fontSize: '0.875rem', fontWeight: 700 }}>
+            <AlertTriangle size={16} />
+            Your free trial has expired. Upgrade to continue using Storehouse Finance.
+          </div>
+          <button
+            onClick={() => setActiveTab('pricing')}
+            style={{ background: 'white', color: '#dc2626', border: 'none', borderRadius: '8px', padding: '6px 16px', fontWeight: 800, cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
+          >
+            View Plans
+          </button>
+        </div>
+      );
+    }
+    if (daysRemaining <= 7) {
+      return (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 500,
+          background: 'linear-gradient(90deg, rgba(245,158,11,0.95), rgba(217,119,6,0.95))',
+          backdropFilter: 'blur(10px)',
+          padding: '0.65rem 2rem',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'white', fontSize: '0.875rem', fontWeight: 700 }}>
+            <Clock size={16} />
+            {daysRemaining === 1 ? '1 day remaining' : `${daysRemaining} days remaining`} in your free trial.
+          </div>
+          <button
+            onClick={() => setActiveTab('pricing')}
+            style={{ background: 'white', color: '#b45309', border: 'none', borderRadius: '8px', padding: '6px 16px', fontWeight: 800, cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
+          >
+            Upgrade Now
+          </button>
+        </div>
+      );
+    }
+    // Show normal trial info bar
+    return (
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 500,
+        background: 'linear-gradient(90deg, rgba(99,102,241,0.15), rgba(124,58,237,0.1))',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(99,102,241,0.2)',
+        padding: '0.5rem 2rem',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>
+          <Clock size={14} style={{ color: 'var(--primary-light)' }} />
+          Free trial · <strong style={{ color: 'var(--primary-light)' }}>{daysRemaining} days remaining</strong> · Up to {TRIAL_CONFIG.TRIAL_MEMBER_LIMIT} members
+        </div>
+        <button
+          onClick={() => setActiveTab('pricing')}
+          style={{ background: 'none', border: '1px solid rgba(99,102,241,0.4)', color: 'var(--primary-light)', borderRadius: '8px', padding: '4px 12px', fontWeight: 700, cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}
+        >
+          See Plans
+        </button>
+      </div>
+    );
   };
 
   if (!session) return <Auth />;
@@ -136,6 +253,9 @@ function App() {
         position: 'relative',
         backgroundColor: 'var(--bg-main)'
       }}>
+        {/* Trial Status Banner */}
+        {renderTrialBanner()}
+
         {/* Ambient background glows */}
         <div style={{
           position: 'absolute',
