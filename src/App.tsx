@@ -182,7 +182,11 @@ function App() {
       case 'budget':
         return <Budget setActiveTab={setActiveTab} />;
       case 'pricing':
-        return <Pricing currentPlan={church?.plan || 'trial'} onSelectPlan={(plan) => console.log('Upgrade to:', plan)} />;
+        return <Pricing
+          currentPlan={church?.plan || 'trial'}
+          churchId={church?.id}
+          onUpgradeSuccess={() => fetchProfile(session.user.id)}
+        />;
       default:
         return <Dashboard setActiveTab={setActiveTab} />;
     }
