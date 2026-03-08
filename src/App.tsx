@@ -13,6 +13,7 @@ import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
 import Pricing from './components/Pricing';
 import PaymentWall from './components/PaymentWall';
+import TaxCompliance from './components/TaxCompliance';
 import { supabase } from './lib/supabase';
 import { TRIAL_CONFIG } from './lib/trialConfig';
 import { getSubscriptionStatus, getMsUntilMidnight } from './lib/subscriptionConfig';
@@ -186,6 +187,12 @@ function App() {
           currentPlan={church?.plan || 'trial'}
           churchId={church?.id}
           onUpgradeSuccess={() => fetchProfile(session.user.id)}
+        />;
+      case 'compliance':
+        return <TaxCompliance
+          onBack={() => setActiveTab('payroll')}
+          churchName={church?.name}
+          churchId={church?.id}
         />;
       default:
         return <Dashboard setActiveTab={setActiveTab} />;
