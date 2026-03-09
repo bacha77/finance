@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Mail, Lock, LogIn, UserPlus, Eye, EyeOff, ChevronRight,
     ChevronLeft, Church, Phone, User, Globe, CheckCircle2,
-    RefreshCw, AlertCircle, Shield
+    RefreshCw, AlertCircle, Shield, DollarSign
 } from 'lucide-react';
 
 // ── Password strength ────────────────────────────────────────────────────────
@@ -182,6 +182,10 @@ const Auth: React.FC = () => {
     const [phone, setPhone] = useState('');
     const [denomination, setDenomination] = useState('');
     const [country, setCountry] = useState('');
+    // Treasurer fields
+    const [treasurerName, setTreasurerName] = useState('');
+    const [treasurerEmail, setTreasurerEmail] = useState('');
+    const [treasurerPhone, setTreasurerPhone] = useState('');
 
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
@@ -194,6 +198,7 @@ const Auth: React.FC = () => {
         setStep(0); setError(null);
         setEmail(''); setPassword(''); setConfirmPassword('');
         setChurchName(''); setPastorName(''); setPhone(''); setDenomination(''); setCountry('');
+        setTreasurerName(''); setTreasurerEmail(''); setTreasurerPhone('');
     };
 
     // ── Login ────────────────────────────────────────────────────────────────
@@ -245,6 +250,9 @@ const Auth: React.FC = () => {
                         denomination: denomination.trim(),
                         country: country.trim(),
                         full_name: pastorName.trim(),
+                        treasurer_name: treasurerName.trim(),
+                        treasurer_email: treasurerEmail.trim(),
+                        treasurer_phone: treasurerPhone.trim(),
                     },
                     emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
                 },
@@ -548,6 +556,30 @@ const Auth: React.FC = () => {
                                             <option key={d} value={d} style={{ background: '#0f172a' }}>{d}</option>
                                         ))}
                                     </select>
+                                </div>
+
+                                {/* ── Treasurer Section ── */}
+                                <div style={{
+                                    borderRadius: '12px', border: '1px solid rgba(16,185,129,0.2)',
+                                    background: 'rgba(16,185,129,0.04)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem',
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <DollarSign size={13} color="#10b981" />
+                                        </div>
+                                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                            Church Treasurer
+                                        </span>
+                                        <span style={{ fontSize: '0.65rem', color: '#334155' }}>— optional</span>
+                                    </div>
+                                    <Field label="Treasurer Full Name" placeholder="e.g. Deacon Robert Lee"
+                                        value={treasurerName} onChange={setTreasurerName} icon={User} />
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                                        <Field label="Treasurer Email" placeholder="treasurer@church.org" type="email"
+                                            value={treasurerEmail} onChange={setTreasurerEmail} icon={Mail} />
+                                        <Field label="Treasurer Phone" placeholder="+1 (555) 000-0000" type="tel"
+                                            value={treasurerPhone} onChange={setTreasurerPhone} icon={Phone} />
+                                    </div>
                                 </div>
 
                                 {/* Terms */}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { Building2, Users, MapPin, ChevronRight, Loader } from 'lucide-react';
+import { Building2, Users, MapPin, ChevronRight, Loader, DollarSign, Mail, Phone, User } from 'lucide-react';
 
 interface OnboardingProps {
     userId: string;
@@ -23,6 +23,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, onComplete }
     const [churchState, setChurchState] = useState('');
     const [churchSize, setChurchSize] = useState('');
     const [adminName, setAdminName] = useState('');
+    const [treasurerName, setTreasurerName] = useState('');
+    const [treasurerEmail, setTreasurerEmail] = useState('');
+    const [treasurerPhone, setTreasurerPhone] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +48,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, onComplete }
                     size: churchSize,
                     plan: 'trial',
                     owner_id: userId,
+                    treasurer_name: treasurerName || null,
+                    treasurer_email: treasurerEmail || null,
+                    treasurer_phone: treasurerPhone || null,
                 })
                 .select()
                 .single();
@@ -229,6 +235,50 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, onComplete }
                                     className="glass-input"
                                     style={{ width: '100%', opacity: 0.6, cursor: 'not-allowed' }}
                                 />
+                            </div>
+
+                            {/* ── Treasurer Section ── */}
+                            <div style={{
+                                borderRadius: '14px', border: '1px solid rgba(16,185,129,0.2)',
+                                background: 'rgba(16,185,129,0.04)', padding: '1.25rem',
+                                display: 'flex', flexDirection: 'column', gap: '1rem',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{
+                                        width: '32px', height: '32px', borderRadius: '8px',
+                                        background: 'rgba(16,185,129,0.15)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        <DollarSign size={16} color="#10b981" />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#10b981' }}>Church Treasurer</div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Optional — can be updated later in settings</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        <User size={10} style={{ display: 'inline', marginRight: '4px' }} />Treasurer Full Name
+                                    </label>
+                                    <input type="text" value={treasurerName} onChange={e => setTreasurerName(e.target.value)}
+                                        placeholder="e.g. Deacon Robert Williams" className="glass-input" style={{ width: '100%' }} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            <Mail size={10} style={{ display: 'inline', marginRight: '4px' }} />Treasurer Email
+                                        </label>
+                                        <input type="email" value={treasurerEmail} onChange={e => setTreasurerEmail(e.target.value)}
+                                            placeholder="treasurer@church.org" className="glass-input" style={{ width: '100%' }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            <Phone size={10} style={{ display: 'inline', marginRight: '4px' }} />Treasurer Phone
+                                        </label>
+                                        <input type="tel" value={treasurerPhone} onChange={e => setTreasurerPhone(e.target.value)}
+                                            placeholder="+1 (555) 000-0000" className="glass-input" style={{ width: '100%' }} />
+                                    </div>
+                                </div>
                             </div>
 
                             <div style={{
