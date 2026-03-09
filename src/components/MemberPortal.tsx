@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     UserPlus,
     MessageSquare,
@@ -15,7 +15,11 @@ import {
     ShieldCheck,
     Heart,
     Globe,
-    Zap
+    Zap,
+    Phone,
+    Edit3,
+    Trash2,
+    Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -24,6 +28,7 @@ interface Member {
     id?: string;
     name: string;
     email: string;
+    phone?: string;
     role: string;
     joined: string;
     status: string;
@@ -53,6 +58,20 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
     const [activeSubTab, setActiveSubTab] = useState('members');
     const [showIntakeForm, setShowIntakeForm] = useState(false);
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+    const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+    const [editingMember, setEditingMember] = useState<{ member: Member; idx: number } | null>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Close menu on outside click
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setOpenMenuId(null);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
     const [members, setMembers] = useState<Member[]>(() => {
         const saved = localStorage.getItem('sanctuary_members');
@@ -133,8 +152,15 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
     // Form States
     const [newMemberName, setNewMemberName] = useState('');
     const [newMemberEmail, setNewMemberEmail] = useState('');
+    const [newMemberPhone, setNewMemberPhone] = useState('');
     const [newMemberRole, setNewMemberRole] = useState('Member');
     const [newMemberDept, setNewMemberDept] = useState('General');
+    // Edit form states
+    const [editName, setEditName] = useState('');
+    const [editEmail, setEditEmail] = useState('');
+    const [editPhone, setEditPhone] = useState('');
+    const [editRole, setEditRole] = useState('');
+    const [editStatus, setEditStatus] = useState('');
 
     const [availableDepts, setAvailableDepts] = useState<{ id: string, name: string }[]>([]);
 
@@ -183,6 +209,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         const newMember = {
             name: newMemberName,
             email: newMemberEmail,
+            phone: newMemberPhone,
             role: `${newMemberRole} (${newMemberDept})`,
             joined: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
             status: 'Active'
@@ -210,7 +237,58 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         setShowAddMemberModal(false);
         setNewMemberName('');
         setNewMemberEmail('');
+        setNewMemberPhone('');
         setActiveSubTab('members');
+    };
+
+    const openEditModal = (member: Member, idx: number) => {
+        setEditName(member.name);
+        setEditEmail(member.email);
+        setEditPhone(member.phone || '');
+        setEditRole(member.role);
+        setEditStatus(member.status);
+        setEditingMember({ member, idx });
+        setOpenMenuId(null);
+    };
+
+    const handleEditSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingMember) return;
+        const updated: Member = {
+            ...editingMember.member,
+            name: editName,
+            email: editEmail,
+            phone: editPhone,
+            role: editRole,
+            status: editStatus,
+        };
+        const newList = members.map((m, i) => i === editingMember.idx ? updated : m);
+        setMembers(newList);
+        // Sync to Supabase if has id
+        if (updated.id) {
+            try {
+                await supabase.from('members').update({
+                    name: updated.name,
+                    email: updated.email,
+                    phone: updated.phone,
+                    role: updated.role,
+                    status: updated.status,
+                }).eq('id', updated.id);
+            } catch (err) { console.error('Edit sync failed:', err); }
+        }
+        setEditingMember(null);
+    };
+
+    const handleDeleteMember = async (idx: number) => {
+        const member = members[idx];
+        if (!window.confirm(`Remove ${member.name} from the member list?`)) return;
+        setOpenMenuId(null);
+        if (member.id) {
+            try {
+                await supabase.from('members').delete().eq('id', member.id);
+            } catch (err) { console.error('Delete failed:', err); }
+        }
+        setMembers(prev => prev.filter((_, i) => i !== idx));
     };
 
     const handleConnectCardSubmit = (e: React.FormEvent) => {
@@ -436,7 +514,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.875rem' }}>Manually add a member to the database.</p>
 
                             <form onSubmit={handleAddMember}>
-                                <div style={{ marginBottom: '1rem' }}>
+                                 <div style={{ marginBottom: '1rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>NAME</label>
                                     <input
                                         type="text"
@@ -446,7 +524,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                         style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
                                     />
                                 </div>
-                                <div style={{ marginBottom: '1.5rem' }}>
+                                <div style={{ marginBottom: '1rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>EMAIL</label>
                                     <input
                                         type="email"
@@ -455,6 +533,19 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                         onChange={(e) => setNewMemberEmail(e.target.value)}
                                         style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
                                     />
+                                </div>
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>PHONE NUMBER</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <Phone size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                        <input
+                                            type="tel"
+                                            value={newMemberPhone}
+                                            onChange={(e) => setNewMemberPhone(e.target.value)}
+                                            placeholder="+1 (555) 000-0000"
+                                            style={{ width: '100%', padding: '10px 10px 10px 34px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
+                                        />
+                                    </div>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
                                     <div>
@@ -488,6 +579,76 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                 <div style={{ display: 'flex', gap: '1rem' }}>
                                     <button type="button" className="btn glass" style={{ flex: 1 }} onClick={() => setShowAddMemberModal(false)}>Cancel</button>
                                     <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Add Member</button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ── Edit Member Modal ── */}
+            <AnimatePresence>
+                {editingMember && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }}
+                        onClick={() => setEditingMember(null)}>
+                        <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                            style={{ width: '100%', maxWidth: '460px', background: 'linear-gradient(135deg, rgba(30,41,59,0.97) 0%, rgba(15,23,42,0.97) 100%)', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.1)', padding: '2.25rem', boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}
+                            onClick={e => e.stopPropagation()}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                                <div>
+                                    <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'white' }}>Edit Member</h2>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '2px' }}>Update details for {editingMember.member.name}</p>
+                                </div>
+                                <button onClick={() => setEditingMember(null)} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: '#64748b', display: 'flex' }}>
+                                    <X size={18} />
+                                </button>
+                            </div>
+                            <form onSubmit={handleEditSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {/* Name */}
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Full Name</label>
+                                    <input type="text" required value={editName} onChange={e => setEditName(e.target.value)}
+                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
+                                </div>
+                                {/* Email */}
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email Address</label>
+                                    <input type="email" required value={editEmail} onChange={e => setEditEmail(e.target.value)}
+                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
+                                </div>
+                                {/* Phone */}
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}><Phone size={10} style={{ display: 'inline', marginRight: '4px' }} />Phone Number</label>
+                                    <input type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)}
+                                        placeholder="+1 (555) 000-0000"
+                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
+                                </div>
+                                {/* Role + Status grid */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Role</label>
+                                        <input type="text" value={editRole} onChange={e => setEditRole(e.target.value)}
+                                            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</label>
+                                        <select value={editStatus} onChange={e => setEditStatus(e.target.value)}
+                                            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: '#0f172a', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit', colorScheme: 'dark' }}>
+                                            <option value="Active">Active</option>
+                                            <option value="Inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                    <button type="button" onClick={() => setEditingMember(null)}
+                                        style={{ flex: 1, padding: '0.8rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.875rem' }}>
+                                        Cancel
+                                    </button>
+                                    <button type="submit"
+                                        style={{ flex: 2, padding: '0.8rem', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: 'white', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, fontSize: '0.875rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                        <Check size={15} /> Save Changes
+                                    </button>
                                 </div>
                             </form>
                         </motion.div>
@@ -580,10 +741,15 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                             {member.role}
                                         </span>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '1.5rem', marginTop: '6px' }}>
+                                    <div style={{ display: 'flex', gap: '1.5rem', marginTop: '6px', flexWrap: 'wrap' }}>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
                                             <Mail size={14} /> {member.email}
                                         </span>
+                                        {member.phone && (
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                                <Phone size={14} /> {member.phone}
+                                            </span>
+                                        )}
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
                                             <Clock size={14} /> Joined {member.joined}
                                         </span>
@@ -609,9 +775,59 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                     >
                                         <FileText size={16} /> Statement
                                     </button>
-                                    <button className="btn btn-ghost" style={{ padding: '8px' }}>
-                                        <MoreVertical size={20} />
-                                    </button>
+                                    {/* ── 3-dot menu ── */}
+                                    <div style={{ position: 'relative' }} ref={openMenuId === idx ? menuRef : null}>
+                                        <button
+                                            className="btn btn-ghost"
+                                            style={{ padding: '8px' }}
+                                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === idx ? null : idx); }}
+                                        >
+                                            <MoreVertical size={20} />
+                                        </button>
+                                        <AnimatePresence>
+                                            {openMenuId === idx && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, scale: 0.92, y: -6 }}
+                                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                    exit={{ opacity: 0, scale: 0.92, y: -6 }}
+                                                    transition={{ duration: 0.15 }}
+                                                    style={{
+                                                        position: 'absolute', right: 0, top: '110%', zIndex: 9999,
+                                                        background: 'rgba(15,23,42,0.97)', backdropFilter: 'blur(16px)',
+                                                        border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px',
+                                                        padding: '0.4rem', minWidth: '160px',
+                                                        boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
+                                                    }}
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    {[{
+                                                        icon: Edit3, label: 'Edit Member', color: '#60a5fa',
+                                                        action: () => openEditModal(member, idx)
+                                                    }, {
+                                                        icon: FileText, label: 'View Statement', color: '#a78bfa',
+                                                        action: () => { setSelectedMember(member); setShowInvoiceModal(true); setOpenMenuId(null); }
+                                                    }, {
+                                                        icon: Trash2, label: 'Remove Member', color: '#ef4444',
+                                                        action: () => handleDeleteMember(idx)
+                                                    }].map(({ icon: Icon, label, color, action }) => (
+                                                        <button key={label} onClick={action}
+                                                            style={{
+                                                                display: 'flex', alignItems: 'center', gap: '10px',
+                                                                width: '100%', padding: '0.65rem 0.875rem', border: 'none',
+                                                                background: 'none', color, fontSize: '0.82rem', fontWeight: 700,
+                                                                cursor: 'pointer', borderRadius: '8px', fontFamily: 'inherit',
+                                                                textAlign: 'left', transition: 'background 0.15s',
+                                                            }}
+                                                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                                                            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                                        >
+                                                            <Icon size={14} /> {label}
+                                                        </button>
+                                                    ))}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
                                 </div>
                             </motion.div>
                         ))
