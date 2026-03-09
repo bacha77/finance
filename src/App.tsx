@@ -13,6 +13,7 @@ import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
 import Pricing from './components/Pricing';
 import PaymentWall from './components/PaymentWall';
+import AdminPanel from './components/AdminPanel';
 import TaxCompliance from './components/TaxCompliance';
 import { supabase } from './lib/supabase';
 import { TRIAL_CONFIG } from './lib/trialConfig';
@@ -30,6 +31,7 @@ function App() {
   const [showCommandCenter, setShowCommandCenter] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const midnightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -52,6 +54,9 @@ function App() {
 
   const fetchProfile = async (userId: string, retries = 0) => {
     setProfileLoading(true);
+    // Check admin table first
+    const { data: adminRow } = await supabase.from('admins').select('user_id').eq('user_id', userId).maybeSingle();
+    if (adminRow) { setIsAdmin(true); setProfileLoading(false); return; }
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -263,6 +268,14 @@ function App() {
   };
 
   if (!session) return <Auth />;
+
+  // ── Admin gate — shown BEFORE normal app ──────────────────────────────
+  if (isAdmin) {
+    return <AdminPanel
+      adminEmail={session.user.email || 'admin'}
+      onLogout={async () => { await supabase.auth.signOut(); setIsAdmin(false); }}
+    />;
+  }
 
   if (profileLoading) {
     return (
