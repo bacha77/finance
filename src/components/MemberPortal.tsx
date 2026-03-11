@@ -1,21 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     UserPlus,
-    MessageSquare,
-    BookOpen,
     Mail,
     MoreVertical,
     Clock,
-    User,
     Send,
     FileText,
     Printer,
     Download,
     X,
     ShieldCheck,
-    Heart,
-    Globe,
-    Zap,
     Phone,
     Edit3,
     Trash2,
@@ -34,14 +28,6 @@ interface Member {
     status: string;
 }
 
-interface ConnectCard {
-    name: string;
-    received: string;
-    type: string;
-    status: string;
-    interest: string;
-}
-
 const DEFAULT_MEMBERS: Member[] = [
     { name: 'David Wilson', email: 'david.w@example.com', role: 'Member', joined: 'Jan 2024', status: 'Active' },
     { name: 'Emily Chen', email: 'emily.c@example.com', role: 'Volunteer', joined: 'Mar 2024', status: 'Active' },
@@ -49,14 +35,7 @@ const DEFAULT_MEMBERS: Member[] = [
     { name: 'Jessica Taylor', email: 'jtaylor@example.com', role: 'Deacon', joined: 'Jun 2022', status: 'Active' },
 ];
 
-const DEFAULT_CONNECT_CARDS: ConnectCard[] = [
-    { name: 'Robert Fox', received: '2 hours ago', type: 'Prayer Request', status: 'New', interest: 'Spiritual Growth' },
-    { name: 'Esther Howard', received: '1 day ago', type: 'Visitor Information', status: 'Followed Up', interest: 'Youth Ministry' },
-];
-
 const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }) => {
-    const [activeSubTab, setActiveSubTab] = useState('members');
-    const [showIntakeForm, setShowIntakeForm] = useState(false);
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [openMenuId, setOpenMenuId] = useState<number | null>(null);
     const [editingMember, setEditingMember] = useState<{ member: Member; idx: number } | null>(null);
@@ -76,11 +55,6 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
     const [members, setMembers] = useState<Member[]>(() => {
         const saved = localStorage.getItem('sanctuary_members');
         return saved ? JSON.parse(saved) : DEFAULT_MEMBERS;
-    });
-
-    const [connectCards, setConnectCards] = useState<ConnectCard[]>(() => {
-        const saved = localStorage.getItem('sanctuary_connect_cards');
-        return saved ? JSON.parse(saved) : DEFAULT_CONNECT_CARDS;
     });
 
     // Supabase Sync
@@ -106,10 +80,6 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
     useEffect(() => {
         localStorage.setItem('sanctuary_members', JSON.stringify(members));
     }, [members]);
-
-    useEffect(() => {
-        localStorage.setItem('sanctuary_connect_cards', JSON.stringify(connectCards));
-    }, [connectCards]);
 
     // Invoice / Statement Logic
     const [selectedMember, setSelectedMember] = useState<Member | null>(null);
@@ -155,6 +125,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
     const [newMemberPhone, setNewMemberPhone] = useState('');
     const [newMemberRole, setNewMemberRole] = useState('Member');
     const [newMemberDept, setNewMemberDept] = useState('General');
+    
     // Edit form states
     const [editName, setEditName] = useState('');
     const [editEmail, setEditEmail] = useState('');
@@ -178,13 +149,6 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
             ]);
         }
     }, [showAddMemberModal]);
-
-    const [ccName, setCcName] = useState('');
-    const [ccEmail, setCcEmail] = useState('');
-    const [ccInterest, setCcInterest] = useState<string[]>([]);
-    const [ccPrayer, setCcPrayer] = useState('');
-
-    const interests = ['Volunteering', 'Small Groups', 'Youth Ministry', 'Worship Team', 'Outreach'];
 
     const [bulkSending, setBulkSending] = useState(false);
 
@@ -238,7 +202,6 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         setNewMemberName('');
         setNewMemberEmail('');
         setNewMemberPhone('');
-        setActiveSubTab('members');
     };
 
     const openEditModal = (member: Member, idx: number) => {
@@ -291,34 +254,6 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         setMembers(prev => prev.filter((_, i) => i !== idx));
     };
 
-    const handleConnectCardSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!ccName || !ccEmail) return;
-
-        const newCard = {
-            name: ccName,
-            received: 'Just now',
-            type: ccPrayer ? 'Prayer Request' : 'Visitor Information',
-            status: 'New',
-            interest: ccInterest[0] || 'General Inquiry'
-        };
-
-        setConnectCards([newCard, ...connectCards]);
-        setShowIntakeForm(false);
-        setCcName('');
-        setCcEmail('');
-        setCcInterest([]);
-        setCcPrayer('');
-    };
-
-    const toggleInterest = (interest: string) => {
-        setCcInterest(prev =>
-            prev.includes(interest)
-                ? prev.filter(i => i !== interest)
-                : [...prev, interest]
-        );
-    };
-
     return (
         <div className="container" style={{ padding: '3rem 2rem' }}>
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4rem' }}>
@@ -348,9 +283,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             />
                         )}
                     </button>
-                    <button className="btn btn-ghost" onClick={() => setShowIntakeForm(true)}>
-                        <Mail size={18} /> Digital Card
-                    </button>
+
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                         <button
                             className="btn btn-primary"
@@ -369,114 +302,137 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                 </div>
             </header>
 
-            <AnimatePresence>
-                {showIntakeForm && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {members.map((member: Member, idx: number) => (
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        style={{
-                            position: 'fixed',
-                            inset: 0,
-                            backgroundColor: 'rgba(0,0,0,0.8)',
-                            backdropFilter: 'blur(8px)',
+                        key={idx}
+                        whileHover={{ y: -4, backgroundColor: 'rgba(255,255,255,0.02)' }}
+                        className="glass-card"
+                        style={{ display: 'flex', alignItems: 'center', gap: '2rem', padding: '1.5rem 2rem', borderRadius: 'var(--radius-lg)' }}
+                    >
+                        <div style={{
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '18px',
+                            background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            zIndex: 1000,
-                            padding: '1rem'
-                        }}
-                        onClick={() => setShowIntakeForm(false)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.95, y: 10, opacity: 0 }}
-                            animate={{ scale: 1, y: 0, opacity: 1 }}
-                            exit={{ scale: 0.95, y: 10, opacity: 0 }}
-                            className="glass-card"
-                            style={{
-                                width: '100%',
-                                maxWidth: '680px',
-                                borderRadius: '32px',
-                                padding: '4rem',
-                                boxShadow: 'var(--shadow-lg)'
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <h2 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>Digital Connect Card</h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>We'd love to get to know you better!</p>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Full Name</label>
-                                    <div style={{ position: 'relative' }}>
-                                        <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                        <input
-                                            type="text"
-                                            placeholder="John Doe"
-                                            value={ccName}
-                                            onChange={(e) => setCcName(e.target.value)}
-                                            required
-                                            style={{ width: '100%', padding: '12px 12px 12px 40px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Email Address</label>
-                                    <div style={{ position: 'relative' }}>
-                                        <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                        <input
-                                            type="email"
-                                            placeholder="john@example.com"
-                                            value={ccEmail}
-                                            onChange={(e) => setCcEmail(e.target.value)}
-                                            required
-                                            style={{ width: '100%', padding: '12px 12px 12px 40px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
-                                        />
-                                    </div>
-                                </div>
+                            fontSize: '1.5rem',
+                            fontWeight: 800,
+                            color: 'white',
+                            boxShadow: '0 8px 16px -4px var(--primary-glow)'
+                        }}>
+                            {member.name.charAt(0)}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <h4 style={{ fontWeight: 800, fontSize: '1.125rem', color: 'white' }}>{member.name}</h4>
+                                <span style={{
+                                    fontSize: '0.65rem',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    backgroundColor: 'rgba(255,255,255,0.05)',
+                                    color: 'var(--text-secondary)',
+                                    fontWeight: 800,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em'
+                                }}>
+                                    {member.role}
+                                </span>
                             </div>
-
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>I'm interested in...</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                    {interests.map(interest => (
-                                        <button
-                                            key={interest}
-                                            type="button"
-                                            onClick={() => toggleInterest(interest)}
+                            <div style={{ display: 'flex', gap: '1.5rem', marginTop: '6px', flexWrap: 'wrap' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                    <Mail size={14} /> {member.email}
+                                </span>
+                                {member.phone && (
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                        <Phone size={14} /> {member.phone}
+                                    </span>
+                                )}
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                    <Clock size={14} /> Joined {member.joined}
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                            <span style={{
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                color: member.status === 'Active' ? 'var(--success)' : 'var(--text-muted)'
+                            }}>
+                                {member.status}
+                            </span>
+                            <button
+                                className="btn btn-ghost"
+                                style={{ padding: '8px 16px', fontSize: '0.75rem', gap: '8px' }}
+                                onClick={() => {
+                                    setSelectedMember(member);
+                                    setShowInvoiceModal(true);
+                                }}
+                            >
+                                <FileText size={16} /> Statement
+                            </button>
+                            <div style={{ position: 'relative' }} ref={openMenuId === idx ? menuRef : null}>
+                                <button
+                                    className="btn btn-ghost"
+                                    style={{ padding: '8px' }}
+                                    onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === idx ? null : idx); }}
+                                >
+                                    <MoreVertical size={20} />
+                                </button>
+                                <AnimatePresence>
+                                    {openMenuId === idx && (
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.92, y: -6 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.92, y: -6 }}
+                                            transition={{ duration: 0.15 }}
                                             style={{
-                                                padding: '6px 12px',
-                                                borderRadius: '20px',
-                                                backgroundColor: ccInterest.includes(interest) ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                                                border: ccInterest.includes(interest) ? '1px solid var(--primary-light)' : '1px solid var(--border)',
-                                                color: 'white',
-                                                fontSize: '0.875rem',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s'
-                                            }}>
-                                            {interest}
-                                        </button>
-                                    ))}
-                                </div>
+                                                position: 'absolute', right: 0, top: '110%', zIndex: 9999,
+                                                background: 'rgba(15,23,42,0.97)', backdropFilter: 'blur(16px)',
+                                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px',
+                                                padding: '0.4rem', minWidth: '160px',
+                                                boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
+                                            }}
+                                            onClick={e => e.stopPropagation()}
+                                        >
+                                            {[{
+                                                icon: Edit3, label: 'Edit Member', color: '#60a5fa',
+                                                action: () => openEditModal(member, idx)
+                                            }, {
+                                                icon: FileText, label: 'View Statement', color: '#a78bfa',
+                                                action: () => { setSelectedMember(member); setShowInvoiceModal(true); setOpenMenuId(null); }
+                                            }, {
+                                                icon: Trash2, label: 'Remove Member', color: '#ef4444',
+                                                action: () => handleDeleteMember(idx)
+                                            }].map(({ icon: Icon, label, color, action }) => (
+                                                <button key={label} onClick={action}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: '10px',
+                                                        width: '100%', padding: '0.65rem 0.875rem', border: 'none',
+                                                        background: 'none', color, fontSize: '0.82rem', fontWeight: 700,
+                                                        cursor: 'pointer', borderRadius: '8px', fontFamily: 'inherit',
+                                                        textAlign: 'left', transition: 'background 0.15s',
+                                                    }}
+                                                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                                                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                                >
+                                                    <Icon size={14} /> {label}
+                                                </button>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
-
-                            <div style={{ marginBottom: '2.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>How can we pray for you?</label>
-                                <textarea
-                                    placeholder="Share your prayer requests..."
-                                    value={ccPrayer}
-                                    onChange={(e) => setCcPrayer(e.target.value)}
-                                    style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', height: '100px', resize: 'none' }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button type="button" className="btn glass" style={{ flex: 1 }} onClick={() => setShowIntakeForm(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 2 }} onClick={handleConnectCardSubmit}>Submit Card</button>
-                            </div>
-                        </motion.div>
+                        </div>
                     </motion.div>
-                )}
+                ))}
+            </div>
+
+            <AnimatePresence>
                 {showAddMemberModal && (
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -656,300 +612,6 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                 )}
             </AnimatePresence>
 
-            <div style={{
-                display: 'flex',
-                gap: '3rem',
-                borderBottom: '1px solid var(--border)',
-                marginBottom: '3rem',
-                paddingBottom: '0.5rem'
-            }}>
-                {['members', 'impact', 'connect-cards', 'events', 'bulletins'].map((tab) => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveSubTab(tab)}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: activeSubTab === tab ? 'white' : 'var(--text-muted)',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            fontSize: '0.875rem',
-                            position: 'relative',
-                            padding: '1rem 0',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.1em',
-                            transition: 'color 0.2s'
-                        }}
-                    >
-                        {tab.replace('-', ' ')}
-                        {activeSubTab === tab && (
-                            <motion.div
-                                layoutId="activeSubTab"
-                                style={{
-                                    position: 'absolute',
-                                    bottom: '-0.5rem',
-                                    left: 0,
-                                    right: 0,
-                                    height: '4px',
-                                    backgroundColor: 'var(--primary)',
-                                    borderRadius: '4px 4px 0 0'
-                                }}
-                            />
-                        )}
-                    </button>
-                ))}
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    {activeSubTab === 'members' ? (
-                        members.map((member: Member, idx: number) => (
-                            <motion.div
-                                key={idx}
-                                whileHover={{ y: -4, backgroundColor: 'rgba(255,255,255,0.02)' }}
-                                className="glass-card"
-                                style={{ display: 'flex', alignItems: 'center', gap: '2rem', padding: '1.5rem 2rem', borderRadius: 'var(--radius-lg)' }}
-                            >
-                                <div style={{
-                                    width: '56px',
-                                    height: '56px',
-                                    borderRadius: '18px',
-                                    background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '1.5rem',
-                                    fontWeight: 800,
-                                    color: 'white',
-                                    boxShadow: '0 8px 16px -4px var(--primary-glow)'
-                                }}>
-                                    {member.name.charAt(0)}
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <h4 style={{ fontWeight: 800, fontSize: '1.125rem', color: 'white' }}>{member.name}</h4>
-                                        <span style={{
-                                            fontSize: '0.65rem',
-                                            padding: '4px 10px',
-                                            borderRadius: '6px',
-                                            backgroundColor: 'rgba(255,255,255,0.05)',
-                                            color: 'var(--text-secondary)',
-                                            fontWeight: 800,
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em'
-                                        }}>
-                                            {member.role}
-                                        </span>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '1.5rem', marginTop: '6px', flexWrap: 'wrap' }}>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                                            <Mail size={14} /> {member.email}
-                                        </span>
-                                        {member.phone && (
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                                                <Phone size={14} /> {member.phone}
-                                            </span>
-                                        )}
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                                            <Clock size={14} /> Joined {member.joined}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                                    <span style={{
-                                        fontSize: '0.75rem',
-                                        fontWeight: 800,
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        color: member.status === 'Active' ? 'var(--success)' : 'var(--text-muted)'
-                                    }}>
-                                        {member.status}
-                                    </span>
-                                    <button
-                                        className="btn btn-ghost"
-                                        style={{ padding: '8px 16px', fontSize: '0.75rem', gap: '8px' }}
-                                        onClick={() => {
-                                            setSelectedMember(member);
-                                            setShowInvoiceModal(true);
-                                        }}
-                                    >
-                                        <FileText size={16} /> Statement
-                                    </button>
-                                    {/* ── 3-dot menu ── */}
-                                    <div style={{ position: 'relative' }} ref={openMenuId === idx ? menuRef : null}>
-                                        <button
-                                            className="btn btn-ghost"
-                                            style={{ padding: '8px' }}
-                                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === idx ? null : idx); }}
-                                        >
-                                            <MoreVertical size={20} />
-                                        </button>
-                                        <AnimatePresence>
-                                            {openMenuId === idx && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, scale: 0.92, y: -6 }}
-                                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                    exit={{ opacity: 0, scale: 0.92, y: -6 }}
-                                                    transition={{ duration: 0.15 }}
-                                                    style={{
-                                                        position: 'absolute', right: 0, top: '110%', zIndex: 9999,
-                                                        background: 'rgba(15,23,42,0.97)', backdropFilter: 'blur(16px)',
-                                                        border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px',
-                                                        padding: '0.4rem', minWidth: '160px',
-                                                        boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
-                                                    }}
-                                                    onClick={e => e.stopPropagation()}
-                                                >
-                                                    {[{
-                                                        icon: Edit3, label: 'Edit Member', color: '#60a5fa',
-                                                        action: () => openEditModal(member, idx)
-                                                    }, {
-                                                        icon: FileText, label: 'View Statement', color: '#a78bfa',
-                                                        action: () => { setSelectedMember(member); setShowInvoiceModal(true); setOpenMenuId(null); }
-                                                    }, {
-                                                        icon: Trash2, label: 'Remove Member', color: '#ef4444',
-                                                        action: () => handleDeleteMember(idx)
-                                                    }].map(({ icon: Icon, label, color, action }) => (
-                                                        <button key={label} onClick={action}
-                                                            style={{
-                                                                display: 'flex', alignItems: 'center', gap: '10px',
-                                                                width: '100%', padding: '0.65rem 0.875rem', border: 'none',
-                                                                background: 'none', color, fontSize: '0.82rem', fontWeight: 700,
-                                                                cursor: 'pointer', borderRadius: '8px', fontFamily: 'inherit',
-                                                                textAlign: 'left', transition: 'background 0.15s',
-                                                            }}
-                                                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                                                            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                                                        >
-                                                            <Icon size={14} /> {label}
-                                                        </button>
-                                                    ))}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))
-                    ) : activeSubTab === 'impact' ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                            <div className="glass-card" style={{ padding: '3rem', background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)', border: 'none' }}>
-                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '1rem' }}>Your Giving in Action</h3>
-                                <p style={{ color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, marginBottom: '2rem' }}>Because of your faithful stewardship, the Sanctuary community has achieved remarkable milestones this quarter. Explore how every contribution transforms lives.</p>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
-                                    {[
-                                        { label: 'Global Missions', value: '12', icon: Globe, suffix: 'Projects' },
-                                        { label: 'Community Meals', value: '850', icon: Heart, suffix: 'Served' },
-                                        { label: 'Youth Mentorship', value: '45', icon: Zap, suffix: 'Students' },
-                                    ].map((stat, i) => (
-                                        <div key={i} style={{ background: 'rgba(255,255,255,0.1)', padding: '1.5rem', borderRadius: '16px', backdropFilter: 'blur(10px)' }}>
-                                            <stat.icon size={24} color="white" style={{ marginBottom: '1rem' }} />
-                                            <h4 style={{ fontSize: '2rem', fontWeight: 800, color: 'white' }}>{stat.value}</h4>
-                                            <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>{stat.label}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="glass-card" style={{ padding: '2.5rem' }}>
-                                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '2rem' }}>Major Project Progress</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                                    {[
-                                        { name: 'New Youth Center Wing', progress: 75, target: '$150k', color: 'var(--primary-light)' },
-                                        { name: 'Panama Mission Trip', progress: 92, target: '$12k', color: 'var(--success)' },
-                                        { name: 'Community Garden Initiative', progress: 40, target: '$5k', color: '#f59e0b' },
-                                    ].map((project, i) => (
-                                        <div key={i}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                                <span style={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }}>{project.name}</span>
-                                                <span style={{ fontWeight: 800, color: project.color, fontSize: '0.95rem' }}>{project.progress}%</span>
-                                            </div>
-                                            <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                                                <motion.div
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${project.progress}%` }}
-                                                    style={{ height: '100%', background: project.color, borderRadius: '4px' }}
-                                                />
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Target: {project.target}</span>
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Est. Completion: Q3 2026</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                            <BookOpen size={48} style={{ marginBottom: '1.5rem', opacity: 0.2 }} />
-                            <p>Detailed view for {activeSubTab.replace('-', ' ')} coming soon.</p>
-                        </div>
-                    )}
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div className="glass-card" style={{ padding: '2rem' }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '12px', color: 'white' }}>
-                            <MessageSquare size={20} className="gradient-text" />
-                            Engagement Pulse
-                        </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            {connectCards.map((card: ConnectCard, idx: number) => (
-                                <div key={idx} style={{
-                                    padding: '1.25rem',
-                                    borderRadius: 'var(--radius-lg)',
-                                    backgroundColor: 'rgba(255,255,255,0.02)',
-                                    border: '1px solid var(--border)',
-                                    position: 'relative'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                        <p style={{ fontWeight: 800, fontSize: '0.95rem', color: 'white' }}>{card.name}</p>
-                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{card.received}</span>
-                                    </div>
-                                    <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 500 }}>{card.type}</p>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-                                        <span style={{
-                                            fontSize: '0.65rem',
-                                            fontWeight: 800,
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
-                                            color: card.status === 'New' ? 'var(--primary-light)' : 'var(--success)',
-                                            backgroundColor: card.status === 'New' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                                            padding: '4px 10px',
-                                            borderRadius: '6px'
-                                        }}>
-                                            {card.status}
-                                        </span>
-                                        <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: '0.7rem' }}>
-                                            Respond
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <button className="btn btn-primary" style={{ width: '100%', marginTop: '2rem' }}>
-                            View Engagement Hub
-                        </button>
-                    </div>
-
-                    <div className="card glass">
-                        <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <BookOpen size={20} color="var(--primary-light)" />
-                            Digital Bulletin
-                        </h3>
-                        <div style={{ padding: '1rem', borderRadius: 'var(--radius)', backgroundColor: 'var(--primary)', color: 'white', marginBottom: '1rem' }}>
-                            <p style={{ fontSize: '0.75rem', opacity: 0.8 }}>NEXT SUNDAY</p>
-                            <h4 style={{ fontWeight: 700, margin: '4px 0' }}>The Path of Grace</h4>
-                            <p style={{ fontSize: '0.875rem' }}>Series: Foundations</p>
-                        </div>
-                        <button className="btn glass" style={{ width: '100%', fontSize: '0.875rem' }}>
-                            Manage Sermon Notes
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             <AnimatePresence>
                 {showInvoiceModal && selectedMember && (
                     <motion.div
@@ -1068,7 +730,6 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                 </table>
                             </div>
 
-                            {/* Message Section */}
                             <div style={{ padding: '3rem', backgroundColor: '#4f46e5', borderRadius: '32px', color: 'white', marginBottom: '3rem', position: 'relative', overflow: 'hidden' }}>
                                 <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)' }} />
                                 <h4 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>A Message from Your Church</h4>
