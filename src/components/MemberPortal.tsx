@@ -733,13 +733,13 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             </button>
 
                             {/* Header Section */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '3rem' }}>
-                                <div>
-                                    <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)', marginBottom: '0.5rem' }}>{churchInfo?.name || 'Your Church Finances'}</h2>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '2rem', marginBottom: '2rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '2rem' }}>
+                                <div style={{ flex: '1 1 min-content' }}>
+                                    <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: 800, color: 'var(--primary-dark)', marginBottom: '0.5rem' }}>{churchInfo?.name || 'Your Church Finances'}</h2>
                                     <p style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}>{churchInfo?.city ? `${churchInfo.city}, ${churchInfo.state}` : 'Church Address Not Configured'}</p>
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <h1 style={{ fontSize: '1.25rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '1rem' }}>Contribution Statement</h1>
+                                <div style={{ textAlign: 'right', flex: '1 1 min-content' }}>
+                                    <h1 style={{ fontSize: '1.25rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '1rem', whiteSpace: 'nowrap' }}>Contribution Statement</h1>
                                     <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                                         <select
                                             value={invoiceMonth}
@@ -760,15 +760,15 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             </div>
 
                             {/* Info Section */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', marginBottom: '4rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
                                 <div>
                                     <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.05em' }}>Donor Information</p>
                                     <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>{selectedMember.name}</h3>
                                     <p style={{ color: '#64748b', fontWeight: 500 }}>{selectedMember.email}</p>
                                     <p style={{ color: '#64748b', fontWeight: 500, marginTop: '4px' }}>Member since {selectedMember.joined}</p>
                                 </div>
-                                <div style={{ backgroundColor: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
-                                    <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '1rem' }}>Total Monthly Contribution</p>
+                                <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                    <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total Monthly Contribution</p>
                                     <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--primary-dark)' }}>
                                         ${getMemberDonations(selectedMember.name).reduce((sum, tx) => sum + tx.amount, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </h2>
@@ -824,7 +824,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1rem' }}>
                                 <button className="btn" onClick={handleExportPDF} style={{ background: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0', padding: '1rem 1.5rem', fontSize: '0.875rem' }}>
                                     <Download size={18} /> Export PDF
                                 </button>
