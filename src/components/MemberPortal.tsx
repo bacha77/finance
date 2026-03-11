@@ -385,7 +385,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                         key={idx}
                         whileHover={{ y: -4, backgroundColor: 'rgba(255,255,255,0.02)' }}
                         className="glass-card"
-                        style={{ display: 'flex', alignItems: 'center', gap: '2rem', padding: '1.5rem 2rem', borderRadius: 'var(--radius-lg)' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '2rem', padding: '1.5rem 2rem', borderRadius: 'var(--radius-lg)', position: 'relative', zIndex: openMenuId === idx ? 50 : 1 }}
                     >
                         <div style={{
                             width: '56px',
