@@ -383,7 +383,9 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                 {members.map((member: Member, idx: number) => (
                     <motion.div
                         key={idx}
-                        whileHover={{ y: -4, backgroundColor: 'rgba(255,255,255,0.02)' }}
+                        whileHover={{ y: openMenuId === idx ? 0 : -4, backgroundColor: 'rgba(255,255,255,0.02)' }}
+                        animate={{ marginBottom: openMenuId === idx ? '6rem' : '0' }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
                         className="glass-card"
                         style={{ display: 'flex', alignItems: 'center', gap: '2rem', padding: '1.5rem 2rem', borderRadius: 'var(--radius-lg)', position: 'relative', zIndex: openMenuId === idx ? 50 : 1 }}
                     >
