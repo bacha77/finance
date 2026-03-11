@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import {
     Wallet, Users, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight,
     RefreshCw, BarChart3, Activity, ChurchIcon, CreditCard,
-    FileText, ShieldCheck, Calendar
+    FileText, ShieldCheck, Calendar, Download, Target
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface DashboardProps {
     setActiveTab: (tab: string) => void;
@@ -147,6 +150,15 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
     const [stats, setStats] = useState({ balance: 142500, tithes: 28450, members: 1240, expenses: 19800 });
     const [recentTx, setRecentTx] = useState<any[]>([]);
     const [syncing, setSyncing] = useState(false);
+    const [buildingFund, setBuildingFund] = useState({ current: 125000, goal: 500000 });
+    const [chartData] = useState<any[]>([
+        { name: 'Jan', income: 4000, expense: 2400 },
+        { name: 'Feb', income: 3200, expense: 1998 },
+        { name: 'Mar', income: 4500, expense: 2800 },
+        { name: 'Apr', income: 3780, expense: 1908 },
+        { name: 'May', income: 5890, expense: 4800 },
+        { name: 'Jun', income: 6390, expense: 3800 },
+    ]);
 
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -169,6 +181,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     expenses: totalExpenses || prev.expenses,
                 }));
                 if (ledger) setRecentTx(ledger.slice(0, 6));
+
+                const bFund = funds?.find((f: any) => f.name?.toLowerCase().includes('building'));
+                if (bFund) setBuildingFund(prev => ({ ...prev, current: bFund.balance || 0 }));
             } catch (e) {
                 console.error(e);
             } finally {
@@ -236,6 +251,33 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
         },
     ];
 
+    const generatePDF = () => {
+        const doc = new jsPDF();
+        doc.setFontSize(22);
+        doc.text('Church Financial Report', 14, 22);
+        
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Generated on: ${today}`, 14, 30);
+        
+        doc.setTextColor(0);
+        doc.setFontSize(12);
+        doc.text(`Total Church Funds: ${fmt(stats.balance)}`, 14, 45);
+        doc.text(`Tithes & Offerings (MTD): ${fmt(stats.tithes)}`, 14, 52);
+        doc.text(`Active Members: ${stats.members}`, 14, 59);
+        doc.text(`Monthly Expenses: ${fmt(stats.expenses)}`, 14, 66);
+
+        autoTable(doc, {
+            startY: 75,
+            head: [['Date', 'Description', 'Type', 'Amount']],
+            body: recentTx.map(tx => [tx.date, tx.description || tx.desc || 'N/A', (tx.type || '').toUpperCase(), fmt(tx.amount || 0)]),
+            theme: 'striped',
+            headStyles: { fillColor: [37, 99, 235] }
+        });
+
+        doc.save('Church_Financial_Report.pdf');
+    };
+
     return (
         <div style={{ padding: '2rem 2.5rem', maxWidth: '1400px', margin: '0 auto' }}>
 
@@ -279,12 +321,25 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                         style={{
                             display: 'flex', alignItems: 'center', gap: '0.5rem',
                             padding: '0.6rem 1.2rem', borderRadius: '10px',
-                            background: '#2563eb', border: 'none',
-                            color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit',
-                            boxShadow: '0 4px 14px rgba(37,99,235,0.35)',
+                            background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.3)',
+                            color: '#60a5fa', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit',
                         }}
                     >
                         <FileText size={15} /> View Reports
+                    </motion.button>
+                    <motion.button
+                        onClick={generatePDF}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                            padding: '0.6rem 1.2rem', borderRadius: '10px',
+                            background: '#10b981', border: 'none',
+                            color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit',
+                            boxShadow: '0 4px 14px rgba(16,185,129,0.35)',
+                        }}
+                    >
+                        <Download size={15} /> Export PDF
                     </motion.button>
                     {syncing && (
                         <motion.div
@@ -301,6 +356,99 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
             {/* ── Stat Cards ─────────────────────────────────────────── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                 {statCards.map((card, i) => <StatCard key={i} {...card} />)}
+            </div>
+
+            {/* ── NEW ROW: Charts & Goal Tracking ────────────────────── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.25rem', marginBottom: '1.75rem' }}>
+                <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    style={{
+                        background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: '16px', padding: '1.5rem', backdropFilter: 'blur(12px)',
+                        height: '320px', display: 'flex', flexDirection: 'column'
+                    }}
+                >
+                    <div style={{ marginBottom: '1rem' }}>
+                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Revenue vs Expenses</div>
+                        <div style={{ fontSize: '0.75rem', color: '#475569' }}>6-month trailing overview</div>
+                    </div>
+                    <div style={{ flex: 1, minHeight: 0 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    </linearGradient>
+                                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                <XAxis dataKey="name" stroke="#475569" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis stroke="#475569" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
+                                <Tooltip
+                                    contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
+                                    itemStyle={{ fontSize: '14px', fontWeight: 600 }}
+                                />
+                                <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" name="Income" />
+                                <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" name="Expenses" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 }}
+                    style={{
+                        background: 'linear-gradient(145deg, rgba(6,182,212,0.15), rgba(15,23,42,0.6))', border: '1px solid rgba(6,182,212,0.2)',
+                        borderRadius: '16px', padding: '1.75rem', backdropFilter: 'blur(12px)',
+                        display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden'
+                    }}
+                >
+                    <div style={{
+                        position: 'absolute', top: -50, right: -50, width: '150px', height: '150px',
+                        background: 'radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%)', borderRadius: '50%'
+                    }} />
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
+                        <div style={{ background: 'rgba(6,182,212,0.2)', padding: '8px', borderRadius: '10px' }}>
+                            <Target size={20} color="#06b6d4" />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Fundraising Goal</div>
+                            <div style={{ fontSize: '0.75rem', color: '#06b6d4', fontWeight: 600 }}>Building Fund Phase 1</div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop: 'auto', marginBottom: '2rem', textAlign: 'center' }}>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>
+                            {fmtShort(buildingFund.current)}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '6px' }}>
+                            raised of <span style={{ color: 'white', fontWeight: 700 }}>{fmt(buildingFund.goal)}</span> target
+                        </div>
+                    </div>
+
+                    <div style={{ background: 'rgba(0,0,0,0.3)', height: '12px', borderRadius: '100px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min(100, (buildingFund.current / buildingFund.goal) * 100)}%` }}
+                            transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
+                            style={{ 
+                                height: '100%', 
+                                background: 'linear-gradient(90deg, #06b6d4, #3b82f6)',
+                                borderRadius: '100px',
+                                boxShadow: '0 0 10px rgba(6,182,212,0.5)'
+                            }}
+                        />
+                    </div>
+                </motion.div>
             </div>
 
             {/* ── Middle Row: Transaction List + Health Panel ─────────── */}

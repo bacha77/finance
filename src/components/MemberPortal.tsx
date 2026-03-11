@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Member {
     id?: string;
@@ -92,13 +94,49 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
 
     const handleSendEmail = () => {
         setIsSending(true);
-        // Simulate email API call
+        if (!selectedMember || !churchInfo) {
+            setIsSending(false);
+            return;
+        }
+
+        const donations = getMemberDonations(selectedMember.name);
+        const total = donations.reduce((sum, tx) => sum + tx.amount, 0);
+        
+        const subject = encodeURIComponent(`${churchInfo.name} - Contribution Statement for ${months[invoiceMonth]} ${invoiceYear}`);
+        
+        let bodyText = `Dear ${selectedMember.name},\n\n`;
+        bodyText += `Thank you for your faithful stewardship this month. Your total contribution for ${months[invoiceMonth]} ${invoiceYear} was $${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}.\n\n`;
+        bodyText += `Your generosity helps us continue our mission of providing spiritual nourishment and community outreach.\n\n`;
+        
+        if (donations.length > 0) {
+            bodyText += `Transaction Details:\n`;
+            donations.forEach(tx => {
+                bodyText += `- ${tx.date}: $${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} (${tx.fund})\n`;
+            });
+            bodyText += `\n`;
+        }
+
+        bodyText += `Blessings,\n${churchInfo.name} Finance Team`;
+
+        const mailtoLink = `mailto:${selectedMember.email}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
+        
+        // Open the user's default email client
+        window.location.href = mailtoLink;
+
         setTimeout(() => {
             setIsSending(false);
             setSendSuccess(true);
             setTimeout(() => setSendSuccess(false), 3000);
-        }, 2000);
+        }, 1000);
     };
+
+    const [churchInfo, setChurchInfo] = useState<{name: string, city: string, state: string} | null>(null);
+
+    useEffect(() => {
+        supabase.from('churches').select('name, city, state').limit(1).single().then(({data}) => {
+            if (data) setChurchInfo(data);
+        });
+    }, []);
 
     useEffect(() => {
         const savedLedger = localStorage.getItem('sanctuary_ledger');
@@ -117,6 +155,45 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                 tx.type === 'in'
             );
         });
+    };
+
+    const handleExportPDF = () => {
+        if (!selectedMember) return;
+        const donations = getMemberDonations(selectedMember.name);
+        const total = donations.reduce((sum, tx) => sum + tx.amount, 0);
+
+        const doc = new jsPDF();
+        doc.setFontSize(22);
+        doc.text(churchInfo?.name || 'Church Name', 14, 22);
+        
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        let address = '';
+        if (churchInfo?.city && churchInfo?.state) address = `${churchInfo.city}, ${churchInfo.state}`;
+        doc.text(address || 'Church Address Not Provided', 14, 30);
+        doc.text(`Contribution Statement for ${months[invoiceMonth]} ${invoiceYear}`, 14, 38);
+        
+        doc.setTextColor(0);
+        doc.setFontSize(14);
+        doc.text('Donor Information', 14, 55);
+        doc.setFontSize(12);
+        doc.text(`Name: ${selectedMember.name}`, 14, 63);
+        doc.text(`Total Monthly Contribution: $${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, 70);
+
+        autoTable(doc, {
+            startY: 80,
+            head: [['Date', 'Fund Allocation', 'Description', 'Amount']],
+            body: donations.map(tx => [tx.date, tx.fund, tx.desc || 'N/A', `$${tx.amount.toLocaleString()}`]),
+            theme: 'striped',
+            headStyles: { fillColor: [79, 70, 229] }
+        });
+
+        const finalY = (doc as any).lastAutoTable?.finalY || 100;
+        doc.setFontSize(12);
+        const message = `Dear ${selectedMember.name}, thank you for your faithful stewardship this month. Your contribution of $${total.toLocaleString()} helps us continue our mission of providing spiritual nourishment and community outreach. Your generosity empowers our ministries and transforms lives through faith.`;
+        doc.text(doc.splitTextToSize(message, 180), 14, finalY + 20);
+
+        doc.save(`${selectedMember.name.replace(/\s+/g, '_')}_Statement.pdf`);
     };
 
     // Form States
@@ -658,8 +735,8 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             {/* Header Section */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '3rem' }}>
                                 <div>
-                                    <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)', marginBottom: '0.5rem' }}>Sanctuary Finance</h2>
-                                    <p style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}>Church Administration & Stewardship</p>
+                                    <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)', marginBottom: '0.5rem' }}>{churchInfo?.name || 'Your Church Finances'}</h2>
+                                    <p style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}>{churchInfo?.city ? `${churchInfo.city}, ${churchInfo.state}` : 'Church Address Not Configured'}</p>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                     <h1 style={{ fontSize: '1.25rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '1rem' }}>Contribution Statement</h1>
@@ -741,15 +818,15 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                         <ShieldCheck size={24} />
                                     </div>
                                     <div>
-                                        <p style={{ fontWeight: 800, fontSize: '1rem' }}>Sanctuary Finance Team</p>
+                                        <p style={{ fontWeight: 800, fontSize: '1rem' }}>{churchInfo?.name || 'Sanctuary'} Finance Team</p>
                                         <p style={{ fontSize: '0.75rem', opacity: 0.8 }}>Official Stewardship Certification</p>
                                     </div>
                                 </div>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-                                <button className="btn" style={{ background: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0', padding: '1rem 1.5rem', fontSize: '0.875rem' }}>
-                                    <Download size={18} /> Export
+                                <button className="btn" onClick={handleExportPDF} style={{ background: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0', padding: '1rem 1.5rem', fontSize: '0.875rem' }}>
+                                    <Download size={18} /> Export PDF
                                 </button>
                                 <button
                                     className="btn btn-primary"
