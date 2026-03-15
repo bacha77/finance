@@ -62,11 +62,11 @@ const FundAccounting: React.FC = () => {
     ];
 
     const DEFAULT_LEDGER: Transaction[] = [
-        { id: 'tx_1', date: 'Mar 07, 2026', desc: 'Online Tithe - Recurring', cat: t('tithes'), dept: 'Tithes & Finance', fund: t('generalFundTithes'), fundId: 'gf', amount: 1250.00, type: 'in', auditTrail: [{ timestamp: '2026-03-07T10:00:00Z', user: 'System', action: 'CREATED', details: 'Imported from Online Gateway' }] },
-        { id: 'tx_2', date: 'Mar 06, 2026', desc: 'Sponsorship - Youth Camp', cat: t('tithes'), dept: 'Youth Ministry', fund: t('youthMinistry'), fundId: 'ym', amount: 500.00, type: 'in', auditTrail: [{ timestamp: '2026-03-06T14:30:00Z', user: 'Admin', action: 'CREATED', details: 'Manual entry from youth director' }] },
-        { id: 'tx_3', date: 'Mar 05, 2026', desc: 'Utility Bill - Main Bldg', cat: 'Operating Exp', dept: 'Building & Facilities', fund: t('generalFundTithes'), fundId: 'gf', amount: -840.20, type: 'out', auditTrail: [{ timestamp: '2026-03-05T09:15:00Z', user: 'Treasurer', action: 'CREATED', details: 'Automated bill pay' }] },
-        { id: 'tx_4', date: 'Mar 04, 2026', desc: 'HVAC Maintenance', cat: 'Restricted Exp', dept: 'Building & Facilities', fund: t('buildingCampaign'), fundId: 'bc', amount: -320.00, type: 'out', auditTrail: [{ timestamp: '2026-03-04T11:45:00Z', user: 'Admin', action: 'CREATED', details: 'Manual check entry' }] },
-        { id: 'tx_5', date: 'Mar 03, 2026', desc: 'Mission Trip Deposit', cat: 'Purpose Exp', dept: 'Missions & Outreach', fund: t('missionsOutreach'), fundId: 'mo', amount: -150.00, type: 'out', auditTrail: [{ timestamp: '2026-03-03T16:20:00Z', user: 'Secretary', action: 'CREATED', details: 'Mission fund allocation' }] },
+        { id: 'tx_1', date: 'Mar 07, 2026', desc: `Online ${t('tithes')} - Recurring`, cat: t('tithes'), dept: t('tithesFinance'), fund: t('generalFundTithes'), fundId: 'gf', amount: 1250.00, type: 'in', auditTrail: [{ timestamp: '2026-03-07T10:00:00Z', user: 'System', action: 'CREATED', details: t('importedGateway') }] },
+        { id: 'tx_2', date: 'Mar 06, 2026', desc: `Sponsorship - ${t('youthMinistry')}`, cat: t('tithes'), dept: t('youthMinistry'), fund: t('youthMinistry'), fundId: 'ym', amount: 500.00, type: 'in', auditTrail: [{ timestamp: '2026-03-06T14:30:00Z', user: 'Admin', action: 'CREATED', details: 'Manual entry from youth director' }] },
+        { id: 'tx_3', date: 'Mar 05, 2026', desc: `Utility Bill - Main Bldg`, cat: t('operatingExp'), dept: t('buildingFacilities'), fund: t('generalFundTithes'), fundId: 'gf', amount: -840.20, type: 'out', auditTrail: [{ timestamp: '2026-03-05T09:15:00Z', user: 'Treasurer', action: 'CREATED', details: 'Automated bill pay' }] },
+        { id: 'tx_4', date: 'Mar 04, 2026', desc: 'HVAC Maintenance', cat: t('restrictedExp'), dept: t('buildingFacilities'), fund: t('buildingCampaign'), fundId: 'bc', amount: -320.00, type: 'out', auditTrail: [{ timestamp: '2026-03-04T11:45:00Z', user: 'Admin', action: 'CREATED', details: 'Manual check entry' }] },
+        { id: 'tx_5', date: 'Mar 03, 2026', desc: 'Mission Trip Deposit', cat: t('purposeExp'), dept: t('missionsOutreach'), fund: t('missionsOutreach'), fundId: 'mo', amount: -150.00, type: 'out', auditTrail: [{ timestamp: '2026-03-03T16:20:00Z', user: 'Secretary', action: 'CREATED', details: 'Mission fund allocation' }] },
     ];
 
     const [funds, setFunds] = useState<Fund[]>(() => {
@@ -145,11 +145,11 @@ const FundAccounting: React.FC = () => {
             setAvailableDepts(JSON.parse(savedDepts));
         } else {
             setAvailableDepts([
-                { id: '1', name: 'Tithes & Finance' },
-                { id: '2', name: 'Building & Facilities' },
-                { id: '3', name: 'Sabbath School' },
-                { id: '4', name: 'Sunday School' },
-                { id: '5', name: 'Youth Ministry' },
+                { id: '1', name: t('tithesFinance') },
+                { id: '2', name: t('buildingFacilities') },
+                { id: '3', name: t('sabbathSchool') },
+                { id: '4', name: t('sundaySchool') },
+                { id: '5', name: t('youthMinistry') },
             ]);
         }
     }, [showNewTxModal]);
@@ -192,7 +192,7 @@ const FundAccounting: React.FC = () => {
                     timestamp: new Date().toISOString(),
                     user: 'Admin (Simulated)',
                     action: 'CREATED',
-                    details: `Recorded manually via Fund Stewardship portal. Method: ${paymentMethod}`
+                    details: t('recordedManually').replace('{method}', paymentMethod)
                 }]
             });
 
@@ -301,7 +301,7 @@ const FundAccounting: React.FC = () => {
                                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>{item.date}</span>
                                                 <span style={{ fontWeight: 800, color: item.amount > 0 ? 'var(--success)' : 'white' }}>${Math.abs(item.amount).toLocaleString()}</span>
                                             </div>
-                                            <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white' }}>{item.desc}</p>
+                                            <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white' }}>{item.desc.replace('TITHE', t('tithes').toUpperCase()).replace('UTILITIES', t('buildingFacilities').toUpperCase())}</p>
                                             {item.matched && (
                                                 <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success)', fontSize: '0.75rem', fontWeight: 800 }}>
                                                     <CheckCircle size={14} /> {t('autoMatchedLedger')}
@@ -319,7 +319,7 @@ const FundAccounting: React.FC = () => {
                                             <Shield size={20} />
                                             <p style={{ fontSize: '0.85rem', fontWeight: 700 }}>{t('suggestedMatch')}</p>
                                         </div>
-                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('exactMatchDesc').replace('{desc}', 'Online Tithe - Recurring').replace('{date}', 'Mar 07')}</p>
+                                         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('exactMatchDesc').replace('{desc}', `Online ${t('tithes')} - Recurring`).replace('{date}', 'Mar 07')}</p>
                                         <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.75rem' }}>{t('confirmMatch')}</button>
                                     </div>
                                     <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px dashed var(--border)', textAlign: 'center' }}>
@@ -538,10 +538,10 @@ const FundAccounting: React.FC = () => {
                                         onChange={(e) => setPaymentMethod(e.target.value)}
                                         style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'white', border: '1px solid #cbd5e1', color: '#1e293b', fontSize: '0.95rem' }}
                                     >
-                                        <option value="Cash">Cash</option>
-                                        <option value="Check">Check</option>
-                                        <option value="Online">Online</option>
-                                        <option value="Mobile">Mobile App</option>
+                                        <option value="Cash">{t('cash')}</option>
+                                        <option value="Check">{t('check')}</option>
+                                        <option value="Online">{t('online')}</option>
+                                        <option value="Mobile">{t('mobileApp')}</option>
                                     </select>
                                 </div>
 
@@ -593,7 +593,7 @@ const FundAccounting: React.FC = () => {
                                     <textarea
                                         value={txNotes}
                                         onChange={(e) => setTxNotes(e.target.value)}
-                                        placeholder="Optional notes about this transaction"
+                                        placeholder={t('optionalNotesLabel')}
                                         style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'white', border: '1px solid #cbd5e1', color: '#1e293b', fontSize: '0.9rem', minHeight: '80px', resize: 'vertical' }}
                                     />
                                 </div>

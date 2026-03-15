@@ -587,8 +587,8 @@ const Payroll: React.FC = () => {
                                                             <div>
                                                                 <p style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>{person.name}</p>
                                                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{person.role}</p>
-                                                                    <span style={{ fontSize: '0.65rem', color: 'var(--primary-light)', fontWeight: 800 }}>• {person.frequency}</span>
+                                                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t(person.role)}</p>
+                                                                    <span style={{ fontSize: '0.65rem', color: 'var(--primary-light)', fontWeight: 800 }}>• {t(person.frequency)}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -604,7 +604,7 @@ const Payroll: React.FC = () => {
                                                             textTransform: 'uppercase',
                                                             letterSpacing: '0.04em'
                                                         }}>
-                                                            {person.type}
+                                                            {t(person.type)}
                                                         </span>
                                                     </td>
                                                     <td style={{ textAlign: 'right', fontSize: '1rem', fontWeight: 600, color: 'white' }}>
@@ -630,7 +630,7 @@ const Payroll: React.FC = () => {
                                                                 borderRadius: '50%',
                                                                 backgroundColor: person.status === 'Paid' ? 'var(--success)' : 'var(--danger)'
                                                             }} />
-                                                            {person.status}
+                                                            {t(person.status)}
                                                         </span>
                                                     </td>
                                                 </tr>
