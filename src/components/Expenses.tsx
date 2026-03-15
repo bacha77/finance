@@ -442,15 +442,15 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
             <div className="glass-card" style={{ padding: '1.5rem', borderRadius: 'var(--radius-xl)', marginBottom: '3rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>{language === 'es' ? 'Registro de Gastos' : 'Expense Registry'}</h2>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px' }}>{language === 'es' ? 'Registro auditable de desembolsos' : 'Auditable record of disbursements'}</p>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>{t('expenseRegistry')}</h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px' }}>{t('auditableRecordDesc')}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem', width: '100%', maxWidth: 'none', justifyContent: 'flex-start' }}>
                         <button className="btn btn-ghost" onClick={toggleScan} style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}>
-                            <Camera size={16} /> {language === 'es' ? 'Escaneo' : 'Scan'}
+                            <Camera size={16} /> {t('scan')}
                         </button>
                         <button className="btn btn-primary" onClick={() => setShowAddModal(true)} style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}>
-                            <Plus size={16} /> {language === 'es' ? 'Nuevo' : 'New'}
+                            <Plus size={16} /> {t('new')}
                         </button>
                     </div>
                 </div>
@@ -461,8 +461,8 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
-                        <button className="btn glass" style={{ fontSize: '0.75rem', gap: '6px' }}><X size={14} /> Clear</button>
-                        <button className="btn glass" style={{ fontSize: '0.75rem', gap: '6px' }}><Save size={14} /> Save Preset</button>
+                        <button className="btn glass" style={{ fontSize: '0.75rem', gap: '6px' }}><X size={14} /> {t('clear')}</button>
+                        <button className="btn glass" style={{ fontSize: '0.75rem', gap: '6px' }}><Save size={14} /> {t('savePreset')}</button>
                     </div>
                 </div>
 
@@ -501,7 +501,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.05) 0%, transparent 100%)', borderRadius: 'var(--radius-lg)', marginBottom: '2rem', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
                     <div>
-                        <p style={{ color: 'var(--danger)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '4px' }}>Outflow Total</p>
+                        <p style={{ color: 'var(--danger)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '4px' }}>{t('outflowTotal')}</p>
                         <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white' }}>${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -511,7 +511,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
                     <h4 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--primary)' }}>March 2026</h4>
-                    <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Monthly Total: <strong style={{ color: '#0f172a' }}>${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong></span>
+                    <span style={{ fontSize: '0.875rem', color: '#64748b' }}>{t('monthlyTotal')}: <strong style={{ color: '#0f172a' }}>${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong></span>
                 </div>
 
                 <div style={{ overflowX: 'auto', margin: '0 -1rem', padding: '0 1rem' }}>
@@ -553,10 +553,10 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                 {showAddModal && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(2, 6, 23, 0.9)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={() => { setShowAddModal(false); resetForm(); }}>
                         <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="glass-card" style={{ width: '100%', maxWidth: '500px', borderRadius: '24px', padding: '3rem', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem', color: 'white' }}>{editingExpenseId ? 'Update Expense' : 'New Expense'}</h2>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem', color: 'white' }}>{editingExpenseId ? t('updateExpense') : t('newExpense')}</h2>
                             <form onSubmit={handleAddExpense}>
                                 <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Receipt Image or PDF</label>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('receiptPdf')}</label>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                         <button 
                                             type="button"
@@ -572,7 +572,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                                             onClick={() => fileInputRef.current?.click()}
                                             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', borderRadius: '12px', padding: '0.75rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: isUploading ? 0.5 : 1 }}
                                         >
-                                            <ScanLine size={16} /> {language === 'es' ? 'Subir Doc' : 'Upload Doc'}
+                                            <ScanLine size={16} /> {t('uploadDoc')}
                                         </button>
                                     </div>
                                     <input
@@ -596,7 +596,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                                             <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
                                                 <RotateCcw size={16} />
                                             </motion.div>
-                                            Uploading secure document...
+                                            {t('uploadingSecureDoc')}
                                         </div>
                                     )}
                                     
@@ -604,7 +604,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                                         <div style={{ marginTop: '1rem', position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '100px', border: '1px solid var(--border)' }}>
                                             {receiptImage.includes('.pdf') ? (
                                                 <div style={{ height: '100%', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '8px' }}>
-                                                    <CheckCircle2 size={16} color="var(--success)" /> PDF uploaded
+                                                    <CheckCircle2 size={16} color="var(--success)" /> {t('pdfUploaded')}
                                                 </div>
                                             ) : (
                                                 <img src={receiptImage} alt="Receipt Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -621,28 +621,28 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                                 </div>
  
                                 <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('description')}</label>
                                     <input type="text" required value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Office Supplies" style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.95rem' }} />
                                 </div>
                                 <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Amount</label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('amount')}</label>
                                     <input type="number" step="0.01" required value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.95rem' }} />
                                 </div>
                                 <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Department</label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('department')}</label>
                                     <select value={dept} onChange={e => setDept(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.95rem', appearance: 'none', background: 'white' }}>
                                         {availableDepts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                     </select>
                                 </div>
                                 <div style={{ marginBottom: '1.25rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Category</label>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('category')}</label>
                                         <button
                                             type="button"
                                             onClick={() => setIsAddingCategory(!isAddingCategory)}
                                             style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}
                                         >
-                                            {isAddingCategory ? 'Cancel' : '+ Add New'}
+                                            {isAddingCategory ? t('cancel') : `+ ${t('new')}`}
                                         </button>
                                     </div>
 
@@ -668,7 +668,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                                                 className="btn btn-primary"
                                                 style={{ padding: '8px 12px', fontSize: '0.8rem' }}
                                             >
-                                                Add
+                                                {t('new')}
                                             </button>
                                         </div>
                                     ) : (
@@ -679,11 +679,11 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.75rem' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date</label>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('date')}</label>
                                         <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.95rem' }} />
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Method</label>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('paymentMethod')}</label>
                                         <select value={method} onChange={e => setMethod(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.95rem', appearance: 'none', background: 'white' }}>
                                             <option value="CASH">CASH</option>
                                             <option value="CHECK">CHECK</option>
@@ -692,8 +692,8 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                                    <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setShowAddModal(false); resetForm(); }}>Cancel</button>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingExpenseId ? 'Record Update' : 'Commit to Ledger'}</button>
+                                    <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setShowAddModal(false); resetForm(); }}>{t('cancel')}</button>
+                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingExpenseId ? t('recordUpdate') : t('commitToLedger')}</button>
                                 </div>
                             </form>
                         </motion.div>
@@ -763,13 +763,13 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                                             className="btn btn-ghost"
                                             onClick={() => cameraInputRef.current?.click()}
                                         >
-                                            <Camera size={16} /> Use Camera App
+                                            <Camera size={16} /> {t('useCameraApp')}
                                         </button>
                                         <button 
                                             className="btn btn-ghost"
                                             onClick={() => fileInputRef.current?.click()}
                                         >
-                                            <ScanLine size={16} /> Browse Files
+                                            <ScanLine size={16} /> {t('browseFiles')}
                                         </button>
                                     </div>
                                 </>
@@ -784,8 +784,8 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                                     >
                                         <ScanLine size={64} color="var(--primary-light)" />
                                     </motion.div>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: 'white' }}>Processing</h2>
-                                    <p style={{ color: 'rgba(255,255,255,0.6)' }}>Extracting line items with AI...</p>
+                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: 'white' }}>{t('processing')}</h2>
+                                    <p style={{ color: 'rgba(255,255,255,0.6)' }}>{t('extractingLineItems')}</p>
                                 </div>
                             )}
 
@@ -794,8 +794,8 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
                                         <CheckCircle2 size={48} color="#10b981" />
                                     </div>
-                                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', color: 'white', textAlign: 'center' }}>Receipt Extracted</h2>
-                                    <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '1.5rem', textAlign: 'center', fontSize: '0.875rem' }}>Confirm the details before saving.</p>
+                                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', color: 'white', textAlign: 'center' }}>{t('receiptExtracted')}</h2>
+                                    <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '1.5rem', textAlign: 'center', fontSize: '0.875rem' }}>{t('confirmDetailsDesc')}</p>
 
                                     <div style={{ marginBottom: '1rem' }}>
                                         <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', display: 'block', marginBottom: '4px' }}>Detected Description</label>

@@ -37,7 +37,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, is
     { id: 'payroll', icon: CreditCard, label: t('payroll') },
     { id: 'budget', icon: PieChart, label: t('budget') },
     { id: 'reports', icon: FileText, label: t('reports') },
-    { id: 'pricing', icon: Zap, label: language === 'es' ? 'Planes y Precios' : 'Plans & Pricing' },
+    { id: 'pricing', icon: Zap, label: t('plansPricing') },
   ];
 
   return (
@@ -209,7 +209,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, is
           cursor: 'pointer'
         }}>
           <LogOut size={20} />
-          <span>{language === 'es' ? 'Cerrar Sesión' : 'Logout'}</span>
+          <span>{t('logout')}</span>
         </button>
       </div>
     </div>

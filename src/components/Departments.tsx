@@ -10,6 +10,7 @@ import {
     Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
 
 interface Department {
@@ -22,6 +23,10 @@ interface Department {
     description: string;
 }
 
+interface DepartmentsProps {
+    setActiveTab: (tab: string) => void;
+}
+
 const DEFAULT_DEPARTMENTS: Department[] = [
     { id: '1', name: 'Tithes & Finance', head: 'Elder Samuel Ade', members: 5, status: 'Active', type: 'Operations', description: 'Oversees church financial records and tithe tracking.' },
     { id: '2', name: 'Building & Facilities', head: 'Bro. David Chen', members: 12, status: 'Active', type: 'Operations', description: 'Maintenance and development of church properties.' },
@@ -30,7 +35,8 @@ const DEFAULT_DEPARTMENTS: Department[] = [
     { id: '5', name: 'Youth Ministry', head: 'Pastor Tim Rivers', members: 60, status: 'Active', type: 'Ministry', description: 'Engagement and growth for the younger generation.' },
 ];
 
-const Departments: React.FC = () => {
+const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
+    const { t } = useLanguage();
     const [showAddModal, setShowAddModal] = useState(false);
     const [departments, setDepartments] = useState<Department[]>(() => {
         const saved = localStorage.getItem('sanctuary_departments');
@@ -173,12 +179,12 @@ const Departments: React.FC = () => {
         <div style={{ padding: '2rem' }}>
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                 <div>
-                    <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '0.5rem' }}>Church Departments</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Manage and organize the various ministries and operational units.</p>
+                    <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '0.5rem' }}>{t('churchDepartments')}</h1>
+                    <p style={{ color: 'var(--text-secondary)' }}>{t('departmentsDesc')}</p>
                 </div>
                 <button className="btn btn-primary" style={{ gap: '8px' }} onClick={() => setShowAddModal(true)}>
                     <Plus size={18} />
-                    Create Department
+                    {t('createDepartment')}
                 </button>
             </header>
 
@@ -217,15 +223,15 @@ const Departments: React.FC = () => {
                             onClick={(e) => e.stopPropagation()}
                         >
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                                {isEditMode ? 'Edit Department' : 'New Department'}
+                                {isEditMode ? t('editDepartment') : t('newDepartment')}
                             </h2>
                             <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.875rem' }}>
-                                {isEditMode ? 'Update the details for this department.' : 'Initialize a new ministry or functional department.'}
+                                {isEditMode ? t('updateDetailsDesc') : t('initializeMinistryDesc')}
                             </p>
 
                             <form onSubmit={isEditMode ? handleUpdateDepartment : handleAddDepartment}>
                                 <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>DEPARTMENT NAME</label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('departmentName')}</label>
                                     <input
                                         type="text"
                                         required
@@ -236,7 +242,7 @@ const Departments: React.FC = () => {
                                     />
                                 </div>
                                 <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>DEPARTMENT HEAD <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>(Optional)</span></label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('departmentHead')} <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>({t('customLabels')})</span></label>
                                     <input
                                         type="text"
                                         value={newHead}
@@ -246,7 +252,7 @@ const Departments: React.FC = () => {
                                     />
                                 </div>
                                 <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>CLASSIFICATION</label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('classification')}</label>
                                     <select
                                         value={newType}
                                         onChange={(e) => setNewType(e.target.value as any)}
@@ -260,18 +266,18 @@ const Departments: React.FC = () => {
                                     </select>
                                 </div>
                                 <div style={{ marginBottom: '2rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>DESCRIPTION</label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('description')}</label>
                                     <textarea
                                         value={newDesc}
                                         onChange={(e) => setNewDesc(e.target.value)}
-                                        placeholder="Brief purpose of the department..."
+                                        placeholder={t('briefPurposeDesc')}
                                         style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', height: '80px', resize: 'none' }}
                                     />
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button type="button" className="btn glass" style={{ flex: 1 }} onClick={handleCloseModal}>Cancel</button>
+                                    <button type="button" className="btn glass" style={{ flex: 1 }} onClick={handleCloseModal}>{t('cancel')}</button>
                                     <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                                        {isEditMode ? 'Update' : 'Register'}
+                                        {isEditMode ? t('save') : t('new')}
                                     </button>
                                 </div>
                             </form>
@@ -329,11 +335,11 @@ const Departments: React.FC = () => {
 
                         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Department Head</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('departmentHead')}</span>
                                 <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{dept.head}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Members / Volunteers</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('membersVolunteers')}</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <Users size={14} />
                                     <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{dept.members}</span>
@@ -342,8 +348,8 @@ const Departments: React.FC = () => {
                         </div>
 
                         <div style={{ display: 'flex', gap: '8px', marginTop: '0.5rem' }}>
-                            <button className="btn glass" style={{ flex: 1, padding: '8px', fontSize: '0.75rem' }}>View Roster</button>
-                            <button className="btn btn-primary" style={{ flex: 1, padding: '8px', fontSize: '0.75rem' }}>Budgeting</button>
+                            <button className="btn glass" style={{ flex: 1, padding: '8px', fontSize: '0.75rem' }}>{t('viewRoster')}</button>
+                            <button className="btn btn-primary" style={{ flex: 1, padding: '8px', fontSize: '0.75rem' }} onClick={() => setActiveTab('budget')}>{t('budget')}</button>
                         </div>
                     </motion.div>
                 ))}

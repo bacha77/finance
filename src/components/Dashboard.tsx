@@ -246,7 +246,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
             iconBg: 'rgba(16,185,129,0.15)',
             iconColor: '#10b981',
             sparkline: sparkData,
-            sub: language === 'es' ? 'Este mes' : 'This month',
+            sub: t('thisMonth'),
             delay: 0.08,
         },
         {
@@ -313,11 +313,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                            Live {t('dashboard')}
+                            {t('live')} {t('dashboard')}
                         </span>
                     </div>
                     <h1 style={{ fontSize: 'clamp(1.6rem, 3.5vw, 2.5rem)', fontWeight: 900, color: 'white', letterSpacing: '-0.04em', lineHeight: 1.1 }}>
-                        {language === 'es' ? 'Resumen Financiero' : 'Financial Overview'}
+                        {t('financialOverview')}
                     </h1>
                     <p style={{ color: '#475569', fontSize: '0.875rem', marginTop: '0.35rem' }}>{today}</p>
                 </div>
@@ -334,7 +334,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                             color: '#60a5fa', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit',
                         }}
                     >
-                        <BarChart3 size={15} /> {language === 'es' ? 'Nueva Transacción' : 'New Transaction'}
+                        <BarChart3 size={15} /> {t('newTransaction')}
                     </motion.button>
                     <motion.button
                         onClick={() => setActiveTab('reports')}
@@ -361,7 +361,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                             boxShadow: '0 4px 14px rgba(16,185,129,0.35)',
                         }}
                     >
-                        <Download size={15} /> {language === 'es' ? 'Exportar PDF' : 'Export PDF'}
+                        <Download size={15} /> {t('exportPDF')}
                     </motion.button>
                     {syncing && (
                         <motion.div
@@ -448,10 +448,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     <AlertTriangle color="#ef4444" size={20} />
                     <div style={{ flex: 1 }}>
                         <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fca5a5' }}>
-                            {anomalies.length} {language === 'es' ? 'Patrones Inusuales Detectados' : 'Unusual Patterns Detected'}
+                            {anomalies.length} {t('unusualPatternsDetected')}
                         </span>
                         <p style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '2px' }}>
-                            {language === 'es' ? 'Nuestro motor neuronal marcó transacciones que se desvían de su promedio.' : 'Our Neural Engine flagged transactions that deviate significantly from your 6-month average.'}
+                            {t('neuralEngineFlagged')}
                         </p>
                     </div>
                     <Sparkles size={16} color="var(--primary-light)" />
@@ -471,7 +471,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     }}
                 >
                     <div style={{ marginBottom: '1rem' }}>
-                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>{t('revenue')} vs {t('expenses')}</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>{t('revenueVsExpenses')}</div>
                         <div style={{ fontSize: '0.75rem', color: '#475569' }}>{language === 'es' ? 'Resumen de los últimos 6 meses' : '6-month trailing overview'}</div>
                     </div>
                     <div style={{ flex: 1, minHeight: 0 }}>
@@ -580,15 +580,15 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                 >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                         <div>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Recent Transactions</div>
-                            <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '2px' }}>Latest ledger activity</div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>{t('recentTransactions')}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '2px' }}>{t('latestLedgerActivity')}</div>
                         </div>
                         <button onClick={() => setActiveTab('accounting')} style={{
                             background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.25)',
                             color: '#60a5fa', borderRadius: '8px', padding: '5px 12px',
                             fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                         }}>
-                            View all →
+                            {t('viewAll')} →
                         </button>
                     </div>
 
@@ -650,7 +650,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                                     fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'inherit',
                                     marginTop: '0.25rem',
                                 }}>
-                                    Add First Transaction
+                                    {t('newTransaction')}
                                 </button>
                             </div>
                         )}
@@ -669,8 +669,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     }}
                 >
                     <div>
-                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Financial Health</div>
-                        <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '2px' }}>Key performance indicators</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>{t('financialHealth')}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '2px' }}>{t('keyPerformanceIndicators')}</div>
                     </div>
 
                     {/* Budget Gauge */}
@@ -680,10 +680,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
                     }}>
                         <div>
-                            <div style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Budget Utilization</div>
+                            <div style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{t('budgetUtilization')}</div>
                             <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white', lineHeight: 1, marginTop: '4px' }}>{budgetUsed}%</div>
-                            <div style={{ fontSize: '0.7rem', color: budgetUsed < 80 ? '#10b981' : '#f59e0b', fontWeight: 700, marginTop: '2px' }}>
-                                {budgetUsed < 80 ? '✓ Within target' : '⚠ Near limit'}
+                             <div style={{ fontSize: '0.7rem', color: budgetUsed < 80 ? '#10b981' : '#f59e0b', fontWeight: 700, marginTop: '2px' }}>
+                                {budgetUsed < 80 ? `✓ ${t('withinTarget')}` : `⚠ ${t('nearLimit')}`}
                             </div>
                         </div>
                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -726,8 +726,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     }}>
                         <ShieldCheck size={18} color="#10b981" />
                         <div>
-                            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#10b981' }}>Secure & Encrypted</div>
-                            <div style={{ fontSize: '0.68rem', color: '#334155' }}>All data protected • SOC2 Ready</div>
+                            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#10b981' }}>{t('secureEncrypted')}</div>
+                            <div style={{ fontSize: '0.68rem', color: '#334155' }}>{t('dataProtected')} • SOC2 Ready</div>
                         </div>
                     </div>
                 </motion.div>
@@ -741,38 +741,38 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                 style={{ marginBottom: '1.25rem' }}
             >
                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>
-                    Quick Access
+                    {t('quickAccess')}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                     {[
                         {
-                            icon: BarChart3, title: 'Financial Analytics',
-                            desc: 'YTD/MTD metrics, revenue trends, and expense breakdowns.',
+                            icon: BarChart3, title: t('analyticsTitle'),
+                            desc: t('analyticsDesc'),
                             iconBg: 'rgba(37,99,235,0.12)', iconColor: '#2563eb', tab: 'accounting',
                         },
                         {
-                            icon: Users, title: 'Member Management',
-                            desc: 'Secure database with complete giving history and insights.',
+                            icon: Users, title: t('memberMgmtTitle'),
+                            desc: t('memberMgmtDesc'),
                             iconBg: 'rgba(16,185,129,0.12)', iconColor: '#10b981', tab: 'members',
                         },
                         {
-                            icon: CreditCard, title: 'Expense Workflow',
-                            desc: 'Categorized expense tracking with multi-level approvals.',
+                            icon: CreditCard, title: t('expenseWorkflowTitle'),
+                            desc: t('expenseWorkflowDesc'),
                             iconBg: 'rgba(245,158,11,0.12)', iconColor: '#f59e0b', tab: 'expenses',
                         },
                         {
-                            icon: TrendUp, title: 'Smart Giving',
-                            desc: 'Online giving, pledge tracking, and donor analytics.',
+                            icon: TrendUp, title: t('smartGiving'),
+                            desc: t('smartGivingDesc'),
                             iconBg: 'rgba(168,85,247,0.12)', iconColor: '#a855f7', tab: 'giving',
                         },
                         {
-                            icon: ChurchIcon, title: 'Payroll & Staff',
-                            desc: 'Automated payroll with tax calculations and compliance.',
+                            icon: ChurchIcon, title: t('payrollStaffTitle'),
+                            desc: t('payrollStaffDesc'),
                             iconBg: 'rgba(239,68,68,0.12)', iconColor: '#ef4444', tab: 'payroll',
                         },
                         {
-                            icon: Calendar, title: 'Budget Planning',
-                            desc: 'Annual budget allocation by department and fund.',
+                            icon: Calendar, title: t('budgetPlanningTitle'),
+                            desc: t('budgetPlanningDesc'),
                             iconBg: 'rgba(6,182,212,0.12)', iconColor: '#06b6d4', tab: 'budget',
                         },
                     ].map((card, i) => (

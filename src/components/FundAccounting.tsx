@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Fund {
     id: string;
@@ -46,26 +47,27 @@ interface Transaction {
     auditTrail: AuditLog[];
 }
 
-const DEFAULT_FUNDS: Fund[] = [
-    { id: 'gf', name: 'General Fund (Tithes)', balance: 85240.00, status: 'Healthy', color: '#6366f1', type: 'Operational' },
-    { id: 'bc', name: 'Building Campaign', balance: 210000.00, status: 'Restricted', color: '#a855f7', type: 'Restricted' },
-    { id: 'mo', name: 'Missions & Outreach', balance: 12450.00, status: 'Active', color: '#10b981', type: 'Purpose' },
-    { id: 'ym', name: 'Youth Ministry', balance: 4200.00, status: 'Low', color: '#f59e0b', type: 'Operational' },
-];
-
-const DEFAULT_LEDGER: Transaction[] = [
-    { id: 'tx_1', date: 'Mar 07, 2026', desc: 'Online Tithe - Recurring', cat: 'Income', dept: 'Tithes & Finance', fund: 'General Fund (Tithes)', fundId: 'gf', amount: 1250.00, type: 'in', auditTrail: [{ timestamp: '2026-03-07T10:00:00Z', user: 'System', action: 'CREATED', details: 'Imported from Online Gateway' }] },
-    { id: 'tx_2', date: 'Mar 06, 2026', desc: 'Sponsorship - Youth Camp', cat: 'Income', dept: 'Youth Ministry', fund: 'Youth Ministry', fundId: 'ym', amount: 500.00, type: 'in', auditTrail: [{ timestamp: '2026-03-06T14:30:00Z', user: 'Admin', action: 'CREATED', details: 'Manual entry from youth director' }] },
-    { id: 'tx_3', date: 'Mar 05, 2026', desc: 'Utility Bill - Main Bldg', cat: 'Operating Exp', dept: 'Building & Facilities', fund: 'General Fund (Tithes)', fundId: 'gf', amount: -840.20, type: 'out', auditTrail: [{ timestamp: '2026-03-05T09:15:00Z', user: 'Treasurer', action: 'CREATED', details: 'Automated bill pay' }] },
-    { id: 'tx_4', date: 'Mar 04, 2026', desc: 'HVAC Maintenance', cat: 'Restricted Exp', dept: 'Building & Facilities', fund: 'Building Campaign', fundId: 'bc', amount: -320.00, type: 'out', auditTrail: [{ timestamp: '2026-03-04T11:45:00Z', user: 'Admin', action: 'CREATED', details: 'Manual check entry' }] },
-    { id: 'tx_5', date: 'Mar 03, 2026', desc: 'Mission Trip Deposit', cat: 'Purpose Exp', dept: 'Missions & Outreach', fund: 'Missions & Outreach', fundId: 'mo', amount: -150.00, type: 'out', auditTrail: [{ timestamp: '2026-03-03T16:20:00Z', user: 'Secretary', action: 'CREATED', details: 'Mission fund allocation' }] },
-];
-
 const FundAccounting: React.FC = () => {
+    const { t, language } = useLanguage();
     const [showNewTxModal, setShowNewTxModal] = useState(false);
     const [selectedTxForAudit, setSelectedTxForAudit] = useState<Transaction | null>(null);
     const [showReconcile, setShowReconcile] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+
+    const DEFAULT_FUNDS: Fund[] = [
+        { id: 'gf', name: t('generalFundTithes'), balance: 85240.00, status: t('healthy'), color: '#6366f1', type: t('operational') },
+        { id: 'bc', name: t('buildingCampaign'), balance: 210000.00, status: t('restricted'), color: '#a855f7', type: t('restricted') },
+        { id: 'mo', name: t('missionsOutreach'), balance: 12450.00, status: t('active'), color: '#10b981', type: t('purpose') },
+        { id: 'ym', name: t('youthMinistry'), balance: 4200.00, status: t('low'), color: '#f59e0b', type: t('operational') },
+    ];
+
+    const DEFAULT_LEDGER: Transaction[] = [
+        { id: 'tx_1', date: 'Mar 07, 2026', desc: 'Online Tithe - Recurring', cat: t('tithes'), dept: 'Tithes & Finance', fund: t('generalFundTithes'), fundId: 'gf', amount: 1250.00, type: 'in', auditTrail: [{ timestamp: '2026-03-07T10:00:00Z', user: 'System', action: 'CREATED', details: 'Imported from Online Gateway' }] },
+        { id: 'tx_2', date: 'Mar 06, 2026', desc: 'Sponsorship - Youth Camp', cat: t('tithes'), dept: 'Youth Ministry', fund: t('youthMinistry'), fundId: 'ym', amount: 500.00, type: 'in', auditTrail: [{ timestamp: '2026-03-06T14:30:00Z', user: 'Admin', action: 'CREATED', details: 'Manual entry from youth director' }] },
+        { id: 'tx_3', date: 'Mar 05, 2026', desc: 'Utility Bill - Main Bldg', cat: 'Operating Exp', dept: 'Building & Facilities', fund: t('generalFundTithes'), fundId: 'gf', amount: -840.20, type: 'out', auditTrail: [{ timestamp: '2026-03-05T09:15:00Z', user: 'Treasurer', action: 'CREATED', details: 'Automated bill pay' }] },
+        { id: 'tx_4', date: 'Mar 04, 2026', desc: 'HVAC Maintenance', cat: 'Restricted Exp', dept: 'Building & Facilities', fund: t('buildingCampaign'), fundId: 'bc', amount: -320.00, type: 'out', auditTrail: [{ timestamp: '2026-03-04T11:45:00Z', user: 'Admin', action: 'CREATED', details: 'Manual check entry' }] },
+        { id: 'tx_5', date: 'Mar 03, 2026', desc: 'Mission Trip Deposit', cat: 'Purpose Exp', dept: 'Missions & Outreach', fund: t('missionsOutreach'), fundId: 'mo', amount: -150.00, type: 'out', auditTrail: [{ timestamp: '2026-03-03T16:20:00Z', user: 'Secretary', action: 'CREATED', details: 'Mission fund allocation' }] },
+    ];
 
     const [funds, setFunds] = useState<Fund[]>(() => {
         const saved = localStorage.getItem('sanctuary_funds');
@@ -175,10 +177,10 @@ const FundAccounting: React.FC = () => {
 
             newTxs.push({
                 id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                date: new Date(txDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-                desc: txNotes ? `Donation: ${txNotes}` : `Donation to ${selectedDept?.name}`,
-                cat: 'Income',
-                fund: selectedFund?.name || 'General Fund',
+                date: new Date(txDate).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                desc: txNotes ? `${t('donations')}: ${txNotes}` : `${t('donations')} ${t('to')} ${selectedDept?.name}`,
+                cat: t('revenue'),
+                fund: selectedFund?.name || t('generalFundTithes'),
                 fundId: alloc.fundId,
                 dept: selectedDept?.name || 'General',
                 amount: amount,
@@ -206,7 +208,6 @@ const FundAccounting: React.FC = () => {
                 .from('ledger')
                 .insert(newTxs.map(tx => ({
                     ...tx,
-                    // Map to DB columns if they differ, or just bulk insert if schema matches
                     created_at: new Date().toISOString()
                 })));
 
@@ -225,7 +226,6 @@ const FundAccounting: React.FC = () => {
             setFunds(updatedFunds);
         } catch (err) {
             console.error('Error saving transaction to Supabase:', err);
-            // Fallback to local
             setLedger([...newTxs, ...ledger]);
             setFunds(updatedFunds);
         }
@@ -242,17 +242,17 @@ const FundAccounting: React.FC = () => {
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4rem' }}>
                 <div>
                     <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '-0.04em' }}>
-                        Fund <span className="gradient-text">Stewardship</span>
+                        {t('fundStewardship')}
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>Full visibility into Tithes, Restricted Offerings, and Global Missions</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>{t('fundStewardshipDesc')}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <button className={`btn ${showReconcile ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setShowReconcile(!showReconcile)}>
                         {isSyncing ? <RefreshCw size={18} className="spin" /> : <CheckCircle size={18} />}
-                        {showReconcile ? 'Back to Ledger' : 'Reconcile Bank'}
+                        {showReconcile ? t('integratedLedger') : t('reconcileBank')}
                     </button>
                     <button className="btn btn-primary" onClick={() => setShowNewTxModal(true)}>
-                        <Plus size={18} /> Record Deposit
+                        <Plus size={18} /> {t('recordDeposit')}
                     </button>
                 </div>
             </header>
@@ -269,8 +269,8 @@ const FundAccounting: React.FC = () => {
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
                             <div>
-                                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white' }}>Bank Reconciliation Hub</h2>
-                                <p style={{ color: 'var(--text-muted)' }}>Auto-matching transactions from Chase Operating Account (...4920)</p>
+                                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white' }}>{t('bankReconHub')}</h2>
+                                <p style={{ color: 'var(--text-muted)' }}>{t('bankReconDesc')}</p>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem' }}>
                                 <button
@@ -281,15 +281,15 @@ const FundAccounting: React.FC = () => {
                                     }}
                                     disabled={isSyncing}
                                 >
-                                    <RefreshCw size={18} className={isSyncing ? 'spin' : ''} /> Refresh Feed
+                                    <RefreshCw size={18} className={isSyncing ? 'spin' : ''} /> {t('refreshFeed')}
                                 </button>
-                                <button className="btn btn-primary">Process All Matches</button>
+                                <button className="btn btn-primary">{t('processMatches')}</button>
                             </div>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                             <div style={{ borderRight: '1px solid var(--border)', paddingRight: '2rem' }}>
-                                <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1.5rem', letterSpacing: '0.1em' }}>Bank Statement Items</h3>
+                                <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1.5rem', letterSpacing: '0.1em' }}>{t('bankStatementItems')}</h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {[
                                         { date: 'Mar 08', desc: 'CHECK DEP 1002', amount: 450.00, matched: false },
@@ -304,7 +304,7 @@ const FundAccounting: React.FC = () => {
                                             <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white' }}>{item.desc}</p>
                                             {item.matched && (
                                                 <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success)', fontSize: '0.75rem', fontWeight: 800 }}>
-                                                    <CheckCircle size={14} /> Auto-Matched to Ledger
+                                                    <CheckCircle size={14} /> {t('autoMatchedLedger')}
                                                 </div>
                                             )}
                                         </div>
@@ -312,20 +312,20 @@ const FundAccounting: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1.5rem', letterSpacing: '0.1em' }}>Ledger Recommendations</h3>
+                                <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1.5rem', letterSpacing: '0.1em' }}>{t('ledgerRecommendations')}</h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     <div style={{ padding: '1.5rem', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '16px', border: '1px solid var(--primary)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--primary-light)' }}>
                                             <Shield size={20} />
-                                            <p style={{ fontSize: '0.85rem', fontWeight: 700 }}>Suggested Match Found</p>
+                                            <p style={{ fontSize: '0.85rem', fontWeight: 700 }}>{t('suggestedMatch')}</p>
                                         </div>
-                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Entry "Online Tithe - Recurring" dated Mar 07 matches exactly.</p>
-                                        <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.75rem' }}>Confirm Match</button>
+                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('exactMatchDesc').replace('{desc}', 'Online Tithe - Recurring').replace('{date}', 'Mar 07')}</p>
+                                        <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.75rem' }}>{t('confirmMatch')}</button>
                                     </div>
                                     <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px dashed var(--border)', textAlign: 'center' }}>
                                         <AlertCircle size={24} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
-                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No direct matches for CHECK DEP 1002.</p>
-                                        <button className="btn btn-ghost" style={{ fontSize: '0.75rem', marginTop: '12px' }}>Create Ledger Link</button>
+                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('noDirectMatch').replace('{desc}', 'CHECK DEP 1002')}</p>
+                                        <button className="btn btn-ghost" style={{ fontSize: '0.75rem', marginTop: '12px' }}>{t('createLedgerLink')}</button>
                                     </div>
                                 </div>
                             </div>
@@ -368,7 +368,7 @@ const FundAccounting: React.FC = () => {
                                         ${fund.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </p>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--success)', fontWeight: 700 }}>
-                                        <ArrowUpRight size={14} /> Account Status: {fund.status}
+                                        <ArrowUpRight size={14} /> {t('accountStatus')}: {fund.status}
                                     </div>
                                 </motion.div>
                             ))}
@@ -377,8 +377,8 @@ const FundAccounting: React.FC = () => {
                         <div className="glass-card" style={{ padding: '3rem', borderRadius: 'var(--radius-xl)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
                                 <div>
-                                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>Integrated Ledger</h3>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Unified view of all departmental and fund activities</p>
+                                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{t('integratedLedger')}</h3>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{t('ledgerDesc')}</p>
                                 </div>
                                 <div style={{
                                     display: 'flex',
@@ -392,7 +392,7 @@ const FundAccounting: React.FC = () => {
                                     <Search size={18} color="var(--text-muted)" />
                                     <input
                                         type="text"
-                                        placeholder="Search ledger entries..."
+                                        placeholder={t('searchPlaceholder')}
                                         style={{
                                             background: 'none',
                                             border: 'none',
@@ -410,12 +410,12 @@ const FundAccounting: React.FC = () => {
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th>Date</th>
-                                            <th>Description</th>
-                                            <th>Allocation Details</th>
-                                            <th>Destination Fund</th>
-                                            <th style={{ textAlign: 'right' }}>Amount</th>
-                                            <th style={{ textAlign: 'right' }}>Audit</th>
+                                            <th>{t('date')}</th>
+                                            <th>{t('description')}</th>
+                                            <th>{t('allocationDetails')}</th>
+                                            <th>{t('destinationFund')}</th>
+                                            <th style={{ textAlign: 'right' }}>{t('amount')}</th>
+                                            <th style={{ textAlign: 'right' }}>{t('auditLog')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -427,7 +427,7 @@ const FundAccounting: React.FC = () => {
                                                         <div style={{ color: 'white', fontWeight: 700, fontSize: '0.95rem' }}>{tx.desc}</div>
                                                         {tx.member && (
                                                             <div style={{ fontSize: '0.75rem', color: 'var(--primary-light)', marginTop: '4px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                                Contributor: {tx.member}
+                                                                {t('contributor')}: {tx.member}
                                                             </div>
                                                         )}
                                                     </div>
@@ -466,7 +466,7 @@ const FundAccounting: React.FC = () => {
                                                         onClick={() => setSelectedTxForAudit(tx)}
                                                         style={{ background: 'var(--glass-light)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                                                     >
-                                                        <Shield size={12} /> History
+                                                        <Shield size={12} /> {t('history')}
                                                     </button>
                                                 </td>
                                             </tr>
@@ -499,8 +499,8 @@ const FundAccounting: React.FC = () => {
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                                 <div>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>Record Transaction</h2>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Add donations from a member to one or multiple departments</p>
+                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>{t('recordDeposit')}</h2>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{t('fundStewardshipDesc')}</p>
                                 </div>
                                 <button onClick={() => setShowNewTxModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
                             </div>
@@ -508,19 +508,19 @@ const FundAccounting: React.FC = () => {
                             <form onSubmit={handleAddTransaction} style={{ marginTop: '1.5rem' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'white', marginBottom: '8px' }}>Member *</label>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'white', marginBottom: '8px' }}>{t('member')} *</label>
                                         <select
                                             required
                                             value={txMember}
                                             onChange={(e) => setTxMember(e.target.value)}
                                             style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'white', border: '1px solid #cbd5e1', color: '#1e293b', fontSize: '0.95rem' }}
                                         >
-                                            <option value="">Type to search member...</option>
+                                            <option value="">{t('typeToSearch')}</option>
                                             {members.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'white', marginBottom: '8px' }}>Date *</label>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'white', marginBottom: '8px' }}>{t('date')} *</label>
                                         <input
                                             type="date"
                                             required
@@ -532,7 +532,7 @@ const FundAccounting: React.FC = () => {
                                 </div>
 
                                 <div style={{ marginBottom: '1.5rem', width: '50%' }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'white', marginBottom: '8px' }}>Payment Method *</label>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'white', marginBottom: '8px' }}>{t('paymentMethod')} *</label>
                                     <select
                                         value={paymentMethod}
                                         onChange={(e) => setPaymentMethod(e.target.value)}
@@ -547,14 +547,14 @@ const FundAccounting: React.FC = () => {
 
                                 <div style={{ marginBottom: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                        <label style={{ fontSize: '1rem', fontWeight: 600, color: 'white' }}>Department Allocations *</label>
+                                        <label style={{ fontSize: '1rem', fontWeight: 600, color: 'white' }}>{t('departmentAllocations')} *</label>
                                         <button
                                             type="button"
                                             onClick={() => setAllocations([...allocations, { deptId: '1', fundId: 'gf', amount: '' }])}
                                             className="btn"
                                             style={{ padding: '8px 16px', fontSize: '0.85rem', background: 'white', color: '#1e293b', border: '1px solid #cbd5e1', gap: '8px', display: 'flex', alignItems: 'center' }}
                                         >
-                                            <Plus size={16} /> Add Department
+                                            <Plus size={16} /> {t('department')}
                                         </button>
                                     </div>
 
@@ -589,7 +589,7 @@ const FundAccounting: React.FC = () => {
                                 </div>
 
                                 <div style={{ marginBottom: '2rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'white', marginBottom: '8px' }}>Notes</label>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'white', marginBottom: '8px' }}>{t('notes')}</label>
                                     <textarea
                                         value={txNotes}
                                         onChange={(e) => setTxNotes(e.target.value)}
@@ -599,8 +599,8 @@ const FundAccounting: React.FC = () => {
                                 </div>
 
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                                    <button type="button" className="btn" style={{ padding: '10px 24px', background: 'white', color: '#1e293b', border: '1px solid #cbd5e1' }} onClick={() => setShowNewTxModal(false)}>Cancel</button>
-                                    <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px', background: '#2563eb' }}>Record Transaction</button>
+                                    <button type="button" className="btn" style={{ padding: '10px 24px', background: 'white', color: '#1e293b', border: '1px solid #cbd5e1' }} onClick={() => setShowNewTxModal(false)}>{t('cancel')}</button>
+                                    <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px', background: '#2563eb' }}>{t('recordDeposit')}</button>
                                 </div>
                             </form>
                         </motion.div>
@@ -625,7 +625,7 @@ const FundAccounting: React.FC = () => {
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                                 <div>
-                                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>Audit Trail</h3>
+                                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>{t('auditTrail')}</h3>
                                     <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>TXID: {selectedTxForAudit.id}</p>
                                 </div>
                                 <button onClick={() => setSelectedTxForAudit(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><X size={20} /></button>
@@ -650,7 +650,7 @@ const FundAccounting: React.FC = () => {
                                 ))}
                             </div>
 
-                            <button onClick={() => setSelectedTxForAudit(null)} className="btn btn-primary" style={{ width: '100%', marginTop: '2rem' }}>Close Audit View</button>
+                            <button onClick={() => setSelectedTxForAudit(null)} className="btn btn-primary" style={{ width: '100%', marginTop: '2rem' }}>{t('closeAuditView')}</button>
                         </motion.div>
                     </motion.div>
                 )}

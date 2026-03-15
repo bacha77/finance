@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getSubscriptionStatus } from '../lib/subscriptionConfig';
 import { PLANS } from '../lib/trialConfig';
 import Pricing from './Pricing';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SettingsProps {
   churchData?: any;
@@ -24,6 +25,7 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
+  const { t } = useLanguage();
   const [activeSection, setActiveSection] = useState<'grid' | 'identity' | 'financial' | 'billing' | 'security' | 'appearance' | 'notifications' | 'pricing'>('grid');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
 
@@ -59,48 +61,48 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
   const settingsCards = [
     {
       id: 'identity',
-      title: 'Church Identity',
-      desc: 'Name, logo, address and contact information.',
+      title: t('churchIdentity'),
+      desc: t('churchIdentityDesc'),
       icon: Building2,
       color: '#6366f1',
       bg: 'rgba(99, 102, 241, 0.1)'
     },
     {
       id: 'financial',
-      title: 'Financial Controls',
-      desc: 'Currency, fiscal year, and tax configuration.',
+      title: t('financialControls'),
+      desc: t('financialControlsDesc'),
       icon: DollarSign,
       color: '#10b981',
       bg: 'rgba(16, 185, 129, 0.1)'
     },
     {
       id: 'billing',
-      title: 'Plans & Billing',
-      desc: 'Subscription details and payment methods.',
+      title: t('billing'),
+      desc: t('billingDesc'),
       icon: CreditCard,
       color: '#f59e0b',
       bg: 'rgba(245, 158, 11, 0.1)'
     },
     {
       id: 'security',
-      title: 'Security & Team',
-      desc: 'Admin permissions and multi-factor auth.',
+      title: t('security'),
+      desc: t('securityDesc'),
       icon: Lock,
       color: '#ef4444',
       bg: 'rgba(239, 68, 68, 0.1)'
     },
     {
       id: 'appearance',
-      title: 'Appearance',
-      desc: 'Theme, brand colors, and display density.',
+      title: t('appearance'),
+      desc: t('appearanceDesc'),
       icon: Palette,
       color: '#a855f7',
       bg: 'rgba(168, 85, 247, 0.1)'
     },
     {
       id: 'notifications',
-      title: 'Notifications',
-      desc: 'Email alerts for budgets and expenses.',
+      title: t('notifications'),
+      desc: t('notificationsDesc'),
       icon: Bell,
       color: '#06b6d4',
       bg: 'rgba(6, 182, 212, 0.1)'
@@ -144,7 +146,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
           <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem' }}>{card.title}</h3>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1.25rem' }}>{card.desc}</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: card.color, fontSize: '0.8rem', fontWeight: 700 }}>
-            Configure <ArrowRight size={14} />
+            {t('configure')} <ArrowRight size={14} />
           </div>
         </motion.div>
       ))}
@@ -162,7 +164,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
             cursor: 'pointer', marginBottom: '0.75rem', fontSize: '0.875rem', fontWeight: 600 
           }}
         >
-          <ChevronLeft size={16} /> Back to Settings
+          <ChevronLeft size={16} /> {t('backToSettings')}
         </button>
         <h2 style={{ fontSize: '2rem', fontWeight: 900, color: 'white', letterSpacing: '-0.03em' }}>{title}</h2>
         <p style={{ color: 'var(--text-muted)', marginTop: '0.25rem' }}>{desc}</p>
@@ -172,24 +174,24 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
         style={{ padding: '0.75rem 1.75rem' }}
         onClick={async () => {
             if (onUpdateChurch) await onUpdateChurch(formData);
-            alert('Settings saved successfully!');
+            alert(t('success'));
             setActiveSection('grid');
         }}
       >
-        <Save size={18} /> Save Changes
+        <Save size={18} /> {t('saveChanges')}
       </button>
     </div>
   );
 
   const renderIdentity = () => (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-      {renderSectionHeader('Church Identity', 'Manage how your church appears across the platform and reports.')}
+      {renderSectionHeader(t('churchIdentity'), t('manageChurchAppearance'))}
       
       <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         <div style={{ background: 'var(--bg-card)', padding: isMobile ? '1.25rem' : '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
           <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
             <div style={{ gridColumn: 'span 2' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Church Name</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>{t('churchName')}</label>
               <input 
                 type="text" 
                 value={formData.name}
@@ -198,7 +200,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Website</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>{t('website')}</label>
               <div style={{ position: 'relative' }}>
                 <Globe size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input 
@@ -211,7 +213,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Tax ID / EIN</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>{t('taxIdEin')}</label>
               <input 
                 type="text" 
                 value={formData.taxId}
@@ -222,7 +224,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
             </div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Physical Address</label>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>{t('physicalAddress')}</label>
             <textarea 
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
@@ -236,8 +238,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
         <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.15)', padding: '1.5rem', borderRadius: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <ShieldCheck size={24} color="#10b981" />
           <div>
-            <div style={{ color: 'white', fontWeight: 700, fontSize: '0.9rem' }}>Verified Status</div>
-            <div style={{ color: 'rgba(16, 185, 129, 0.8)', fontSize: '0.8rem' }}>Your church profile is currently verified for tax-compliant receipting.</div>
+            <div style={{ color: 'white', fontWeight: 700, fontSize: '0.9rem' }}>{t('verifiedStatus')}</div>
+            <div style={{ color: 'rgba(16, 185, 129, 0.8)', fontSize: '0.8rem' }}>{t('verifiedStatusDesc')}</div>
           </div>
         </div>
       </div>
@@ -246,17 +248,17 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
 
   const renderSecurity = () => (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-      {renderSectionHeader('Security & Team', 'Manage administrator access and workspace security protocols.')}
+      {renderSectionHeader(t('security'), t('securityDesc'))}
       
       <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Administrative Access</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{t('adminAccess')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.75rem', border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700 }}>PA</div>
                 <div>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'white' }}>Primary Admin</div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'white' }}>{t('primaryAdmin')}</div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{churchData?.contact_email || 'admin@church.org'}</div>
                 </div>
               </div>
@@ -266,21 +268,21 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
               className="btn btn-ghost" 
               style={{ width: '100%', justifyContent: 'center', borderStyle: 'dashed' }}
               onClick={() => {
-                const email = prompt('Enter the email of the person you want to invite:');
-                if (email) alert(`Invitation sent to ${email}. They will receive an email shortly.`);
+                const email = prompt('Enter email:');
+                if (email) alert(t('success'));
               }}
             >
-              + Invite Team Member
+              + {t('inviteTeamMember')}
             </button>
           </div>
         </div>
 
         <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Security Protocols</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{t('securityProtocols')}</h3>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>Multi-Factor Authentication</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Require 2FA for all administrator logins.</div>
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{t('mfa')}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('mfaDesc')}</div>
             </div>
             <div 
               onClick={() => setFormData({ ...formData, mfaEnabled: !formData.mfaEnabled })}
@@ -309,7 +311,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
 
     return (
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-        {renderSectionHeader('Plans & Billing', 'Manage your subscription, view invoices, and update payment methods.')}
+        {renderSectionHeader(t('billing'), t('billingDesc'))}
         
         <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {subStatus?.isBlocked && (
@@ -326,7 +328,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
                 style={{ background: '#ef4444', boxShadow: '0 8px 24px -6px rgba(239, 68, 68, 0.5)' }}
                 onClick={() => setActiveSection('pricing')}
               >
-                Upgrade Now
+                {t('upgradeNow')}
               </button>
             </div>
           )}
@@ -360,7 +362,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-               <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1rem' }}>Payment Method</h4>
+               <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1rem' }}>{t('paymentMethod')}</h4>
                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ width: '40px', height: '24px', background: '#003087', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                      <span style={{ fontSize: '0.6rem', color: 'white', fontWeight: 900 }}>PayPal</span>
@@ -369,18 +371,18 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
                </div>
             </div>
             <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-               <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1rem' }}>Usage History</h4>
+               <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1rem' }}>{t('usageHistory')}</h4>
                 <button 
-                  onClick={() => alert('Invoice history is currently being compiled. You will receive an email once your historical invoices are ready to view.')}
+                  onClick={() => alert(t('success'))}
                   style={{ background: 'none', border: 'none', color: 'var(--primary-light)', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
                 >
-                  View all invoices →
+                  {t('viewAllInvoices')} →
                 </button>
             </div>
           </div>
 
           <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.25rem' }}>Plan Limits</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.25rem' }}>{t('planLimits')}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Member Limit</span>
@@ -410,7 +412,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
             cursor: 'pointer', padding: '0.6rem 1.2rem', borderRadius: '12px', fontSize: '0.875rem', fontWeight: 700 
           }}
         >
-          <ChevronLeft size={16} /> Back to Billing
+          <ChevronLeft size={16} /> {t('backToBilling')}
         </button>
       </div>
       <div style={{ background: 'var(--bg-card)', borderRadius: '2rem', border: '1px solid var(--border)', overflow: 'hidden' }}>
@@ -428,11 +430,11 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
 
   const renderAppearance = () => (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-      {renderSectionHeader('Appearance', 'Customize the visual experience of your workspace.')}
+      {renderSectionHeader(t('appearance'), t('appearanceDesc'))}
       
       <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Theme Mode</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{t('themeMode')}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
             {['Light', 'Dark', 'System'].map(mode => (
               <button 
@@ -454,7 +456,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
         </div>
 
         <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Brand Color</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{t('brandColor')}</h3>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             {['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4'].map(color => (
               <div 
@@ -472,7 +474,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
         </div>
 
         <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Display Density</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{t('displayDensity')}</h3>
           <div style={{ display: 'flex', gap: '2rem' }}>
             {['Compact', 'Spacious'].map(d => (
               <label 
@@ -500,11 +502,11 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
 
   const renderNotifications = () => (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-      {renderSectionHeader('Notifications', 'Configure how and when you receive updates from the system.')}
+      {renderSectionHeader(t('notifications'), t('notificationsDesc'))}
       
       <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Email Alerts</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{t('emailAlerts')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {[
               { id: 'budget', label: 'Budget Thresholds', desc: 'Notify when a department exceeds 80% of its monthly budget.' },
@@ -541,7 +543,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
         </div>
 
         <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>System Announcements</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{t('systemAnnouncements')}</h3>
           <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
              <input 
                type="checkbox" 
@@ -561,14 +563,14 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
 
   const renderFinancial = () => (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-      {renderSectionHeader('Financial Controls', 'Configure your currency, fiscal settings, and tax compliance parameters.')}
+      {renderSectionHeader(t('financialControls'), t('fiscalSettings'))}
       
       <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Regional & Currency</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{t('regionalCurrency')}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Base Currency</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>{t('baseCurrency')}</label>
               <select 
                 value={formData.currency}
                 onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
@@ -584,7 +586,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Fiscal Year Start</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>{t('fiscalYearStart')}</label>
               <select 
                 value={formData.fiscalYearStart}
                 onChange={(e) => setFormData({ ...formData, fiscalYearStart: e.target.value })}
@@ -599,12 +601,12 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
         </div>
 
         <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Tax Compliance</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{t('taxCompliance')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>Tax-Exempt Status</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Apply 501(c)(3) or charitable status to all financial reports.</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{t('taxExemptStatus')}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('taxExemptDesc')}</div>
               </div>
               <div 
                 onClick={() => setFormData({ ...formData, taxExempt: !formData.taxExempt })}
@@ -624,8 +626,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>Automated Tax Receipts</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Send annual tax documentation to all donors automatically.</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{t('autoTaxReceipts')}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('autoTaxReceiptsDesc')}</div>
               </div>
               <div 
                 onClick={() => setFormData({ ...formData, autoReceipts: !formData.autoReceipts })}
@@ -662,10 +664,10 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
             <div style={{ marginBottom: '3rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
                 <SettingsIcon size={20} color="var(--primary-light)" />
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>System Configuration</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('systemConfiguration')}</span>
               </div>
-              <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', letterSpacing: '-0.04em' }}>Workspace Settings</h1>
-              <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.4rem' }}>Manage your organization's core details, billing, and team permissions.</p>
+              <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', letterSpacing: '-0.04em' }}>{t('workspaceSettings')}</h1>
+              <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.4rem' }}>{t('manageOrgDetails')}</p>
             </div>
             {renderGrid()}
           </motion.div>

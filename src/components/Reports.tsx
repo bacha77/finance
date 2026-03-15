@@ -114,11 +114,11 @@ const Reports: React.FC = () => {
                 alignItems: 'flex-end'
             }}>
                 <div>
-                    <h2 className="gradient-text" style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>Statement of Activity</h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>Operating Period: Jan 01, 2026 – Mar 31, 2026</p>
+                    <h2 className="gradient-text" style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>{t('statementOfActivity')}</h2>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>{t('operatingPeriod')}: Jan 01, 2026 – Mar 31, 2026</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>Net Operating Income</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>{t('netOperatingIncome')}</p>
                     <p style={{ fontSize: '2.5rem', fontWeight: 800, color: metrics.net >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                         {metrics.net >= 0 ? '+' : '-'}${Math.abs(metrics.net).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </p>
@@ -128,7 +128,7 @@ const Reports: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
                 <section className="glass-card" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Revenue Sources</h4>
+                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('revenueSources')}</h4>
                         <span style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-main)' }}>${metrics.income.toLocaleString()}</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -143,7 +143,7 @@ const Reports: React.FC = () => {
 
                 <section className="glass-card" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Operating Expenses</h4>
+                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('operatingExpenses')}</h4>
                         <span style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-main)' }}>${metrics.expenses.toLocaleString()}</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -154,7 +154,7 @@ const Reports: React.FC = () => {
                             </div>
                         ))}
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.125rem', fontWeight: 800, marginTop: '1rem', borderTop: '2px solid var(--border)', paddingTop: '1.25rem', color: 'var(--text-main)' }}>
-                            <span>Total Expenditures</span>
+                            <span>{t('totalExpenditures')}</span>
                             <span>${metrics.expenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                     </div>
@@ -166,16 +166,16 @@ const Reports: React.FC = () => {
     const renderBalanceSheet = () => (
         <div style={{ padding: '0.5rem' }}>
             <div style={{ marginBottom: '3rem', borderBottom: '2px solid var(--border)', paddingBottom: '2rem' }}>
-                <h2 className="gradient-text" style={{ fontSize: '2.25rem', fontWeight: 800, color: 'white' }}>Statement of Financial Position</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>Reporting Date: March 31, 2026</p>
+                <h2 className="gradient-text" style={{ fontSize: '2.25rem', fontWeight: 800, color: 'white' }}>{t('statementOfFinancialPosition')}</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>{t('reportingDate')}: March 31, 2026</p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
                 <section className="glass-card" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary-light)', marginBottom: '1.5rem', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>Consolidated Assets</h4>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary-light)', marginBottom: '1.5rem', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>{t('consolidatedAssets')}</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                            <span style={{ fontWeight: 600 }}>Cash & Liquid Equivalents</span>
+                            <span style={{ fontWeight: 600 }}>{t('cashLiquidEquivalents')}</span>
                             <span style={{ color: 'var(--text-main)', fontWeight: 800, fontSize: '1.125rem' }}>${metrics.totalAssets.toLocaleString()}</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '1.5rem', borderLeft: '2px solid var(--border)' }}>
@@ -187,7 +187,7 @@ const Reports: React.FC = () => {
                             ))}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, borderTop: '2px solid var(--border)', paddingTop: '1.25rem', color: 'var(--text-main)', fontSize: '1.25rem' }}>
-                            <span>Total Portfolio Value</span>
+                            <span>{t('totalPortfolioValue')}</span>
                             <span>${metrics.totalAssets.toLocaleString()}</span>
                         </div>
                     </div>
@@ -195,18 +195,18 @@ const Reports: React.FC = () => {
 
                 <section style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     <div className="glass-card" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
-                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--secondary)', marginBottom: '1.5rem', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>Net Assets (Equity)</h4>
+                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--secondary)', marginBottom: '1.5rem', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>{t('netAssetsEquity')}</h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                                <span>Designated/Restricted Funds</span>
+                                <span>{t('designatedRestrictedFunds')}</span>
                                 <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>${funds.filter(f => f.category !== 'General').reduce((s, f) => s + f.balance, 0).toLocaleString()}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                                <span>Operating/General Funds</span>
+                                <span>{t('operatingGeneralFunds')}</span>
                                 <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>${funds.filter(f => f.category === 'General').reduce((s, f) => s + f.balance, 0).toLocaleString()}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, borderTop: '2px solid var(--border)', paddingTop: '1.25rem', color: 'var(--text-main)', fontSize: '1.25rem' }}>
-                                <span>Total Equity</span>
+                                <span>{t('totalEquity')}</span>
                                 <span>${metrics.totalAssets.toLocaleString()}</span>
                             </div>
                         </div>
@@ -225,8 +225,8 @@ const Reports: React.FC = () => {
                     }}>
                         <ShieldCheck size={20} />
                         <div>
-                            <strong>Asset Integrity Verified:</strong>
-                            <p style={{ marginTop: '2px', opacity: 0.9 }}>Ledger balances match historical fund allocations accurately.</p>
+                            <strong>{t('assetIntegrityVerified')}:</strong>
+                            <p style={{ marginTop: '2px', opacity: 0.9 }}>{t('ledgerBalancesMatchDesc')}</p>
                         </div>
                     </div>
                 </section>
@@ -238,9 +238,9 @@ const Reports: React.FC = () => {
         <div style={{ padding: '1rem' }}>
             <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
                 <ShieldCheck size={48} color="var(--primary-light)" style={{ marginBottom: '1.5rem' }} />
-                <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>Board Performance Summary</h2>
+                <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>{t('boardPerformanceSummary')}</h2>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem' }}>Financial Health & Stewardship Overview • {months[selectedMonth]} {selectedYear}</p>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem' }}>{t('financialHealthStewardshipOverview')} • {months[selectedMonth]} {selectedYear}</p>
                     <select
                         value={selectedMonth}
                         onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
@@ -256,21 +256,21 @@ const Reports: React.FC = () => {
                     <div style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
                         <TrendingUp size={32} color="#10b981" />
                     </div>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Monthly Revenue</p>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('totalMonthlyRevenue')}</p>
                     <h4 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#10b981' }}>${metrics.income.toLocaleString()}</h4>
                 </div>
                 <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 'var(--radius-xl)' }}>
                     <div style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
                         <ArrowDownRight size={32} color="#ef4444" />
                     </div>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Administrative Outflow</p>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('administrativeOutflow')}</p>
                     <h4 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#ef4444' }}>${metrics.expenses.toLocaleString()}</h4>
                 </div>
                 <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)' }}>
                     <div style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
                         <ShieldCheck size={32} color="var(--primary-light)" />
                     </div>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Mission Surplus</p>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('missionSurplus')}</p>
                     <h4 style={{ fontSize: '2.5rem', fontWeight: 800, color: metrics.net >= 0 ? '#10b981' : '#ef4444' }}>
                         ${metrics.net.toLocaleString()}
                     </h4>
@@ -281,8 +281,8 @@ const Reports: React.FC = () => {
                 <div className="glass-card" style={{ padding: '3rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                         <div>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>Revenue Inflow</h3>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Categorized stewardship by department and fund type</p>
+                            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{t('revenueInflow')}</h3>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t('categorizedStewardshipDesc')}</p>
                         </div>
                         <Activity size={24} className="gradient-text" />
                     </div>
@@ -290,9 +290,9 @@ const Reports: React.FC = () => {
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Classification</th>
-                                    <th>Department</th>
-                                    <th style={{ textAlign: 'right' }}>Amount</th>
+                                    <th>{t('classification')}</th>
+                                    <th>{t('department')}</th>
+                                    <th style={{ textAlign: 'right' }}>{t('amount')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -322,8 +322,8 @@ const Reports: React.FC = () => {
                 <div className="glass-card" style={{ padding: '3rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                         <div>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>Operational Outflow</h3>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Top monthly expenditure categories</p>
+                            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{t('operationalOutflow')}</h3>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t('topMonthlyExpenditureDesc')}</p>
                         </div>
                         <TrendingUp size={24} color="var(--danger)" />
                     </div>
@@ -347,7 +347,7 @@ const Reports: React.FC = () => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <Clock size={16} className="gradient-text" />
-                                    <span style={{ fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 700 }}>MONTHLY TOTAL</span>
+                                    <span style={{ fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 700 }}>{t('monthlyTotal')}</span>
                                 </div>
                                 <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>${metrics.expenses.toLocaleString()}</span>
                             </div>
@@ -359,7 +359,7 @@ const Reports: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2rem', marginBottom: '4rem' }}>
                 <div className="card glass" style={{ padding: '2rem', background: 'rgba(16, 185, 129, 0.02)' }}>
                     <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <TrendingUp size={20} color="#10b981" /> Revenue by Source
+                        <TrendingUp size={20} color="#10b981" /> {t('revenueBySource')}
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         {Object.entries(metrics.incomeByCat).length > 0 ? (
@@ -378,7 +378,7 @@ const Reports: React.FC = () => {
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No revenue recorded this month.</p>
                         )}
                         <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
-                            <span>Total Designated Revenue</span>
+                            <span>{t('totalDesignatedRevenue')}</span>
                             <span style={{ color: '#10b981' }}>${metrics.income.toLocaleString()}</span>
                         </div>
                     </div>
@@ -386,7 +386,7 @@ const Reports: React.FC = () => {
 
                 <div className="card glass" style={{ padding: '2rem', background: 'rgba(239, 68, 68, 0.02)' }}>
                     <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <ArrowDownRight size={20} color="#ef4444" /> Expense Allocation
+                        <ArrowDownRight size={20} color="#ef4444" /> {t('expenseAllocation')}
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         {Object.entries(metrics.expenseByCat).length > 0 ? (
@@ -405,7 +405,7 @@ const Reports: React.FC = () => {
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No expenses recorded this month.</p>
                         )}
                         <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
-                            <span>Total Stewardship Burn</span>
+                            <span>{t('totalStewardshipBurn')}</span>
                             <span style={{ color: '#ef4444' }}>${metrics.expenses.toLocaleString()}</span>
                         </div>
                     </div>
@@ -440,9 +440,9 @@ const Reports: React.FC = () => {
                         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4rem' }}>
                             <div>
                                 <h1 style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '-0.04em' }}>
-                                    Financial <span className="gradient-text">Intelligence</span>
+                                    {t('financialIntelligence').split(' ')[0]} <span className="gradient-text">{t('financialIntelligence').split(' ')[1]}</span>
                                 </h1>
-                                <p style={{ color: 'var(--text-muted)', fontSize: '1.25rem', maxWidth: '600px' }}>Audit-ready financial statements, board-ready insights, and real-time stewardship tracking.</p>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '1.25rem', maxWidth: '600px' }}>{t('auditReadyDesc')}</p>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem' }}>
                                 <div style={{
@@ -460,17 +460,17 @@ const Reports: React.FC = () => {
                                     {months[selectedMonth]} {selectedYear}
                                 </div>
                                 <button className="btn btn-primary" style={{ height: '56px', padding: '0 2rem' }}>
-                                    <Plus size={20} /> New Audit Request
+                                    <Plus size={20} /> {t('newAuditRequest')}
                                 </button>
                             </div>
                         </header>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '4rem' }}>
                             {[
-                                { label: 'Revenue Accuracy', value: '100%', icon: ShieldCheck, color: 'var(--success)' },
-                                { label: 'Board Compliance', value: 'Active', icon: CheckCircle2, color: 'var(--primary)' },
-                                { label: 'Audit Trail', value: 'Immutable', icon: FileText, color: '#a855f7' },
-                                { label: 'Report Latency', value: '< 200ms', icon: Activity, color: '#ec4899' },
+                                { label: t('revenueAccuracy'), value: '100%', icon: ShieldCheck, color: 'var(--success)' },
+                                { label: t('boardCompliance'), value: 'Active', icon: CheckCircle2, color: 'var(--primary)' },
+                                { label: t('auditTrail'), value: 'Immutable', icon: FileText, color: '#a855f7' },
+                                { label: t('reportLatency'), value: '< 200ms', icon: Activity, color: '#ec4899' },
                             ].map((stat, idx) => (
                                 <motion.div whileHover={{ y: -5 }} key={idx} className="glass-card" style={{ padding: '2rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
@@ -484,7 +484,7 @@ const Reports: React.FC = () => {
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '2.5rem' }}>
                             <div className="glass-card" style={{ padding: '3rem' }}>
-                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2.5rem', color: 'white' }}>Mission Critical Statements</h3>
+                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2.5rem', color: 'white' }}>{t('missionCriticalStatements')}</h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {reports.map((report) => (
                                         <motion.div
@@ -519,7 +519,7 @@ const Reports: React.FC = () => {
                                                 </div>
                                                 <div>
                                                     <h4 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'white' }}>{report.title}</h4>
-                                                    <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '4px' }}>{report.category} • Updated {report.lastGenerated}</p>
+                                                    <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '4px' }}>{report.category} • {t('updated')} {report.lastGenerated}</p>
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', gap: '12px' }}>
@@ -527,7 +527,7 @@ const Reports: React.FC = () => {
                                                     <DownloadCloud size={20} />
                                                 </button>
                                                 <button className="btn btn-primary" style={{ padding: '12px 24px', borderRadius: '12px', fontSize: '0.875rem', fontWeight: 800 }}>
-                                                    View Now
+                                                    {t('viewNow')}
                                                 </button>
                                             </div>
                                         </motion.div>
@@ -536,7 +536,7 @@ const Reports: React.FC = () => {
                             </div>
 
                             <div className="card glass" style={{ height: 'fit-content' }}>
-                                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1.5rem' }}>Automated Reports</h3>
+                                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1.5rem' }}>{t('automatedReports')}</h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                     <div style={{
                                         backgroundColor: 'rgba(99, 102, 241, 0.05)',
@@ -544,14 +544,14 @@ const Reports: React.FC = () => {
                                         padding: '1rem',
                                         borderRadius: 'var(--radius)'
                                     }}>
-                                        <h4 style={{ fontSize: '0.875rem', fontWeight: 600 }}>Monthly Financial Close</h4>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '8px 0' }}>Next run: Apr 1st, 2026</p>
+                                        <h4 style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('monthlyFinancialClose')}</h4>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '8px 0' }}>{t('nextRun')}: Apr 1st, 2026</p>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', color: '#10b981' }}>
                                             <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }} />
-                                            Active Schedule
+                                            {t('activeSchedule')}
                                         </div>
                                     </div>
-                                    <button className="btn glass" style={{ width: '100%', fontSize: '0.875rem' }}>Manage Recipients</button>
+                                    <button className="btn glass" style={{ width: '100%', fontSize: '0.875rem' }}>{t('manageRecipients')}</button>
                                 </div>
                             </div>
                         </div>
@@ -572,9 +572,9 @@ const Reports: React.FC = () => {
                             <div style={{ display: 'flex', gap: '1rem' }}>
                                 <button className="btn glass" style={{ gap: '8px' }} onClick={() => window.print()}>
                                     <DownloadCloud size={18} />
-                                    Export PDF
+                                    {t('exportPDF')}
                                 </button>
-                                <button className="btn btn-primary" onClick={() => alert('Publishing current statement to Church Board portal...')}>Publish to Board</button>
+                                <button className="btn btn-primary" onClick={() => alert('Publishing current statement to Church Board portal...')}>{t('publishToBoard')}</button>
                             </div>
                         </header>
 
@@ -584,15 +584,15 @@ const Reports: React.FC = () => {
                         {viewStatement === 'cashflow' && (
                             <div style={{ textAlign: 'center', padding: '5rem 0' }}>
                                 <BarChart3 size={48} color="var(--primary-light)" style={{ marginBottom: '1.5rem', opacity: 0.2 }} />
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Cash Flow Statement</h2>
-                                <p style={{ color: 'var(--text-secondary)' }}>Tracing the movement of liquid assets across operating cycles.</p>
+                                <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{t('cashflowStatement')}</h2>
+                                <p style={{ color: 'var(--text-secondary)' }}>{t('tracingMovementDesc')}</p>
                                 <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
                                     <div className="card glass" style={{ width: '200px', border: '1px solid var(--border)' }}>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>OPERATING INFLOW</p>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{t('operatingInflow')}</p>
                                         <p style={{ fontWeight: 800, fontSize: '1.25rem', color: '#10b981' }}>${metrics.income.toLocaleString()}</p>
                                     </div>
                                     <div className="card glass" style={{ width: '200px', border: '1px solid var(--border)' }}>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>OPERATING OUTFLOW</p>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{t('operatingOutflow')}</p>
                                         <p style={{ fontWeight: 800, fontSize: '1.25rem', color: '#ef4444' }}>-${metrics.expenses.toLocaleString()}</p>
                                     </div>
                                 </div>

@@ -105,7 +105,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         const donations = getMemberDonations(selectedMember.name);
         const total = donations.reduce((sum, tx) => sum + tx.amount, 0);
         
-        const subject = encodeURIComponent(`${churchInfo.name} - Official Contribution Statement: ${months[invoiceMonth]} ${invoiceYear}`);
+        const subject = encodeURIComponent(`${churchInfo.name} - ${language === 'es' ? 'Estado de Contribución Oficial' : 'Official Contribution Statement'}: ${months[invoiceMonth]} ${invoiceYear}`);
         
         let bodyText = `Dear ${selectedMember.name},\n\n`;
         bodyText += `We hope this letter finds you well. On behalf of ${churchInfo.name}, we would like to express our sincere gratitude for your continued support and faithful stewardship.\n\n`;
@@ -191,19 +191,19 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
 
         doc.setFontSize(16);
         doc.setTextColor(30, 41, 59);
-        doc.text('CONTRIBUTION STATEMENT', 14, 55);
+        doc.text(t('contributionStatement'), 14, 55);
         
         doc.setFontSize(10);
         doc.setTextColor(100);
-        doc.text(`Statement Period: ${months[invoiceMonth]} ${invoiceYear}`, 14, 62);
-        doc.text(`Statement Date: ${new Date().toLocaleDateString()}`, 140, 62);
+        doc.text(`${t('statementPeriod')}: ${months[invoiceMonth]} ${invoiceYear}`, 14, 62);
+        doc.text(`${t('statementDate')}: ${new Date().toLocaleDateString()}`, 140, 62);
         
         // Donor Card
         doc.setFillColor(248, 250, 252);
         doc.rect(14, 75, 182, 35, 'F');
         doc.setFontSize(11);
         doc.setTextColor(100);
-        doc.text('PREPARED FOR:', 20, 85);
+        doc.text(t('preparedFor'), 20, 85);
         doc.setFontSize(14);
         doc.setTextColor(30, 41, 59);
         doc.text(selectedMember.name, 20, 95);
@@ -212,7 +212,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         doc.text(selectedMember.email, 20, 102);
 
         doc.setFontSize(11);
-        doc.text('TOTAL CONTRIBUTED:', 130, 85);
+        doc.text(t('totalContributed'), 130, 85);
         doc.setFontSize(18);
         doc.setTextColor(79, 70, 229);
         doc.text(`$${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 130, 95);
@@ -241,7 +241,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         doc.text(treasurerName, 14, finalY + 58);
         doc.setFontSize(9);
         doc.setTextColor(100);
-        doc.text('Church Treasurer', 14, finalY + 63);
+        doc.text(t('churchTreasurer'), 14, finalY + 63);
 
         doc.save(`${selectedMember.name.replace(/\s+/g, '_')}_Statement_${months[invoiceMonth]}_${invoiceYear}.pdf`);
     };
@@ -386,9 +386,9 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
             <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '2rem', marginBottom: '4rem' }}>
                 <div>
                     <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 3rem)', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '-0.04em' }}>
-                        Community <span className="gradient-text">Core</span>
+                        {t('communityCore').split(' ')[0]} <span className="gradient-text">{t('communityCore').split(' ')[1]}</span>
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>Cultivating engagement and nurturing spiritual growth</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>{t('cultivatingEngagementDesc')}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                     <button
@@ -400,7 +400,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                         {bulkSending ? (
                             <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Send size={18} /></motion.div>
                         ) : <Send size={18} />}
-                        <span style={{ marginLeft: '8px' }}>Bulk Statements</span>
+                        <span style={{ marginLeft: '8px' }}>{t('bulkStatements')}</span>
                         {bulkSending && (
                             <motion.div
                                 initial={{ width: 0 }}
@@ -422,7 +422,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                         </button>
                         {memberLimit !== null && memberLimit !== undefined && (
                             <span style={{ fontSize: '0.7rem', color: members.length >= memberLimit ? '#ef4444' : 'var(--text-muted)', fontWeight: 600 }}>
-                                {members.length} / {memberLimit} members used
+                                {members.length} / {memberLimit} {t('membersUsed')}
                             </span>
                         )}
                     </div>
@@ -502,7 +502,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                     setShowInvoiceModal(true);
                                 }}
                             >
-                                <FileText size={16} /> {language === 'es' ? 'Estado' : 'Statement'}
+                                <FileText size={16} /> {t('statement')}
                             </button>
                             <div style={{ position: 'relative' }} ref={openMenuId === idx ? menuRef : null}>
                                 <button
@@ -535,7 +535,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                                 icon: FileText, label: t('viewStatement'), color: '#a78bfa',
                                                 action: () => { setSelectedMember(member); setShowInvoiceModal(true); setOpenMenuId(null); }
                                             }, {
-                                                icon: Trash2, label: language === 'es' ? 'Eliminar Miembro' : 'Remove Member', color: '#ef4444',
+                                                icon: Trash2, label: t('removeMember'), color: '#ef4444',
                                                 action: () => handleDeleteMember(idx)
                                             }].map(({ icon: Icon, label, color, action }) => (
                                                 <button key={label} onClick={action}
@@ -596,11 +596,11 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             onClick={(e) => e.stopPropagation()}
                         >
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>{t('addMember')}</h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.875rem' }}>Manually add a member to the database.</p>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.875rem' }}>{t('manuallyAddMemberDesc')}</p>
 
                             <form onSubmit={handleAddMember}>
                                  <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>NAME</label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('fullName')}</label>
                                     <input
                                         type="text"
                                         required
@@ -610,7 +610,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                     />
                                 </div>
                                 <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>EMAIL</label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('email')}</label>
                                     <input
                                         type="email"
                                         required
@@ -620,7 +620,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                     />
                                 </div>
                                 <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>PHONE NUMBER</label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('phoneNumber')}</label>
                                     <div style={{ position: 'relative' }}>
                                         <Phone size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                                         <input
@@ -634,7 +634,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>ROLE</label>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('role')}</label>
                                         <select
                                             value={newMemberRole}
                                             onChange={(e) => setNewMemberRole(e.target.value)}
@@ -648,7 +648,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>DEPARTMENT</label>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('department')}</label>
                                         <select
                                             value={newMemberDept}
                                             onChange={(e) => setNewMemberDept(e.target.value)}
@@ -662,8 +662,8 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button type="button" className="btn glass" style={{ flex: 1 }} onClick={() => setShowAddMemberModal(false)}>Cancel</button>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Add Member</button>
+                                    <button type="button" className="btn glass" style={{ flex: 1 }} onClick={() => setShowAddMemberModal(false)}>{t('cancel')}</button>
+                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{t('addMember')}</button>
                                 </div>
                             </form>
                         </motion.div>
@@ -682,8 +682,8 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                                 <div>
-                                    <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'white' }}>Edit Member</h2>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '2px' }}>Update details for {editingMember.member.name}</p>
+                                    <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'white' }}>{t('editMemberDetails')}</h2>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '2px' }}>{t('updateDetailsFor')} {editingMember.member.name}</p>
                                 </div>
                                 <button onClick={() => setEditingMember(null)} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: '#64748b', display: 'flex' }}>
                                     <X size={18} />
@@ -692,19 +692,19 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             <form onSubmit={handleEditSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 {/* Name */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Full Name</label>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('fullName')}</label>
                                     <input type="text" required value={editName} onChange={e => setEditName(e.target.value)}
                                         style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
                                 </div>
                                 {/* Email */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email Address</label>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('email')}</label>
                                     <input type="email" required value={editEmail} onChange={e => setEditEmail(e.target.value)}
                                         style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
                                 </div>
                                 {/* Phone */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}><Phone size={10} style={{ display: 'inline', marginRight: '4px' }} />Phone Number</label>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}><Phone size={10} style={{ display: 'inline', marginRight: '4px' }} />{t('phoneNumber')}</label>
                                     <input type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)}
                                         placeholder="+1 (555) 000-0000"
                                         style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
@@ -712,12 +712,12 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                 {/* Role + Status grid */}
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Role</label>
+                                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('role')}</label>
                                         <input type="text" value={editRole} onChange={e => setEditRole(e.target.value)}
                                             style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</label>
+                                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('status')}</label>
                                         <select value={editStatus} onChange={e => setEditStatus(e.target.value)}
                                             style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: '#0f172a', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit', colorScheme: 'dark' }}>
                                             <option value="Active">Active</option>
@@ -728,11 +728,11 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                 <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                                     <button type="button" onClick={() => setEditingMember(null)}
                                         style={{ flex: 1, padding: '0.8rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.875rem' }}>
-                                        Cancel
+                                        {t('cancel')}
                                     </button>
                                     <button type="submit"
                                         style={{ flex: 2, padding: '0.8rem', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: 'white', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, fontSize: '0.875rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                                        <Check size={15} /> Save Changes
+                                        <Check size={15} /> {t('saveChanges')}
                                     </button>
                                 </div>
                             </form>

@@ -271,9 +271,9 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <div>
                         <h1 style={{ fontSize: '3rem', fontWeight: 800, letterSpacing: '-0.04em' }}>
-                            {language === 'es' ? t('budget') : 'Strategic'} <span className="gradient-text">{language === 'es' ? 'Estratégico' : t('budget')}</span>
+                            {t('budget')} <span className="gradient-text">{t('strategic')}</span>
                         </h1>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>{language === 'es' ? 'Gestión fiscal y planificación de recursos' : 'Fiscal management and multi-year resource planning'}</p>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>{t('fiscalManagementDesc')}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.03)', padding: '6px 16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
@@ -325,7 +325,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                                 <AlertTriangle size={20} color="var(--danger)" />
                                 <div style={{ flex: 1 }}>
                                     <p style={{ color: 'white', fontWeight: 700, fontSize: '0.9rem' }}>{t('overBudget')}: {dept?.name}</p>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{language === 'es' ? `El gasto ($${spent.toLocaleString()}) ha superado el presupuesto asignado de $${alloc.amount.toLocaleString()}.` : `Expenditure ($${spent.toLocaleString()}) has exceeded the allocated budget of $${alloc.amount.toLocaleString()}.`}</p>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{t('error')}: {dept?.name} - {spent.toLocaleString()}</p>
                                 </div>
                                 <button
                                     className="btn"
@@ -345,7 +345,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                         <div>
                             <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{t('annualLimit')} ({activeYear})</h3>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{language === 'es' ? 'Defina el techo total para este período fiscal' : 'Define the total ceiling for this fiscal period'}</p>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{t('defineCeiling')}</p>
                         </div>
                         <div style={{ position: 'relative', width: '280px' }}>
                             <DollarSign size={20} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary-light)' }} />
@@ -460,13 +460,13 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
 
                     <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', padding: '1.5rem', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border)' }}>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{language === 'es' ? 'AGREGAR LÍNEA DE ASIGNACIÓN' : 'ADD NEW ALLOCATION LINE'}</label>
+                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('addAllocationLine')}</label>
                             <select
                                 value={selectedNewDept}
                                 onChange={(e) => setSelectedNewDept(e.target.value)}
                                 style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'var(--primary-dark)', border: '1px solid var(--border)', color: 'white' }}
                             >
-                                <option value="">{language === 'es' ? 'Seleccione departamento...' : 'Select a department...'}</option>
+                                <option value="">{t('selectDepartment')}</option>
                                 {departments
                                     .filter(d => !currentBudget.allocations.find(a => a.deptId === d.id))
                                     .map(d => (
@@ -496,15 +496,15 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                         alignItems: 'center'
                     }}>
                         <div>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{language === 'es' ? 'Integridad de Asignación' : 'Allocation Integrity'} ({activeYear})</p>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{t('allocationIntegrity')} ({activeYear})</p>
                             <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: totalAllocatedPercent === 100 ? 'var(--success)' : 'var(--danger)' }}>
                                 {totalAllocatedPercent === 100 
-                                    ? (language === 'es' ? 'Sistema Balanceado' : 'System Balanced') 
-                                    : (language === 'es' ? `Desequilibrio: ${totalAllocatedPercent}% ponderado` : `Imbalance: ${totalAllocatedPercent}% weighted`)}
+                                    ? t('systemBalanced') 
+                                    : `${t('imbalance')}: ${totalAllocatedPercent}% weighted`}
                             </h4>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{language === 'es' ? 'Total Preadjudicado' : 'Total Pledges/Budget'}</p>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{t('totalPledgesBudget')}</p>
                             <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>
                                 ${totalAllocatedAmount.toLocaleString()}
                             </h4>
@@ -534,12 +534,10 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                     <div className="glass-card" style={{ padding: '2rem', background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)', border: 'none' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
                             <Target size={24} color="white" />
-                            <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'white' }}>{language === 'es' ? 'Contexto Histórico' : 'Historical Context'}</h3>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'white' }}>{t('historicalContext')}</h3>
                         </div>
                         <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, marginBottom: '2rem' }}>
-                            {language === 'es' 
-                                ? `Viendo el presupuesto para ${activeYear}. La planificación futura permite a la iglesia anticipar el crecimiento.` 
-                                : `Viewing budget for ${activeYear}. Planning for future years allows the church to anticipate growth.`}
+                            {t('viewingBudgetFor')}{activeYear}{t('planningFutureYears')}
                         </p>
                         <button
                             className="btn"
