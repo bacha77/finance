@@ -440,6 +440,15 @@ const translations = {
     statementOfficialSubject: 'Official Contribution Statement',
     dateLabel: 'Date',
     fundAllocation: 'Fund Allocation',
+    churchMessage: 'A Message from Your Church',
+    stewardshipMessage: 'Dear {name}, thank you for your faithful stewardship this month. Your contribution of {amount} helps us continue our mission of providing spiritual nourishment and community outreach. Your generosity empowers our ministries and transforms lives through faith.',
+    financeTeam: 'Finance Team',
+    stewardshipCertification: 'Official Stewardship Certification',
+    donorInformation: 'Donor Information',
+    memberSince: 'Member since',
+    transactionDetails: 'Transaction Details',
+    noDonationsRecorded: 'No donations recorded for this period.',
+    treasurerSignatureName: 'Treasurer Signature Name',
   },
   es: {
     dashboard: 'Panel de Control',
@@ -872,6 +881,15 @@ const translations = {
     statementOfficialSubject: 'Estado de Contribución Oficial',
     dateLabel: 'Fecha',
     fundAllocation: 'Asignación de Fondos',
+    churchMessage: 'Un mensaje de su iglesia',
+    stewardshipMessage: 'Estimado/a {name}, gracias por su fiel mayordomía este mes. Su contribución de {amount} nos ayuda a continuar nuestra misión de brindar alimento espiritual y alcance comunitario. Su generosidad fortalece nuestros ministerios y transforma vidas a través de la fe.',
+    financeTeam: 'Equipo de Finanzas',
+    stewardshipCertification: 'Certificación Oficial de Mayordomía',
+    donorInformation: 'Información del Donante',
+    memberSince: 'Miembro desde',
+    transactionDetails: 'Detalles de la Transacción',
+    noDonationsRecorded: 'No se registraron donaciones para este período.',
+    treasurerSignatureName: 'Nombre de firma del tesorero',
   }
 };
 

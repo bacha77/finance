@@ -801,7 +801,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                     <p style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500, maxWidth: '300px' }}>{churchInfo?.address || `${churchInfo?.city || ''}, ${churchInfo?.state || ''}`}</p>
                                     
                                     <div style={{ marginTop: '1.5rem' }}>
-                                        <label style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Treasurer Signature Name</label>
+                                        <label style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>{t('treasurerSignatureName')}</label>
                                         <input 
                                             type="text" 
                                             value={treasurerName}
@@ -835,13 +835,13 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             {/* Info Section */}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
                                 <div>
-                                    <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.05em' }}>Donor Information</p>
+                                    <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.05em' }}>{t('donorInformation')}</p>
                                     <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>{selectedMember.name}</h3>
                                     <p style={{ color: '#64748b', fontWeight: 500 }}>{selectedMember.email}</p>
-                                    <p style={{ color: '#64748b', fontWeight: 500, marginTop: '4px' }}>Member since {selectedMember.joined}</p>
+                                    <p style={{ color: '#64748b', fontWeight: 500, marginTop: '4px' }}>{t('memberSince')} {selectedMember.joined}</p>
                                 </div>
                                 <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                    <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total Monthly Contribution</p>
+                                    <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t('statementTotalContribution')}</p>
                                     <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--primary-dark)' }}>
                                         ${getMemberDonations(selectedMember.name).reduce((sum, tx) => sum + tx.amount, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </h2>
@@ -850,14 +850,14 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
 
                             {/* Ledger Table */}
                             <div style={{ marginBottom: '4rem' }}>
-                                <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '1.5rem' }}>Transaction Details</p>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '1.5rem' }}>{t('transactionDetails')}</p>
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                     <thead>
                                         <tr style={{ borderBottom: '2px solid #f1f5f9', textAlign: 'left' }}>
-                                            <th style={{ padding: '1rem 0', color: '#64748b', fontSize: '0.875rem' }}>Date</th>
-                                            <th style={{ padding: '1rem 0', color: '#64748b', fontSize: '0.875rem' }}>Fund Allocation</th>
-                                            <th style={{ padding: '1rem 0', color: '#64748b', fontSize: '0.875rem' }}>Description</th>
-                                            <th style={{ padding: '1rem 0', textAlign: 'right', color: '#64748b', fontSize: '0.875rem' }}>Amount</th>
+                                            <th style={{ padding: '1rem 0', color: '#64748b', fontSize: '0.875rem' }}>{t('dateLabel')}</th>
+                                            <th style={{ padding: '1rem 0', color: '#64748b', fontSize: '0.875rem' }}>{t('fundAllocation')}</th>
+                                            <th style={{ padding: '1rem 0', color: '#64748b', fontSize: '0.875rem' }}>{t('description')}</th>
+                                            <th style={{ padding: '1rem 0', textAlign: 'right', color: '#64748b', fontSize: '0.875rem' }}>{t('amount')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -873,7 +873,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                         ))}
                                         {getMemberDonations(selectedMember.name).length === 0 && (
                                             <tr>
-                                                <td colSpan={4} style={{ padding: '4rem', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>No donations recorded for this period.</td>
+                                                <td colSpan={4} style={{ padding: '4rem', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>{t('noDonationsRecorded')}</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -882,17 +882,19 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
 
                             <div style={{ padding: '3rem', backgroundColor: '#4f46e5', borderRadius: '32px', color: 'white', marginBottom: '3rem', position: 'relative', overflow: 'hidden' }}>
                                 <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)' }} />
-                                <h4 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>A Message from Your Church</h4>
+                                <h4 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>{t('churchMessage')}</h4>
                                 <p style={{ fontSize: '1.125rem', lineHeight: 1.6, opacity: 0.9, fontWeight: 500 }}>
-                                    Dear {selectedMember.name}, thank you for your faithful stewardship this month. Your contribution of <strong>${getMemberDonations(selectedMember.name).reduce((sum, tx) => sum + tx.amount, 0).toLocaleString()}</strong> helps us continue our mission of providing spiritual nourishment and community outreach. Your generosity empowers our ministries and transforms lives through faith.
+                                    {t('stewardshipMessage')
+                                        .replace('{name}', selectedMember.name)
+                                        .replace('{amount}', `<strong>$${getMemberDonations(selectedMember.name).reduce((sum, tx) => sum + tx.amount, 0).toLocaleString()}</strong>`)}
                                 </p>
                                 <div style={{ marginTop: '2.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                     <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <ShieldCheck size={24} />
                                     </div>
                                     <div>
-                                        <p style={{ fontWeight: 800, fontSize: '1rem' }}>{churchInfo?.name || 'Sanctuary'} Finance Team</p>
-                                        <p style={{ fontSize: '0.75rem', opacity: 0.8 }}>Official Stewardship Certification</p>
+                                        <p style={{ fontWeight: 800, fontSize: '1rem' }}>{churchInfo?.name || 'Sanctuary'} {t('financeTeam')}</p>
+                                        <p style={{ fontSize: '0.75rem', opacity: 0.8 }}>{t('stewardshipCertification')}</p>
                                     </div>
                                 </div>
                             </div>
