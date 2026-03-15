@@ -3,36 +3,41 @@ import {
   LayoutDashboard,
   Wallet,
   Users,
-  HeartHandshake,
   CreditCard,
   FileText,
-  Settings,
+  Settings as SettingsIcon,
   LogOut,
   ChevronRight,
   LayoutGrid,
   PieChart,
-  Zap
+  Zap,
+  Languages
 } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onLogout?: () => void;
+  isOpen: boolean;
+  isMobile: boolean;
+  onToggle: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, isOpen, isMobile, onToggle }) => {
+  const { language, setLanguage, t } = useLanguage();
+
   const menuItems = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'accounting', icon: Wallet, label: 'Fund Accounting' },
-    { id: 'departments', icon: LayoutGrid, label: 'Departments' },
-    { id: 'expenses', icon: CreditCard, label: 'Expenses' },
-    { id: 'members', icon: Users, label: 'Member Portal' },
-    { id: 'giving', icon: HeartHandshake, label: 'Smart Giving' },
-    { id: 'payroll', icon: CreditCard, label: 'Payroll' },
-    { id: 'budget', icon: PieChart, label: 'Budget Configuration' },
-    { id: 'reports', icon: FileText, label: 'Reports' },
-    { id: 'pricing', icon: Zap, label: 'Plans & Pricing' },
+    { id: 'dashboard', icon: LayoutDashboard, label: t('dashboard') },
+    { id: 'accounting', icon: Wallet, label: t('accounting') },
+    { id: 'departments', icon: LayoutGrid, label: t('departments') },
+    { id: 'expenses', icon: CreditCard, label: t('expenses') },
+    { id: 'members', icon: Users, label: t('members') },
+    { id: 'payroll', icon: CreditCard, label: t('payroll') },
+    { id: 'budget', icon: PieChart, label: t('budget') },
+    { id: 'reports', icon: FileText, label: t('reports') },
+    { id: 'pricing', icon: Zap, label: language === 'es' ? 'Planes y Precios' : 'Plans & Pricing' },
   ];
 
   return (
@@ -42,19 +47,21 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout }) 
       display: 'flex',
       flexDirection: 'column',
       padding: '1.5rem 1.25rem',
-      position: 'fixed',
+      position: isMobile ? 'fixed' : 'fixed',
       left: 0,
       top: 0,
+      transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
       overflowY: 'auto',
       borderRight: '1px solid var(--border)',
       background: 'linear-gradient(180deg, var(--bg-sidebar) 0%, rgba(15, 23, 42, 0.95) 100%)',
       backdropFilter: 'blur(20px)',
-      zIndex: 100
+      zIndex: 100,
+      transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
     }}>
       <div className="logo" style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         marginBottom: '1.5rem',
         padding: '0 0.5rem'
       }}>
@@ -62,12 +69,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout }) 
           src={`${import.meta.env.BASE_URL}logo.png`}
           alt="Storehouse Finance"
           style={{
-            width: '100%',
+            width: isMobile ? '120px' : '100%',
             maxWidth: '160px',
             height: 'auto',
             filter: 'drop-shadow(0 4px 16px rgba(124,58,237,0.4))',
           }}
         />
+        {isMobile && (
+          <button onClick={onToggle} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+            <ChevronRight size={20} style={{ transform: 'rotate(180deg)' }} />
+          </button>
+        )}
       </div>
 
       <nav style={{ flex: 1 }}>
@@ -124,21 +136,66 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout }) 
       </nav>
 
       <div className="footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-        <button style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          padding: '12px 16px',
-          borderRadius: 'var(--radius)',
-          border: 'none',
-          background: 'transparent',
-          color: 'var(--text-secondary)',
-          cursor: 'pointer'
-        }}>
-          <Settings size={20} />
-          <span>Settings</span>
+        <button 
+          onClick={() => setActiveTab('settings')}
+          className={activeTab === 'settings' ? "active-tab" : ""}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '12px 16px',
+            borderRadius: 'var(--radius)',
+            border: 'none',
+            background: activeTab === 'settings' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+            color: activeTab === 'settings' ? 'var(--text-main)' : 'var(--text-secondary)',
+            cursor: 'pointer',
+            transition: 'all 0.25s'
+          }}
+        >
+          <SettingsIcon size={20} color={activeTab === 'settings' ? 'var(--primary-light)' : 'currentColor'} />
+          <span style={{ fontWeight: activeTab === 'settings' ? 700 : 500 }}>{t('settings')}</span>
         </button>
+
+        {/* Language Switcher */}
+        <div style={{ marginTop: '0.75rem', padding: '0 0.5rem', marginBottom: '0.75rem' }}>
+          <div style={{
+            display: 'flex',
+            background: 'rgba(0,0,0,0.2)',
+            borderRadius: '12px',
+            padding: '4px',
+            gap: '4px',
+            border: '1px solid rgba(255,255,255,0.05)'
+          }}>
+            {(['en', 'es'] as const).map((lang) => (
+              <button
+                key={lang}
+                onClick={() => setLanguage(lang)}
+                style={{
+                  flex: 1,
+                  padding: '6px 0',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: language === lang ? 'var(--primary)' : 'transparent',
+                  color: language === lang ? 'white' : 'var(--text-muted)',
+                  fontSize: '0.65rem',
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  textTransform: 'uppercase',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px'
+                }}
+              >
+                {lang === language && <Languages size={10} />}
+                {lang}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <button onClick={onLogout} style={{
           width: '100%',
           display: 'flex',
@@ -152,7 +209,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout }) 
           cursor: 'pointer'
         }}>
           <LogOut size={20} />
-          <span>Logout</span>
+          <span>{language === 'es' ? 'Cerrar Sesión' : 'Logout'}</span>
         </button>
       </div>
     </div>

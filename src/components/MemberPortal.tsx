@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Member {
     id?: string;
@@ -38,6 +39,7 @@ const DEFAULT_MEMBERS: Member[] = [
 ];
 
 const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }) => {
+    const { t, language } = useLanguage();
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [openMenuId, setOpenMenuId] = useState<number | null>(null);
     const [editingMember, setEditingMember] = useState<{ member: Member; idx: number } | null>(null);
@@ -91,6 +93,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
     const [ledger, setLedger] = useState<any[]>([]);
     const [isSending, setIsSending] = useState(false);
     const [sendSuccess, setSendSuccess] = useState(false);
+    const [treasurerName, setTreasurerName] = useState('Finance Department');
 
     const handleSendEmail = () => {
         setIsSending(true);
@@ -102,25 +105,30 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         const donations = getMemberDonations(selectedMember.name);
         const total = donations.reduce((sum, tx) => sum + tx.amount, 0);
         
-        const subject = encodeURIComponent(`${churchInfo.name} - Contribution Statement for ${months[invoiceMonth]} ${invoiceYear}`);
+        const subject = encodeURIComponent(`${churchInfo.name} - Official Contribution Statement: ${months[invoiceMonth]} ${invoiceYear}`);
         
         let bodyText = `Dear ${selectedMember.name},\n\n`;
-        bodyText += `Thank you for your faithful stewardship this month. Your total contribution for ${months[invoiceMonth]} ${invoiceYear} was $${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}.\n\n`;
-        bodyText += `Your generosity helps us continue our mission of providing spiritual nourishment and community outreach.\n\n`;
+        bodyText += `We hope this letter finds you well. On behalf of ${churchInfo.name}, we would like to express our sincere gratitude for your continued support and faithful stewardship.\n\n`;
+        bodyText += `Attached or listed below is your financial contribution statement for ${months[invoiceMonth]} ${invoiceYear}.\n\n`;
+        bodyText += `Total Monthly Contribution: $${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
+        bodyText += `--------------------------------------------------\n`;
         
         if (donations.length > 0) {
-            bodyText += `Transaction Details:\n`;
+            bodyText += `TRANSACTION RECORD:\n`;
             donations.forEach(tx => {
-                bodyText += `- ${tx.date}: $${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} (${tx.fund})\n`;
+                bodyText += `• ${tx.date}: $${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} [${tx.fund}]\n`;
             });
             bodyText += `\n`;
         }
 
-        bodyText += `Blessings,\n${churchInfo.name} Finance Team`;
+        bodyText += `--------------------------------------------------\n`;
+        bodyText += `Your contributions allow us to continue the work of the ministry and serve our community effectively. If you have any questions regarding this statement, please do not hesitate to contact the finance office.\n\n`;
+        bodyText += `Blessings,\n\n`;
+        bodyText += `${treasurerName}\n`;
+        bodyText += `Treasurer, ${churchInfo.name}\n`;
+        bodyText += `${churchInfo.address || ''}`;
 
         const mailtoLink = `mailto:${selectedMember.email}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
-        
-        // Open the user's default email client
         window.location.href = mailtoLink;
 
         setTimeout(() => {
@@ -130,10 +138,10 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         }, 1000);
     };
 
-    const [churchInfo, setChurchInfo] = useState<{name: string, city: string, state: string} | null>(null);
+    const [churchInfo, setChurchInfo] = useState<{name: string, city: string, state: string, address?: string} | null>(null);
 
     useEffect(() => {
-        supabase.from('churches').select('name, city, state').limit(1).single().then(({data}) => {
+        supabase.from('churches').select('name, city, state, address').limit(1).single().then(({data}) => {
             if (data) setChurchInfo(data);
         });
     }, []);
@@ -163,37 +171,79 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         const total = donations.reduce((sum, tx) => sum + tx.amount, 0);
 
         const doc = new jsPDF();
-        doc.setFontSize(22);
-        doc.text(churchInfo?.name || 'Church Name', 14, 22);
         
+        // Header / Logo Placeholder
+        doc.setFillColor(79, 70, 229);
+        doc.rect(14, 15, 10, 10, 'F');
+        
+        doc.setFontSize(22);
+        doc.setTextColor(30, 41, 59);
+        doc.text(churchInfo?.name || 'Sanctuary Finance', 28, 24);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        const fullAddress = churchInfo?.address || `${churchInfo?.city || ''}, ${churchInfo?.state || ''}`;
+        doc.text(fullAddress, 28, 30);
+        
+        // Divider
+        doc.setDrawColor(226, 232, 240);
+        doc.line(14, 40, 196, 40);
+
+        doc.setFontSize(16);
+        doc.setTextColor(30, 41, 59);
+        doc.text('CONTRIBUTION STATEMENT', 14, 55);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Statement Period: ${months[invoiceMonth]} ${invoiceYear}`, 14, 62);
+        doc.text(`Statement Date: ${new Date().toLocaleDateString()}`, 140, 62);
+        
+        // Donor Card
+        doc.setFillColor(248, 250, 252);
+        doc.rect(14, 75, 182, 35, 'F');
         doc.setFontSize(11);
         doc.setTextColor(100);
-        let address = '';
-        if (churchInfo?.city && churchInfo?.state) address = `${churchInfo.city}, ${churchInfo.state}`;
-        doc.text(address || 'Church Address Not Provided', 14, 30);
-        doc.text(`Contribution Statement for ${months[invoiceMonth]} ${invoiceYear}`, 14, 38);
-        
-        doc.setTextColor(0);
+        doc.text('PREPARED FOR:', 20, 85);
         doc.setFontSize(14);
-        doc.text('Donor Information', 14, 55);
-        doc.setFontSize(12);
-        doc.text(`Name: ${selectedMember.name}`, 14, 63);
-        doc.text(`Total Monthly Contribution: $${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, 70);
+        doc.setTextColor(30, 41, 59);
+        doc.text(selectedMember.name, 20, 95);
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(selectedMember.email, 20, 102);
+
+        doc.setFontSize(11);
+        doc.text('TOTAL CONTRIBUTED:', 130, 85);
+        doc.setFontSize(18);
+        doc.setTextColor(79, 70, 229);
+        doc.text(`$${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 130, 95);
 
         autoTable(doc, {
-            startY: 80,
+            startY: 120,
             head: [['Date', 'Fund Allocation', 'Description', 'Amount']],
-            body: donations.map(tx => [tx.date, tx.fund, tx.desc || 'N/A', `$${tx.amount.toLocaleString()}`]),
+            body: donations.map(tx => [tx.date, tx.fund, tx.desc || 'Stewardship', `$${tx.amount.toLocaleString()}`]),
             theme: 'striped',
-            headStyles: { fillColor: [79, 70, 229] }
+            headStyles: { fillColor: [79, 70, 229], fontSize: 10, cellPadding: 4 },
+            bodyStyles: { fontSize: 9, cellPadding: 3 },
+            alternateRowStyles: { fillColor: [249, 250, 251] }
         });
 
-        const finalY = (doc as any).lastAutoTable?.finalY || 100;
-        doc.setFontSize(12);
-        const message = `Dear ${selectedMember.name}, thank you for your faithful stewardship this month. Your contribution of $${total.toLocaleString()} helps us continue our mission of providing spiritual nourishment and community outreach. Your generosity empowers our ministries and transforms lives through faith.`;
-        doc.text(doc.splitTextToSize(message, 180), 14, finalY + 20);
+        const finalY = (doc as any).lastAutoTable?.finalY || 150;
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        const message = `This statement serves as an official receipt for your contributions to ${churchInfo?.name || 'the church'} for the period of ${months[invoiceMonth]} ${invoiceYear}. Your faithful support empowers our ministries and community initiatives. We thank you for your ongoing partnership in our mission.`;
+        doc.text(doc.splitTextToSize(message, 170), 14, finalY + 20);
 
-        doc.save(`${selectedMember.name.replace(/\s+/g, '_')}_Statement.pdf`);
+        // Signature Section
+        doc.setTextColor(30, 41, 59);
+        doc.setFontSize(11);
+        doc.text('__________________________', 14, finalY + 50);
+        doc.text(treasurerName, 14, finalY + 58);
+        doc.setFontSize(9);
+        doc.setTextColor(100);
+        doc.text('Church Treasurer', 14, finalY + 63);
+
+        doc.save(`${selectedMember.name.replace(/\s+/g, '_')}_Statement_${months[invoiceMonth]}_${invoiceYear}.pdf`);
     };
 
     // Form States
@@ -333,14 +383,14 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
 
     return (
         <div className="container" style={{ padding: '3rem 2rem' }}>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4rem' }}>
+            <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '2rem', marginBottom: '4rem' }}>
                 <div>
-                    <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '-0.04em' }}>
+                    <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 3rem)', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '-0.04em' }}>
                         Community <span className="gradient-text">Core</span>
                     </h1>
                     <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>Cultivating engagement and nurturing spiritual growth</p>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                     <button
                         className="btn btn-ghost"
                         onClick={handleBulkSend}
@@ -368,7 +418,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             disabled={memberLimit !== null && memberLimit !== undefined && members.length >= memberLimit}
                             style={{ opacity: (memberLimit !== null && memberLimit !== undefined && members.length >= memberLimit) ? 0.5 : 1 }}
                         >
-                            <UserPlus size={18} /> Add Member
+                            <UserPlus size={18} /> {t('addMember')}
                         </button>
                         {memberLimit !== null && memberLimit !== undefined && (
                             <span style={{ fontSize: '0.7rem', color: members.length >= memberLimit ? '#ef4444' : 'var(--text-muted)', fontWeight: 600 }}>
@@ -387,7 +437,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                         animate={{ marginBottom: openMenuId === idx ? '6rem' : '0' }}
                         transition={{ duration: 0.2, ease: "easeInOut" }}
                         className="glass-card"
-                        style={{ display: 'flex', alignItems: 'center', gap: '2rem', padding: '1.5rem 2rem', borderRadius: 'var(--radius-lg)', position: 'relative', zIndex: openMenuId === idx ? 50 : 1 }}
+                        style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1.5rem', padding: '1.5rem', borderRadius: 'var(--radius-lg)', position: 'relative', zIndex: openMenuId === idx ? 50 : 1 }}
                     >
                         <div style={{
                             width: '56px',
@@ -430,7 +480,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                     </span>
                                 )}
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                                    <Clock size={14} /> Joined {member.joined}
+                                    <Clock size={14} /> {t('joined')} {member.joined}
                                 </span>
                             </div>
                         </div>
@@ -452,7 +502,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                     setShowInvoiceModal(true);
                                 }}
                             >
-                                <FileText size={16} /> Statement
+                                <FileText size={16} /> {language === 'es' ? 'Estado' : 'Statement'}
                             </button>
                             <div style={{ position: 'relative' }} ref={openMenuId === idx ? menuRef : null}>
                                 <button
@@ -479,13 +529,13 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                             onClick={e => e.stopPropagation()}
                                         >
                                             {[{
-                                                icon: Edit3, label: 'Edit Member', color: '#60a5fa',
+                                                icon: Edit3, label: t('editMember'), color: '#60a5fa',
                                                 action: () => openEditModal(member, idx)
                                             }, {
-                                                icon: FileText, label: 'View Statement', color: '#a78bfa',
+                                                icon: FileText, label: t('viewStatement'), color: '#a78bfa',
                                                 action: () => { setSelectedMember(member); setShowInvoiceModal(true); setOpenMenuId(null); }
                                             }, {
-                                                icon: Trash2, label: 'Remove Member', color: '#ef4444',
+                                                icon: Trash2, label: language === 'es' ? 'Eliminar Miembro' : 'Remove Member', color: '#ef4444',
                                                 action: () => handleDeleteMember(idx)
                                             }].map(({ icon: Icon, label, color, action }) => (
                                                 <button key={label} onClick={action}
@@ -545,7 +595,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Add New Member</h2>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>{t('addMember')}</h2>
                             <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.875rem' }}>Manually add a member to the database.</p>
 
                             <form onSubmit={handleAddMember}>
@@ -737,11 +787,27 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             {/* Header Section */}
                             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '2rem', marginBottom: '2rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '2rem' }}>
                                 <div style={{ flex: '1 1 min-content' }}>
-                                    <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: 800, color: 'var(--primary-dark)', marginBottom: '0.5rem' }}>{churchInfo?.name || 'Your Church Finances'}</h2>
-                                    <p style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}>{churchInfo?.city ? `${churchInfo.city}, ${churchInfo.state}` : 'Church Address Not Configured'}</p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
+                                        <div style={{ width: '40px', height: '40px', background: 'var(--primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <ShieldCheck color="white" size={24} />
+                                        </div>
+                                        <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 1.75rem)', fontWeight: 800, color: '#1e293b', margin: 0 }}>{churchInfo?.name || 'Storehouse Finance'}</h2>
+                                    </div>
+                                    <p style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500, maxWidth: '300px' }}>{churchInfo?.address || `${churchInfo?.city || ''}, ${churchInfo?.state || ''}`}</p>
+                                    
+                                    <div style={{ marginTop: '1.5rem' }}>
+                                        <label style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Treasurer Signature Name</label>
+                                        <input 
+                                            type="text" 
+                                            value={treasurerName}
+                                            onChange={(e) => setTreasurerName(e.target.value)}
+                                            placeholder="Enter Treasurer Name"
+                                            style={{ border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '8px', fontSize: '0.875rem', color: '#1e293b', width: '240px' }}
+                                        />
+                                    </div>
                                 </div>
                                 <div style={{ textAlign: 'right', flex: '1 1 min-content' }}>
-                                    <h1 style={{ fontSize: '1.25rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '1rem', whiteSpace: 'nowrap' }}>Contribution Statement</h1>
+                                    <h1 style={{ fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '1rem', whiteSpace: 'nowrap' }}>Contribution Statement</h1>
                                     <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                                         <select
                                             value={invoiceMonth}

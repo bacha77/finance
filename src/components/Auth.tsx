@@ -165,7 +165,12 @@ const EmailVerifyScreen: React.FC<{ email: string; onResend: () => Promise<void>
 };
 
 // ── Main Auth Component ───────────────────────────────────────────────────────
-const Auth: React.FC = () => {
+interface AuthProps {
+    onBypass?: () => void;
+}
+
+const Auth: React.FC<AuthProps> = ({ onBypass }) => {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const [mode, setMode] = useState<'login' | 'signup' | 'verified'>('login');
     const [step, setStep] = useState(0); // sign-up step: 0=account, 1=church info
 
@@ -404,6 +409,23 @@ const Auth: React.FC = () => {
                                 style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.82rem', cursor: 'pointer', marginTop: '1.25rem', fontWeight: 600, width: '100%', textAlign: 'center', fontFamily: 'inherit' }}>
                                 Don't have an account? <span style={{ color: '#60a5fa' }}>Create one free →</span>
                             </button>
+
+                            {isLocal && (
+                                <button
+                                    type="button"
+                                    onClick={onBypass}
+                                    style={{
+                                        marginTop: '1.5rem', width: '100%', padding: '0.75rem', borderRadius: '10px',
+                                        border: '1px solid rgba(16, 185, 129, 0.2)', background: 'rgba(16, 185, 129, 0.05)',
+                                        color: '#10b981', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                                        transition: 'all 0.2s', fontFamily: 'inherit'
+                                    }}
+                                    onMouseOver={e => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'}
+                                    onMouseOut={e => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)'}
+                                >
+                                    Bypass Login (Dev mode)
+                                </button>
+                            )}
                         </motion.div>
                     )}
 

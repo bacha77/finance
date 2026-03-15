@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../contexts/LanguageContext';
 
 type StatementType = 'pnl' | 'balance' | 'cashflow' | 'board' | null;
 
@@ -37,6 +38,7 @@ interface Fund {
 }
 
 const Reports: React.FC = () => {
+    const { t } = useLanguage();
     const [viewStatement, setViewStatement] = useState<StatementType>(null);
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
     const selectedYear = new Date().getFullYear();
@@ -62,7 +64,7 @@ const Reports: React.FC = () => {
         fetchData();
     }, []);
 
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const months = [t('month0'), t('month1'), t('month2'), t('month3'), t('month4'), t('month5'), t('month6'), t('month7'), t('month8'), t('month9'), t('month10'), t('month11')];
 
     const metrics = useMemo(() => {
         const filteredLedger = ledger.filter(tx => {
@@ -95,10 +97,10 @@ const Reports: React.FC = () => {
     }, [ledger, funds, selectedMonth, selectedYear]);
 
     const reports = [
-        { id: 'board', title: 'Monthly Board Report', category: 'Executive', lastGenerated: 'Current', type: 'Instant', icon: ShieldCheck, color: '#ec4899' },
-        { id: 'pnl', title: 'Profit & Loss Statement', category: 'Financial', lastGenerated: 'Live', type: 'Instant', icon: TrendingUp, color: '#10b981' },
-        { id: 'balance', title: 'Balance Sheet', category: 'Financial', lastGenerated: 'Live', type: 'Instant', icon: Building2, color: '#6366f1' },
-        { id: 'cashflow', title: 'Cash Flow Statement', category: 'Financial', lastGenerated: 'Live', type: 'Instant', icon: BarChart3, color: '#a855f7' },
+        { id: 'board', title: t('boardReport'), category: t('executive'), lastGenerated: 'Current', type: 'Instant', icon: ShieldCheck, color: '#ec4899' },
+        { id: 'pnl', title: t('pnlStatement'), category: t('financial'), lastGenerated: 'Live', type: 'Instant', icon: TrendingUp, color: '#10b981' },
+        { id: 'balance', title: t('balanceSheet'), category: t('financial'), lastGenerated: 'Live', type: 'Instant', icon: Building2, color: '#6366f1' },
+        { id: 'cashflow', title: t('cashflowStatement'), category: t('financial'), lastGenerated: 'Live', type: 'Instant', icon: BarChart3, color: '#a855f7' },
     ];
 
     const renderPNL = () => (

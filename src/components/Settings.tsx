@@ -1,0 +1,692 @@
+import React, { useState } from 'react';
+import { 
+  Building2, 
+  DollarSign, 
+  Lock, 
+  CreditCard, 
+  Palette, 
+  Bell, 
+  ShieldCheck, 
+  ArrowRight,
+  Globe,
+  Settings as SettingsIcon,
+  Save,
+  ChevronLeft
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getSubscriptionStatus } from '../lib/subscriptionConfig';
+import { PLANS } from '../lib/trialConfig';
+import Pricing from './Pricing';
+
+interface SettingsProps {
+  churchData?: any;
+  onUpdateChurch?: (data: any) => Promise<void>;
+}
+
+const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
+  const [activeSection, setActiveSection] = useState<'grid' | 'identity' | 'financial' | 'billing' | 'security' | 'appearance' | 'notifications' | 'pricing'>('grid');
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Mock data for initial UI
+  const [formData, setFormData] = useState({
+    name: churchData?.name || 'My Church',
+    address: churchData?.address || '',
+    website: churchData?.website || '',
+    currency: churchData?.currency || 'USD',
+    taxId: churchData?.tax_id || '',
+    fiscalYearStart: churchData?.fiscal_year_start || 'January',
+    theme: 'Dark',
+    brandColor: '#6366f1',
+    density: 'Compact',
+    mfaEnabled: false,
+    taxExempt: true,
+    autoReceipts: false,
+    notifications: {
+      budget: true,
+      payroll: true,
+      security: true,
+      giving: false,
+      announcements: true
+    }
+  });
+
+  const settingsCards = [
+    {
+      id: 'identity',
+      title: 'Church Identity',
+      desc: 'Name, logo, address and contact information.',
+      icon: Building2,
+      color: '#6366f1',
+      bg: 'rgba(99, 102, 241, 0.1)'
+    },
+    {
+      id: 'financial',
+      title: 'Financial Controls',
+      desc: 'Currency, fiscal year, and tax configuration.',
+      icon: DollarSign,
+      color: '#10b981',
+      bg: 'rgba(16, 185, 129, 0.1)'
+    },
+    {
+      id: 'billing',
+      title: 'Plans & Billing',
+      desc: 'Subscription details and payment methods.',
+      icon: CreditCard,
+      color: '#f59e0b',
+      bg: 'rgba(245, 158, 11, 0.1)'
+    },
+    {
+      id: 'security',
+      title: 'Security & Team',
+      desc: 'Admin permissions and multi-factor auth.',
+      icon: Lock,
+      color: '#ef4444',
+      bg: 'rgba(239, 68, 68, 0.1)'
+    },
+    {
+      id: 'appearance',
+      title: 'Appearance',
+      desc: 'Theme, brand colors, and display density.',
+      icon: Palette,
+      color: '#a855f7',
+      bg: 'rgba(168, 85, 247, 0.1)'
+    },
+    {
+      id: 'notifications',
+      title: 'Notifications',
+      desc: 'Email alerts for budgets and expenses.',
+      icon: Bell,
+      color: '#06b6d4',
+      bg: 'rgba(6, 182, 212, 0.1)'
+    }
+  ];
+
+  const renderGrid = () => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+      {settingsCards.map((card, i) => (
+        <motion.div
+          key={card.id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.05 }}
+          whileHover={{ y: -5, borderColor: card.color + '66', boxShadow: `0 10px 30px -10px ${card.color}33` }}
+          onClick={() => setActiveSection(card.id as any)}
+          style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: '1.25rem',
+            padding: '1.75rem',
+            cursor: 'pointer',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+        >
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '14px',
+            background: card.bg,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '1.25rem',
+            color: card.color
+          }}>
+            <card.icon size={26} strokeWidth={2} />
+          </div>
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem' }}>{card.title}</h3>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1.25rem' }}>{card.desc}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: card.color, fontSize: '0.8rem', fontWeight: 700 }}>
+            Configure <ArrowRight size={14} />
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+
+  const renderSectionHeader = (title: string, desc: string) => (
+    <div style={{ marginBottom: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem' }}>
+      <div>
+        <button 
+          onClick={() => setActiveSection('grid')}
+          style={{ 
+            display: 'flex', alignItems: 'center', gap: '6px', 
+            background: 'none', border: 'none', color: 'var(--text-muted)', 
+            cursor: 'pointer', marginBottom: '0.75rem', fontSize: '0.875rem', fontWeight: 600 
+          }}
+        >
+          <ChevronLeft size={16} /> Back to Settings
+        </button>
+        <h2 style={{ fontSize: '2rem', fontWeight: 900, color: 'white', letterSpacing: '-0.03em' }}>{title}</h2>
+        <p style={{ color: 'var(--text-muted)', marginTop: '0.25rem' }}>{desc}</p>
+      </div>
+      <button 
+        className="btn btn-primary"
+        style={{ padding: '0.75rem 1.75rem' }}
+        onClick={async () => {
+            if (onUpdateChurch) await onUpdateChurch(formData);
+            alert('Settings saved successfully!');
+            setActiveSection('grid');
+        }}
+      >
+        <Save size={18} /> Save Changes
+      </button>
+    </div>
+  );
+
+  const renderIdentity = () => (
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+      {renderSectionHeader('Church Identity', 'Manage how your church appears across the platform and reports.')}
+      
+      <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div style={{ background: 'var(--bg-card)', padding: isMobile ? '1.25rem' : '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+            <div style={{ gridColumn: 'span 2' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Church Name</label>
+              <input 
+                type="text" 
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem', borderRadius: '0.75rem', color: 'white', outline: 'none' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Website</label>
+              <div style={{ position: 'relative' }}>
+                <Globe size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="text" 
+                  value={formData.website}
+                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                  placeholder="https://church.org"
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem 0.875rem 0.875rem 2.5rem', borderRadius: '0.75rem', color: 'white', outline: 'none' }}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Tax ID / EIN</label>
+              <input 
+                type="text" 
+                value={formData.taxId}
+                onChange={(e) => setFormData({ ...formData, taxId: e.target.value })}
+                placeholder="00-0000000"
+                style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem', borderRadius: '0.75rem', color: 'white', outline: 'none' }}
+              />
+            </div>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Physical Address</label>
+            <textarea 
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              placeholder="123 Church St, City, State, ZIP"
+              rows={3}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem', borderRadius: '0.75rem', color: 'white', outline: 'none', resize: 'none' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.15)', padding: '1.5rem', borderRadius: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <ShieldCheck size={24} color="#10b981" />
+          <div>
+            <div style={{ color: 'white', fontWeight: 700, fontSize: '0.9rem' }}>Verified Status</div>
+            <div style={{ color: 'rgba(16, 185, 129, 0.8)', fontSize: '0.8rem' }}>Your church profile is currently verified for tax-compliant receipting.</div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const renderSecurity = () => (
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+      {renderSectionHeader('Security & Team', 'Manage administrator access and workspace security protocols.')}
+      
+      <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Administrative Access</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.75rem', border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700 }}>PA</div>
+                <div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'white' }}>Primary Admin</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{churchData?.contact_email || 'admin@church.org'}</div>
+                </div>
+              </div>
+              <span style={{ fontSize: '0.7rem', color: 'var(--primary-light)', fontWeight: 700, textTransform: 'uppercase', background: 'rgba(99, 102, 241, 0.1)', padding: '4px 8px', borderRadius: '6px' }}>Owner</span>
+            </div>
+            <button 
+              className="btn btn-ghost" 
+              style={{ width: '100%', justifyContent: 'center', borderStyle: 'dashed' }}
+              onClick={() => {
+                const email = prompt('Enter the email of the person you want to invite:');
+                if (email) alert(`Invitation sent to ${email}. They will receive an email shortly.`);
+              }}
+            >
+              + Invite Team Member
+            </button>
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Security Protocols</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>Multi-Factor Authentication</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Require 2FA for all administrator logins.</div>
+            </div>
+            <div 
+              onClick={() => setFormData({ ...formData, mfaEnabled: !formData.mfaEnabled })}
+              style={{ 
+                width: '44px', height: '24px', 
+                background: formData.mfaEnabled ? 'var(--primary)' : 'var(--border)', 
+                borderRadius: '100px', position: 'relative', cursor: 'pointer',
+                transition: 'background 0.2s'
+              }}
+            >
+               <motion.div 
+                 animate={{ x: formData.mfaEnabled ? 24 : 4 }}
+                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                 style={{ position: 'absolute', top: '4px', width: '16px', height: '16px', background: 'white', borderRadius: '50%' }} 
+               />
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const renderBilling = () => {
+    const subStatus = churchData ? getSubscriptionStatus(churchData) : null;
+    const currentPlan = PLANS.find(p => p.id === (subStatus?.currentPlan || 'trial'));
+
+    return (
+      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+        {renderSectionHeader('Plans & Billing', 'Manage your subscription, view invoices, and update payment methods.')}
+        
+        <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {subStatus?.isBlocked && (
+            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '1.5rem', borderRadius: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Lock size={20} color="#ef4444" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: 'white', fontWeight: 800, fontSize: '0.95rem' }}>Subscription Expired</div>
+                <div style={{ color: 'rgba(239, 68, 68, 0.8)', fontSize: '0.85rem' }}>Your trial has ended. Please upgrade to a paid plan to regain full access to all features.</div>
+              </div>
+              <button 
+                className="btn btn-primary" 
+                style={{ background: '#ef4444', boxShadow: '0 8px 24px -6px rgba(239, 68, 68, 0.5)' }}
+                onClick={() => setActiveSection('pricing')}
+              >
+                Upgrade Now
+              </button>
+            </div>
+          )}
+
+          <div style={{ 
+            background: `linear-gradient(135deg, ${currentPlan?.color}26 0%, rgba(15, 23, 42, 0.6) 100%)`, 
+            padding: '2rem', borderRadius: '1.5rem', border: `1px solid ${currentPlan?.color}33`,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: currentPlan?.color, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>Current Plan</div>
+              <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white', textTransform: 'capitalize' }}>{currentPlan?.name}</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                {subStatus?.accessStatus === 'active_trial' || subStatus?.accessStatus === 'trial_warning' 
+                  ? `Free trial ends in ${subStatus.daysRemaining} days (${subStatus.subscriptionEndDate?.toLocaleDateString()})`
+                  : subStatus?.accessStatus === 'paid_active'
+                  ? `Subscription active — Renews on ${subStatus.subscriptionEndDate?.toLocaleDateString()}`
+                  : `Subscription ${subStatus?.accessStatus.replace('_', ' ')}`}
+              </div>
+            </div>
+            {!subStatus?.isBlocked && (
+              <button 
+                className="btn btn-primary" 
+                style={{ background: currentPlan?.color, boxShadow: `0 8px 24px -6px ${currentPlan?.color}80` }}
+                onClick={() => setActiveSection('pricing')}
+              >
+                Upgrade Plan
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+               <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1rem' }}>Payment Method</h4>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '40px', height: '24px', background: '#003087', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                     <span style={{ fontSize: '0.6rem', color: 'white', fontWeight: 900 }}>PayPal</span>
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: 'white', fontWeight: 600 }}>Connected (Default)</div>
+               </div>
+            </div>
+            <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+               <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1rem' }}>Usage History</h4>
+                <button 
+                  onClick={() => alert('Invoice history is currently being compiled. You will receive an email once your historical invoices are ready to view.')}
+                  style={{ background: 'none', border: 'none', color: 'var(--primary-light)', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                >
+                  View all invoices →
+                </button>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.25rem' }}>Plan Limits</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Member Limit</span>
+                <span style={{ color: 'white', fontWeight: 700 }}>{currentPlan?.memberLimit ? `${currentPlan.memberLimit} members` : 'Unlimited'}</span>
+              </div>
+              <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: '15%', height: '100%', background: currentPlan?.color, borderRadius: '3px' }} />
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                You are currently using 15 of {currentPlan?.memberLimit || '∞'} allowed members.
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
+  const renderPricing = () => (
+    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+        <button 
+          onClick={() => setActiveSection('billing')}
+          style={{ 
+            display: 'flex', alignItems: 'center', gap: '6px', 
+            background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'white', 
+            cursor: 'pointer', padding: '0.6rem 1.2rem', borderRadius: '12px', fontSize: '0.875rem', fontWeight: 700 
+          }}
+        >
+          <ChevronLeft size={16} /> Back to Billing
+        </button>
+      </div>
+      <div style={{ background: 'var(--bg-card)', borderRadius: '2rem', border: '1px solid var(--border)', overflow: 'hidden' }}>
+        <Pricing 
+          currentPlan={churchData?.plan} 
+          churchId={churchData?.id} 
+          onUpgradeSuccess={() => {
+            alert('Congratulations! Your church has been upgraded successfully.');
+            window.location.reload(); // Refresh to update all session states
+          }} 
+        />
+      </div>
+    </motion.div>
+  );
+
+  const renderAppearance = () => (
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+      {renderSectionHeader('Appearance', 'Customize the visual experience of your workspace.')}
+      
+      <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Theme Mode</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+            {['Light', 'Dark', 'System'].map(mode => (
+              <button 
+                key={mode} 
+                onClick={() => setFormData({ ...formData, theme: mode })}
+                style={{
+                  padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)',
+                  background: formData.theme === mode ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255,255,255,0.02)',
+                  color: formData.theme === mode ? 'var(--primary-light)' : 'var(--text-muted)',
+                  fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', 
+                  borderColor: formData.theme === mode ? 'var(--primary-light)' : 'var(--border)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Brand Color</h3>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4'].map(color => (
+              <div 
+                key={color} 
+                onClick={() => setFormData({ ...formData, brandColor: color })}
+                style={{
+                  width: '40px', height: '40px', borderRadius: '50%', background: color,
+                  cursor: 'pointer', border: formData.brandColor === color ? '3px solid white' : '2px solid transparent',
+                  boxShadow: formData.brandColor === color ? `0 0 15px ${color}` : 'none',
+                  transition: 'all 0.2s'
+                }} 
+              />
+            ))}
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Display Density</h3>
+          <div style={{ display: 'flex', gap: '2rem' }}>
+            {['Compact', 'Spacious'].map(d => (
+              <label 
+                key={d}
+                style={{ 
+                  display: 'flex', alignItems: 'center', gap: '10px', 
+                  color: formData.density === d ? 'white' : 'var(--text-muted)', 
+                  fontSize: '0.9rem', cursor: 'pointer', fontWeight: 600
+                }}
+              >
+                <input 
+                  type="radio" 
+                  name="density" 
+                  checked={formData.density === d} 
+                  onChange={() => setFormData({ ...formData, density: d })}
+                  style={{ accentColor: 'var(--primary)' }}
+                /> {d}
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const renderNotifications = () => (
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+      {renderSectionHeader('Notifications', 'Configure how and when you receive updates from the system.')}
+      
+      <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Email Alerts</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {[
+              { id: 'budget', label: 'Budget Thresholds', desc: 'Notify when a department exceeds 80% of its monthly budget.' },
+              { id: 'payroll', label: 'Payroll Reminders', desc: 'Receive alerts 2 days before scheduled payroll processing.' },
+              { id: 'security', label: 'Security Events', desc: 'Alert for new admin logins or permission changes.' },
+              { id: 'giving', label: 'Giving Reports', desc: 'Weekly summary of tithes and smart giving activity.' }
+            ].map(item => (
+              <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{item.label}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.desc}</div>
+                </div>
+                <div 
+                  onClick={() => setFormData({ 
+                    ...formData, 
+                    notifications: { ...formData.notifications, [item.id]: !((formData.notifications as any)[item.id]) } 
+                  })}
+                  style={{ 
+                    width: '44px', height: '24px', 
+                    background: (formData.notifications as any)[item.id] ? 'var(--primary)' : 'var(--border)', 
+                    borderRadius: '100px', position: 'relative', cursor: 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                >
+                   <motion.div 
+                     animate={{ x: (formData.notifications as any)[item.id] ? 24 : 4 }}
+                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                     style={{ position: 'absolute', top: '4px', width: '16px', height: '16px', background: 'white', borderRadius: '50%' }} 
+                   />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>System Announcements</h3>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+             <input 
+               type="checkbox" 
+               checked={formData.notifications.announcements} 
+               onChange={() => setFormData({ 
+                 ...formData, 
+                 notifications: { ...formData.notifications, announcements: !formData.notifications.announcements } 
+               })}
+               style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }} 
+             />
+             <div style={{ fontSize: '0.9rem', color: 'white' }}>Receive updates about new platform features and maintenance.</div>
+          </label>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const renderFinancial = () => (
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+      {renderSectionHeader('Financial Controls', 'Configure your currency, fiscal settings, and tax compliance parameters.')}
+      
+      <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Regional & Currency</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Base Currency</label>
+              <select 
+                value={formData.currency}
+                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem', borderRadius: '0.75rem', color: 'white', outline: 'none', appearance: 'none' }}
+              >
+                <option value="USD" style={{ background: '#0f172a' }}>USD - US Dollar ($)</option>
+                <option value="EUR" style={{ background: '#0f172a' }}>EUR - Euro (€)</option>
+                <option value="GBP" style={{ background: '#0f172a' }}>GBP - British Pound (£)</option>
+                <option value="CAD" style={{ background: '#0f172a' }}>CAD - Canadian Dollar ($)</option>
+                <option value="AUD" style={{ background: '#0f172a' }}>AUD - Australian Dollar ($)</option>
+                <option value="NGN" style={{ background: '#0f172a' }}>NGN - Nigerian Naira (₦)</option>
+                <option value="KES" style={{ background: '#0f172a' }}>KES - Kenyan Shilling (KSh)</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Fiscal Year Start</label>
+              <select 
+                value={formData.fiscalYearStart}
+                onChange={(e) => setFormData({ ...formData, fiscalYearStart: e.target.value })}
+                style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem', borderRadius: '0.75rem', color: 'white', outline: 'none', appearance: 'none' }}
+              >
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(month => (
+                  <option key={month} value={month} style={{ background: '#0f172a' }}>{month}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Tax Compliance</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>Tax-Exempt Status</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Apply 501(c)(3) or charitable status to all financial reports.</div>
+              </div>
+              <div 
+                onClick={() => setFormData({ ...formData, taxExempt: !formData.taxExempt })}
+                style={{ 
+                  width: '44px', height: '24px', 
+                  background: formData.taxExempt ? 'var(--primary)' : 'var(--border)', 
+                  borderRadius: '100px', position: 'relative', cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+              >
+                 <motion.div 
+                   animate={{ x: formData.taxExempt ? 24 : 4 }}
+                   transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                   style={{ position: 'absolute', top: '4px', width: '16px', height: '16px', background: 'white', borderRadius: '50%' }} 
+                 />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>Automated Tax Receipts</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Send annual tax documentation to all donors automatically.</div>
+              </div>
+              <div 
+                onClick={() => setFormData({ ...formData, autoReceipts: !formData.autoReceipts })}
+                style={{ 
+                  width: '44px', height: '24px', 
+                  background: formData.autoReceipts ? 'var(--primary)' : 'var(--border)', 
+                  borderRadius: '100px', position: 'relative', cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+              >
+                 <motion.div 
+                   animate={{ x: formData.autoReceipts ? 24 : 4 }}
+                   transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                   style={{ position: 'absolute', top: '4px', width: '16px', height: '16px', background: 'white', borderRadius: '50%' }} 
+                 />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  return (
+    <div style={{ padding: '2.5rem', maxWidth: '1400px', margin: '0 auto' }}>
+      <AnimatePresence mode="wait">
+        {activeSection === 'grid' ? (
+          <motion.div 
+            key="grid"
+            initial={{ opacity: 0, y: -10 }} 
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+          >
+            <div style={{ marginBottom: '3rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
+                <SettingsIcon size={20} color="var(--primary-light)" />
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>System Configuration</span>
+              </div>
+              <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', letterSpacing: '-0.04em' }}>Workspace Settings</h1>
+              <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.4rem' }}>Manage your organization's core details, billing, and team permissions.</p>
+            </div>
+            {renderGrid()}
+          </motion.div>
+        ) : activeSection === 'identity' ? (
+          renderIdentity()
+        ) : activeSection === 'financial' ? (
+          renderFinancial()
+        ) : activeSection === 'security' ? (
+          renderSecurity()
+        ) : activeSection === 'billing' ? (
+          renderBilling()
+        ) : activeSection === 'appearance' ? (
+          renderAppearance()
+        ) : activeSection === 'notifications' ? (
+          renderNotifications()
+        ) : activeSection === 'pricing' ? (
+          renderPricing()
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default Settings;

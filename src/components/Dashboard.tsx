@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Wallet, Users, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight,
+    Wallet, Users, TrendingUp as TrendUp, DollarSign, ArrowUpRight, ArrowDownRight,
     RefreshCw, BarChart3, Activity, ChurchIcon, CreditCard,
-    FileText, ShieldCheck, Calendar, Download, Target
+    FileText, ShieldCheck, Calendar, Download, Target, HeartHandshake,
+    Brain, Sparkles, AlertTriangle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { predictNextMonth, detectAnomalies } from '../lib/intelligence';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardProps {
     setActiveTab: (tab: string) => void;
@@ -147,10 +150,17 @@ const FeatureCard: React.FC<{
 
 // ── Main Dashboard ─────────────────────────────────────────────────────────
 const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
+    const { t, language } = useLanguage();
     const [stats, setStats] = useState({ balance: 142500, tithes: 28450, members: 1240, expenses: 19800 });
     const [recentTx, setRecentTx] = useState<any[]>([]);
     const [syncing, setSyncing] = useState(false);
-    const [buildingFund, setBuildingFund] = useState({ current: 125000, goal: 500000 });
+    const [projection, setProjection] = useState<{income: number, expense: number, confidence: number} | null>(null);
+    const [anomalies, setAnomalies] = useState<any[]>([]);
+    const [goals, setGoals] = useState<any[]>([
+        { name: 'Building Fund', current: 125000, goal: 500000, color: '#2563eb', icon: ChurchIcon },
+        { name: 'Youth Mission', current: 8500, goal: 15000, color: '#a855f7', icon: HeartHandshake },
+        { name: 'Community Outreach', current: 4200, goal: 10000, color: '#10b981', icon: Users }
+    ]);
     const [chartData] = useState<any[]>([
         { name: 'Jan', income: 4000, expense: 2400 },
         { name: 'Feb', income: 3200, expense: 1998 },
@@ -160,7 +170,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
         { name: 'Jun', income: 6390, expense: 3800 },
     ]);
 
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const today = new Date().toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     useEffect(() => {
         const fetchData = async () => {
@@ -180,10 +190,22 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     members: members?.length || prev.members,
                     expenses: totalExpenses || prev.expenses,
                 }));
-                if (ledger) setRecentTx(ledger.slice(0, 6));
+                if (ledger) {
+                    setRecentTx(ledger.slice(0, 6));
+                    const pred = predictNextMonth(ledger);
+                    setProjection(pred);
+                    setAnomalies(detectAnomalies(ledger).slice(0, 2));
+                }
 
-                const bFund = funds?.find((f: any) => f.name?.toLowerCase().includes('building'));
-                if (bFund) setBuildingFund(prev => ({ ...prev, current: bFund.balance || 0 }));
+                const { data: dbGoals } = await supabase.from('goals').select('*');
+                if (dbGoals && dbGoals.length > 0) {
+                    setGoals(dbGoals.map(g => ({
+                        ...g,
+                        current: g.current_amount,
+                        goal: g.target_amount,
+                        icon: g.icon === 'Church' ? ChurchIcon : g.icon === 'Heart' ? HeartHandshake : Users
+                    })));
+                }
             } catch (e) {
                 console.error(e);
             } finally {
@@ -205,7 +227,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
 
     const statCards: StatCardProps[] = [
         {
-            label: 'Total Church Funds',
+            label: t('totalBalance'),
             value: fmtShort(stats.balance),
             change: '+5.4%',
             up: true,
@@ -216,7 +238,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
             delay: 0,
         },
         {
-            label: 'Tithes & Offerings (MTD)',
+            label: `${t('tithes')} (MTD)`,
             value: fmtShort(stats.tithes),
             change: '+12.5%',
             up: true,
@@ -224,11 +246,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
             iconBg: 'rgba(16,185,129,0.15)',
             iconColor: '#10b981',
             sparkline: sparkData,
-            sub: 'This month',
+            sub: language === 'es' ? 'Este mes' : 'This month',
             delay: 0.08,
         },
         {
-            label: 'Active Members',
+            label: t('members'),
             value: stats.members.toLocaleString(),
             change: '+3.2%',
             up: true,
@@ -239,7 +261,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
             delay: 0.16,
         },
         {
-            label: 'Monthly Expenses',
+            label: t('expenses'),
             value: fmtShort(stats.expenses),
             change: '-2.1%',
             up: false,
@@ -291,11 +313,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                            Live Dashboard
+                            Live {t('dashboard')}
                         </span>
                     </div>
                     <h1 style={{ fontSize: 'clamp(1.6rem, 3.5vw, 2.5rem)', fontWeight: 900, color: 'white', letterSpacing: '-0.04em', lineHeight: 1.1 }}>
-                        Financial Overview
+                        {language === 'es' ? 'Resumen Financiero' : 'Financial Overview'}
                     </h1>
                     <p style={{ color: '#475569', fontSize: '0.875rem', marginTop: '0.35rem' }}>{today}</p>
                 </div>
@@ -312,7 +334,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                             color: '#60a5fa', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit',
                         }}
                     >
-                        <BarChart3 size={15} /> New Transaction
+                        <BarChart3 size={15} /> {language === 'es' ? 'Nueva Transacción' : 'New Transaction'}
                     </motion.button>
                     <motion.button
                         onClick={() => setActiveTab('reports')}
@@ -325,7 +347,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                             color: '#60a5fa', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit',
                         }}
                     >
-                        <FileText size={15} /> View Reports
+                        <FileText size={15} /> {t('reports')}
                     </motion.button>
                     <motion.button
                         onClick={generatePDF}
@@ -339,7 +361,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                             boxShadow: '0 4px 14px rgba(16,185,129,0.35)',
                         }}
                     >
-                        <Download size={15} /> Export PDF
+                        <Download size={15} /> {language === 'es' ? 'Exportar PDF' : 'Export PDF'}
                     </motion.button>
                     {syncing && (
                         <motion.div
@@ -354,12 +376,90 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
             </motion.div>
 
             {/* ── Stat Cards ─────────────────────────────────────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+            <div className="stats-grid" style={{ marginBottom: '2rem' }}>
                 {statCards.map((card, i) => <StatCard key={i} {...card} />)}
             </div>
 
+            {/* ── Neural Projection Banner ─────────────────────────── */}
+            {projection && (
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    style={{
+                        background: 'linear-gradient(90deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))',
+                        border: '1px solid rgba(99, 102, 241, 0.2)',
+                        borderRadius: '16px',
+                        padding: '1.25rem 2rem',
+                        marginBottom: '2rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '2rem',
+                        backdropFilter: 'blur(20px)'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                        <div style={{
+                            width: '48px', height: '48px', borderRadius: '12px',
+                            background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 0 20px var(--primary-glow)'
+                        }}>
+                            <Brain size={24} color="white" />
+                        </div>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('projection')}</span>
+                                <span style={{ padding: '2px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '100px', fontSize: '0.65rem', fontWeight: 800 }}>{Math.round(projection.confidence * 100)}% {t('confidenceScore')}</span>
+                            </div>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'white' }}>
+                                {t('nextMonthRevenue')} <span className="gradient-text">{fmt(projection.income)}</span>
+                            </h3>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '3rem', textAlign: 'right' }}>
+                        <div>
+                            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>PROJECTED INCOME</div>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981' }}>{fmtShort(projection.income)}</div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>PROJECTED BURN</div>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ef4444' }}>{fmtShort(projection.expense)}</div>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
+            {/* ── Neural Alerts ─────────────────────────── */}
+            {anomalies.length > 0 && (
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    style={{
+                        background: 'rgba(239, 68, 68, 0.05)',
+                        border: '1px solid rgba(239, 68, 68, 0.15)',
+                        borderRadius: '12px',
+                        padding: '1rem 1.5rem',
+                        marginBottom: '2rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1rem'
+                    }}
+                >
+                    <AlertTriangle color="#ef4444" size={20} />
+                    <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fca5a5' }}>
+                            {anomalies.length} {language === 'es' ? 'Patrones Inusuales Detectados' : 'Unusual Patterns Detected'}
+                        </span>
+                        <p style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '2px' }}>
+                            {language === 'es' ? 'Nuestro motor neuronal marcó transacciones que se desvían de su promedio.' : 'Our Neural Engine flagged transactions that deviate significantly from your 6-month average.'}
+                        </p>
+                    </div>
+                    <Sparkles size={16} color="var(--primary-light)" />
+                </motion.div>
+            )}
+
             {/* ── NEW ROW: Charts & Goal Tracking ────────────────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.25rem', marginBottom: '1.75rem' }}>
+            <div className="flexible-grid" style={{ marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '1.75rem' }}>
                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -371,8 +471,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     }}
                 >
                     <div style={{ marginBottom: '1rem' }}>
-                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Revenue vs Expenses</div>
-                        <div style={{ fontSize: '0.75rem', color: '#475569' }}>6-month trailing overview</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>{t('revenue')} vs {t('expenses')}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#475569' }}>{language === 'es' ? 'Resumen de los últimos 6 meses' : '6-month trailing overview'}</div>
                     </div>
                     <div style={{ flex: 1, minHeight: 0 }}>
                         <ResponsiveContainer width="100%" height="100%">
@@ -396,6 +496,18 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                                 />
                                 <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" name="Income" />
                                 <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" name="Expenses" />
+                                
+                                {anomalies.map((a, i) => (
+                                    <ReferenceDot
+                                        key={i}
+                                        x={a.date}
+                                        y={a.amount}
+                                        r={6}
+                                        fill="#ef4444"
+                                        stroke="#fff"
+                                        strokeWidth={2}
+                                    />
+                                ))}
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -406,47 +518,49 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
                     style={{
-                        background: 'linear-gradient(145deg, rgba(6,182,212,0.15), rgba(15,23,42,0.6))', border: '1px solid rgba(6,182,212,0.2)',
-                        borderRadius: '16px', padding: '1.75rem', backdropFilter: 'blur(12px)',
-                        display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden'
+                        background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: '20px', padding: '1.75rem', backdropFilter: 'blur(12px)',
+                        display: 'flex', flexDirection: 'column'
                     }}
                 >
-                    <div style={{
-                        position: 'absolute', top: -50, right: -50, width: '150px', height: '150px',
-                        background: 'radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%)', borderRadius: '50%'
-                    }} />
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-                        <div style={{ background: 'rgba(6,182,212,0.2)', padding: '8px', borderRadius: '10px' }}>
-                            <Target size={20} color="#06b6d4" />
-                        </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                         <div>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Fundraising Goal</div>
-                            <div style={{ fontSize: '0.75rem', color: '#06b6d4', fontWeight: 600 }}>Building Fund Phase 1</div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Mission Matrix</div>
+                            <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '2px' }}>Real-time fund progression</div>
+                        </div>
+                        <div style={{ padding: '8px', background: 'rgba(168, 85, 247, 0.1)', borderRadius: '10px', color: '#a855f7' }}>
+                            <TrendUp size={20} />
                         </div>
                     </div>
 
-                    <div style={{ marginTop: 'auto', marginBottom: '2rem', textAlign: 'center' }}>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>
-                            {fmtShort(buildingFund.current)}
-                        </div>
-                        <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '6px' }}>
-                            raised of <span style={{ color: 'white', fontWeight: 700 }}>{fmt(buildingFund.goal)}</span> target
-                        </div>
-                    </div>
-
-                    <div style={{ background: 'rgba(0,0,0,0.3)', height: '12px', borderRadius: '100px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${Math.min(100, (buildingFund.current / buildingFund.goal) * 100)}%` }}
-                            transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
-                            style={{ 
-                                height: '100%', 
-                                background: 'linear-gradient(90deg, #06b6d4, #3b82f6)',
-                                borderRadius: '100px',
-                                boxShadow: '0 0 10px rgba(6,182,212,0.5)'
-                            }}
-                        />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        {goals.map((goal, i) => {
+                            const pct = Math.min(100, Math.round((goal.current / goal.goal) * 100));
+                            return (
+                                <div key={i}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: `${goal.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: goal.color }}>
+                                                {goal.icon ? <goal.icon size={16} /> : <Target size={16} />}
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>{goal.name}</div>
+                                                <div style={{ fontSize: '0.65rem', color: '#475569' }}>{fmtShort(goal.current)} of {fmtShort(goal.goal)}</div>
+                                            </div>
+                                        </div>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 900, color: goal.color }}>{pct}%</span>
+                                    </div>
+                                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '100px', overflow: 'hidden' }}>
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${pct}%` }}
+                                            transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 + i * 0.1 }}
+                                            style={{ height: '100%', background: goal.color, borderRadius: '100px' }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </motion.div>
             </div>
@@ -647,7 +761,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                             iconBg: 'rgba(245,158,11,0.12)', iconColor: '#f59e0b', tab: 'expenses',
                         },
                         {
-                            icon: TrendingUp, title: 'Smart Giving',
+                            icon: TrendUp, title: 'Smart Giving',
                             desc: 'Online giving, pledge tracking, and donor analytics.',
                             iconBg: 'rgba(168,85,247,0.12)', iconColor: '#a855f7', tab: 'giving',
                         },

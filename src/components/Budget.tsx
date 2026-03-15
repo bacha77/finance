@@ -9,10 +9,12 @@ import {
     Trash2,
     Save,
     AlertTriangle,
-    CheckCircle2
+    CheckCircle2,
+    RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface BudgetAllocation {
     deptId: string;
@@ -31,17 +33,27 @@ interface BudgetProps {
 }
 
 const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
+    const { t, language } = useLanguage();
     const [budgets, setBudgets] = useState<BudgetYear[]>([]);
-    const [activeYear, setActiveYear] = useState(2026);
+    const [activeYear, setActiveYear] = useState(new Date().getFullYear());
     const [departments, setDepartments] = useState<any[]>([]);
     const [ledger, setLedger] = useState<any[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
             try {
+                // Fetch Departments first
+                const { data: deptData } = await supabase.from('departments').select('*');
+                if (deptData) setDepartments(deptData);
+
+                // Fetch Ledger
+                const { data: ledgerData } = await supabase.from('ledger').select('*');
+                if (ledgerData) setLedger(ledgerData);
+
                 // Fetch Budgets
                 const { data: budgetData } = await supabase
                     .from('budgets')
@@ -55,26 +67,17 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                     })));
                 } else {
                     // Seed initial data if empty
+                    const defaultYear = new Date().getFullYear();
                     setBudgets([{
-                        year: 2026,
+                        year: defaultYear,
                         totalBudget: 500000,
-                        allocations: [
-                            { deptId: '1', percentage: 25, amount: 125000 },
-                            { deptId: '2', percentage: 30, amount: 150000 },
-                            { deptId: '3', percentage: 10, amount: 50000 },
-                            { deptId: '4', percentage: 10, amount: 50000 },
-                            { deptId: '5', percentage: 25, amount: 125000 },
-                        ]
+                        allocations: deptData ? deptData.slice(0, 5).map(d => ({
+                            deptId: d.id,
+                            percentage: 20,
+                            amount: 100000
+                        })) : []
                     }]);
                 }
-
-                // Fetch Departments
-                const { data: deptData } = await supabase.from('departments').select('*');
-                if (deptData) setDepartments(deptData);
-
-                // Fetch Ledger
-                const { data: ledgerData } = await supabase.from('ledger').select('*');
-                if (ledgerData) setLedger(ledgerData);
 
             } catch (err) {
                 console.error('Error fetching budget data:', err);
@@ -96,10 +99,14 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
         syncBudgets();
     }, [budgets]);
 
-    const calculateSpent = (deptName: string) => {
+    const calculateSpent = (deptId: string) => {
+        // Find dept name first to match ledger data which often uses names
+        const dept = departments.find(d => d.id === deptId);
+        if (!dept) return 0;
+        
         return ledger
-            .filter(tx => tx.dept === deptName && tx.type === 'out')
-            .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+            .filter(tx => (tx.department === dept.name || tx.dept === dept.name) && (tx.type === 'out' || tx.type === 'expense'))
+            .reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
     };
 
     const currentBudget = budgets.find(b => b.year === activeYear) || budgets[0];
@@ -157,24 +164,29 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
     };
 
     const handleSaveBudget = async () => {
-        setIsLoading(true);
+        if (!currentBudget) return;
+        setIsSaving(true);
         try {
+            // Get current church_id for the upsert
+            const { data: profile } = await supabase.from('profiles').select('church_id').single();
+            if (!profile?.church_id) throw new Error('No church context found');
+
             const { error } = await supabase
                 .from('budgets')
                 .upsert({
                     year: activeYear,
                     total_budget: currentBudget.totalBudget,
                     allocations: currentBudget.allocations,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'year' });
+                    church_id: profile.church_id
+                }, { onConflict: 'year,church_id' }); // Conflict should be on year AND church for multi-tenancy
 
             if (error) throw error;
-            alert(`Budget for fiscal year ${activeYear} saved successfully!`);
+            alert(language === 'es' ? `¡Presupuesto para el año ${activeYear} guardado!` : `Budget for fiscal year ${activeYear} saved successfully!`);
         } catch (err) {
             console.error('Error saving budget:', err);
-            alert('Failed to save budget to cloud. Please check your connection.');
+            alert(language === 'es' ? 'Error al guardar. Verifique su conexión.' : 'Failed to save budget. Please check your connection.');
         } finally {
-            setIsLoading(false);
+            setIsSaving(false);
         }
     };
 
@@ -188,8 +200,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
         setActiveYear(nextYear);
     };
 
-    const totalAllocatedPercent = currentBudget.allocations.reduce((sum: number, a: BudgetAllocation) => sum + a.percentage, 0);
-    const totalAllocatedAmount = currentBudget.allocations.reduce((sum: number, a: BudgetAllocation) => sum + a.amount, 0);
+    const isBudgetLoaded = budgets.length > 0 && !!currentBudget;
 
     const HistoryModal = () => (
         <AnimatePresence>
@@ -234,19 +245,39 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
         </AnimatePresence>
     );
 
+    if (isLoading || !isBudgetLoaded || !currentBudget) {
+        return (
+            <div style={{ height: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.5rem' }}>
+                <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                    style={{ color: 'var(--primary)' }}
+                >
+                    <RefreshCw size={48} />
+                </motion.div>
+                <p style={{ color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em' }}>
+                    {t('syncing').toUpperCase()}
+                </p>
+            </div>
+        );
+    }
+
+    const totalAllocatedPercent = currentBudget.allocations.reduce((sum: number, a: BudgetAllocation) => sum + a.percentage, 0);
+    const totalAllocatedAmount = currentBudget.allocations.reduce((sum: number, a: BudgetAllocation) => sum + a.amount, 0);
+
     return (
         <div className="container" style={{ padding: '3rem 2rem' }}>
             <header style={{ marginBottom: '4rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <div>
                         <h1 style={{ fontSize: '3rem', fontWeight: 800, letterSpacing: '-0.04em' }}>
-                            Strategic <span className="gradient-text">Budgeting</span>
+                            {language === 'es' ? t('budget') : 'Strategic'} <span className="gradient-text">{language === 'es' ? 'Estratégico' : t('budget')}</span>
                         </h1>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>Fiscal management and multi-year resource planning</p>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>{language === 'es' ? 'Gestión fiscal y planificación de recursos' : 'Fiscal management and multi-year resource planning'}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.03)', padding: '6px 16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>FISCAL YEAR</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>{t('fiscalYear').toUpperCase()}</span>
                             <select
                                 value={activeYear}
                                 onChange={(e) => setActiveYear(parseInt(e.target.value))}
@@ -262,15 +293,16 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                             onClick={handleInitializeNewYear}
                             style={{ gap: '8px', padding: '0.75rem 1.5rem' }}
                         >
-                            <Calendar size={18} /> Plan Next Year
+                            <Calendar size={18} /> {t('planNextYear')}
                         </button>
                         <button
                             className="btn btn-primary"
                             onClick={handleSaveBudget}
-                            disabled={isLoading}
-                            style={{ gap: '8px', padding: '0.75rem 1.5rem' }}
+                            disabled={isSaving}
+                            style={{ gap: '8px', padding: '0.75rem 1.5rem', minWidth: '160px' }}
                         >
-                            <Save size={18} /> {isLoading ? 'Saving...' : 'Save to Cloud'}
+                            {isSaving ? <RefreshCw size={18} className="spin" /> : <Save size={18} />}
+                            {isSaving ? t('loading') : t('saveToCloud')}
                         </button>
                     </div>
                 </div>
@@ -279,7 +311,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '2rem' }}>
                     {currentBudget.allocations.map(alloc => {
                         const dept = departments.find(d => d.id === alloc.deptId);
-                        const spent = calculateSpent(dept?.name || '');
+                        const spent = calculateSpent(alloc.deptId);
                         const isOver = spent > alloc.amount;
                         if (!isOver) return null;
 
@@ -292,15 +324,15 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                             >
                                 <AlertTriangle size={20} color="var(--danger)" />
                                 <div style={{ flex: 1 }}>
-                                    <p style={{ color: 'white', fontWeight: 700, fontSize: '0.9rem' }}>Budget Alert: {dept?.name}</p>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Expenditure (${spent.toLocaleString()}) has exceeded the allocated budget of ${alloc.amount.toLocaleString()}.</p>
+                                    <p style={{ color: 'white', fontWeight: 700, fontSize: '0.9rem' }}>{t('overBudget')}: {dept?.name}</p>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{language === 'es' ? `El gasto ($${spent.toLocaleString()}) ha superado el presupuesto asignado de $${alloc.amount.toLocaleString()}.` : `Expenditure ($${spent.toLocaleString()}) has exceeded the allocated budget of $${alloc.amount.toLocaleString()}.`}</p>
                                 </div>
                                 <button
                                     className="btn"
                                     style={{ background: 'var(--danger)', color: 'white', fontSize: '0.75rem', padding: '6px 12px' }}
                                     onClick={() => setActiveTab('accounting')}
                                 >
-                                    Review Ledger
+                                    {t('accounting')}
                                 </button>
                             </motion.div>
                         );
@@ -312,8 +344,8 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                 <div className="glass-card" style={{ padding: '3rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                         <div>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>Annual Budget Limit ({activeYear})</h3>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Define the total ceiling for this fiscal period</p>
+                            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{t('annualLimit')} ({activeYear})</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{language === 'es' ? 'Defina el techo total para este período fiscal' : 'Define the total ceiling for this fiscal period'}</p>
                         </div>
                         <div style={{ position: 'relative', width: '280px' }}>
                             <DollarSign size={20} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary-light)' }} />
@@ -340,11 +372,11 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Department</th>
-                                    <th>Allocation Weight (%)</th>
-                                    <th style={{ textAlign: 'right' }}>Amt ({activeYear})</th>
-                                    <th>Status</th>
-                                    <th style={{ textAlign: 'right' }}>Actions</th>
+                                    <th>{t('department')}</th>
+                                    <th>{t('allocationWeight')} (%)</th>
+                                    <th style={{ textAlign: 'right' }}>{t('amount')} ({activeYear})</th>
+                                    <th>{t('status')}</th>
+                                    <th style={{ textAlign: 'right' }}>{t('actions')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -389,7 +421,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                                             </td>
                                             <td>
                                                 {(() => {
-                                                    const spent = calculateSpent(dept?.name || '');
+                                                    const spent = calculateSpent(alloc.deptId);
                                                     const isOver = spent > alloc.amount;
                                                     return (
                                                         <span style={{
@@ -406,7 +438,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                                                             width: 'fit-content'
                                                         }}>
                                                             {isOver ? <AlertTriangle size={12} /> : <CheckCircle2 size={12} />}
-                                                            {isOver ? 'Over Budget' : 'Verified'}
+                                                            {isOver ? t('overBudget') : t('verified')}
                                                         </span>
                                                     );
                                                 })()}
@@ -428,13 +460,13 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
 
                     <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', padding: '1.5rem', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border)' }}>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>ADD NEW ALLOCATION LINE</label>
+                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{language === 'es' ? 'AGREGAR LÍNEA DE ASIGNACIÓN' : 'ADD NEW ALLOCATION LINE'}</label>
                             <select
                                 value={selectedNewDept}
                                 onChange={(e) => setSelectedNewDept(e.target.value)}
                                 style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'var(--primary-dark)', border: '1px solid var(--border)', color: 'white' }}
                             >
-                                <option value="">Select a department...</option>
+                                <option value="">{language === 'es' ? 'Seleccione departamento...' : 'Select a department...'}</option>
                                 {departments
                                     .filter(d => !currentBudget.allocations.find(a => a.deptId === d.id))
                                     .map(d => (
@@ -449,7 +481,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                             disabled={!selectedNewDept}
                             style={{ height: '46px', padding: '0 2rem' }}
                         >
-                            <Plus size={18} /> Add Line
+                            <Plus size={18} /> {t('save')}
                         </button>
                     </div>
 
@@ -464,13 +496,15 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                         alignItems: 'center'
                     }}>
                         <div>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>Allocation Integrity ({activeYear})</p>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{language === 'es' ? 'Integridad de Asignación' : 'Allocation Integrity'} ({activeYear})</p>
                             <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: totalAllocatedPercent === 100 ? 'var(--success)' : 'var(--danger)' }}>
-                                {totalAllocatedPercent === 100 ? 'System Balanced' : `Imbalance: ${totalAllocatedPercent}% weighted`}
+                                {totalAllocatedPercent === 100 
+                                    ? (language === 'es' ? 'Sistema Balanceado' : 'System Balanced') 
+                                    : (language === 'es' ? `Desequilibrio: ${totalAllocatedPercent}% ponderado` : `Imbalance: ${totalAllocatedPercent}% weighted`)}
                             </h4>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>Total Pledges/Budget</p>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{language === 'es' ? 'Total Preadjudicado' : 'Total Pledges/Budget'}</p>
                             <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>
                                 ${totalAllocatedAmount.toLocaleString()}
                             </h4>
@@ -482,7 +516,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                     <div className="glass-card" style={{ padding: '2rem' }}>
                         <h3 style={{ fontSize: '1.125rem', fontWeight: 800, marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '12px', color: 'white' }}>
                             <PieChart size={20} className="gradient-text" />
-                            {activeYear} Fiscal Profile
+                            {t('fiscalYear')} {activeYear}
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {currentBudget.allocations.map((a: BudgetAllocation) => {
@@ -500,17 +534,19 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                     <div className="glass-card" style={{ padding: '2rem', background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)', border: 'none' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
                             <Target size={24} color="white" />
-                            <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'white' }}>Historical Context</h3>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'white' }}>{language === 'es' ? 'Contexto Histórico' : 'Historical Context'}</h3>
                         </div>
                         <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, marginBottom: '2rem' }}>
-                            Viewing budget for {activeYear}. Planning for future years allows the church to anticipate growth and stewardship needs long before the fiscal year begins.
+                            {language === 'es' 
+                                ? `Viendo el presupuesto para ${activeYear}. La planificación futura permite a la iglesia anticipar el crecimiento.` 
+                                : `Viewing budget for ${activeYear}. Planning for future years allows the church to anticipate growth.`}
                         </p>
                         <button
                             className="btn"
                             style={{ width: '100%', background: 'white', color: 'var(--primary-dark)', fontWeight: 800 }}
                             onClick={() => setShowHistoryModal(true)}
                         >
-                            View Comprehensive Audit
+                            {t('auditLog')}
                         </button>
                     </div>
                 </div>

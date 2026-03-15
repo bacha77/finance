@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import Tesseract from 'tesseract.js';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Expense {
     id: string;
@@ -49,6 +51,7 @@ interface ExpensesProps {
 }
 
 const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
+    const { t, language } = useLanguage();
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [showAddModal, setShowAddModal] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
@@ -61,6 +64,9 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
     const [showHistoryModal, setShowHistoryModal] = useState(false);
 
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const cameraInputRef = React.useRef<HTMLInputElement>(null);
+    const videoRef = React.useRef<HTMLVideoElement>(null);
+    const streamRef = React.useRef<MediaStream | null>(null);
 
     const [categories, setCategories] = useState<string[]>(() => {
         const saved = localStorage.getItem('sanctuary_expense_categories');
@@ -75,8 +81,8 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
     }, [categories]);
 
     // Filter states
-    const [categoryFilter, setCategoryFilter] = useState('All Categories');
-    const [deptFilter, setDeptFilter] = useState('All Departments');
+    const [categoryFilter, setCategoryFilter] = useState(t('allCategories'));
+    const [deptFilter, setDeptFilter] = useState(t('allDepartments'));
     const [startDate, setStartDate] = useState('2026-03-01');
     const [endDate, setEndDate] = useState('2026-03-07');
 
@@ -267,12 +273,82 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
         }
     };
 
-    const toggleScan = () => {
-        setIsScanning(!isScanning);
-        setScanStep('camera');
-        setScannedFile(null);
-        setScannedAmount('');
-        setScannedDesc('');
+    const toggleScan = async () => {
+        if (!isScanning) {
+            setIsScanning(true);
+            setScanStep('camera');
+            setScannedFile(null);
+            
+            // Try to start live camera for a real "scan" feel
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' },
+                    audio: false 
+                });
+                streamRef.current = stream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            } catch (err) {
+                console.warn('Live camera not available, falling back to system capture:', err);
+                // If live camera fails (e.g. no permissions), we'll just show the manual trigger
+            }
+        } else {
+            stopCamera();
+            setIsScanning(false);
+        }
+    };
+
+    const stopCamera = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+    };
+
+    const capturePhoto = async () => {
+        if (!videoRef.current) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.drawImage(videoRef.current, 0, 0);
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            setScannedFile(dataUrl);
+            setScanStep('processing');
+            stopCamera();
+            
+            // ── OCR Neural Extraction ───────────────────────────
+            try {
+                const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng');
+                
+                // Intelligent Parsing Logic
+                const lines = text.split('\n');
+                let foundAmount = '';
+                let foundMerchant = '';
+                
+                // Helper to find amounts like $12.34 or 12,34
+                const amtRegex = /\b\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})\b/;
+                
+                lines.forEach(line => {
+                    const match = line.match(amtRegex);
+                    if (match && !foundAmount) foundAmount = match[0].replace(',', '');
+                    if (line.length > 5 && !foundMerchant && !line.includes('Total') && !line.match(/\d/)) {
+                        foundMerchant = line.trim();
+                    }
+                });
+
+                setScannedAmount(foundAmount || '0.00');
+                setScannedDesc(foundMerchant || 'Extracted Receipt');
+                setScanStep('done');
+            } catch (err) {
+                console.error('OCR Error:', err);
+                setScannedAmount('0.00');
+                setScannedDesc('Extraction Failed');
+                setScanStep('done');
+            }
+        }
     };
 
     const handleSaveScanned = async () => {
@@ -351,30 +427,30 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
 
     return (
         <div className="container" style={{ padding: '3rem 2rem' }}>
-            <header style={{ marginBottom: '4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <header style={{ marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
                 <div>
-                    <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '-0.04em' }}>
-                        Mission <span className="gradient-text">Expenditures</span>
+                    <h1 style={{ fontSize: 'clamp(1.75rem, 6vw, 3rem)', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '-0.04em' }}>
+                        {t('missionMatrix').split(' ')[0]} <span className="gradient-text">{t('expenses')}</span>
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>Full transparency of local church operational outflows</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>{language === 'es' ? 'Transparencia total de los flujos operativos de la iglesia' : 'Full transparency of local church operational outflows'}</p>
                 </div>
-                <button className="btn btn-ghost" style={{ gap: '8px' }} onClick={() => setShowHistoryModal(true)}>
-                    <Clock size={18} /> View History
+                <button className="btn btn-ghost" style={{ gap: '8px', padding: '0.75rem 1.5rem', borderRadius: '12px' }} onClick={() => setShowHistoryModal(true)}>
+                    <Clock size={16} /> {language === 'es' ? 'Historial' : 'History'}
                 </button>
             </header>
 
-            <div className="glass-card" style={{ padding: '2.5rem', borderRadius: 'var(--radius-xl)', marginBottom: '3rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+            <div className="glass-card" style={{ padding: '1.5rem', borderRadius: 'var(--radius-xl)', marginBottom: '3rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>Expense Registry</h2>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '4px' }}>Auditable record of all verified disbursements</p>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>{language === 'es' ? 'Registro de Gastos' : 'Expense Registry'}</h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px' }}>{language === 'es' ? 'Registro auditable de desembolsos' : 'Auditable record of disbursements'}</p>
                     </div>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button className="btn btn-ghost" onClick={toggleScan}>
-                            <ScanLine size={18} /> Scan Receipt
+                    <div style={{ display: 'flex', gap: '0.75rem', width: '100%', maxWidth: 'none', justifyContent: 'flex-start' }}>
+                        <button className="btn btn-ghost" onClick={toggleScan} style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}>
+                            <Camera size={16} /> {language === 'es' ? 'Escaneo' : 'Scan'}
                         </button>
-                        <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-                            <Plus size={18} /> New Expense
+                        <button className="btn btn-primary" onClick={() => setShowAddModal(true)} style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}>
+                            <Plus size={16} /> {language === 'es' ? 'Nuevo' : 'New'}
                         </button>
                     </div>
                 </div>
@@ -390,47 +466,46 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filter Category</label>
+                <div className="stats-grid" style={{ marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <label style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('category')}</label>
                         <select
                             value={categoryFilter}
                             onChange={(e) => setCategoryFilter(e.target.value)}
-                            style={{ padding: '0.75rem', borderRadius: 'var(--radius)', background: 'var(--bg-main)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                            style={{ padding: '0.6rem', borderRadius: '12px', background: 'var(--bg-main)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.85rem' }}
                         >
-                            <option value="All Categories">All Categories</option>
+                            <option value={t('allCategories')}>{language === 'es' ? 'Todo' : 'All'}</option>
                             {categories.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filter Department</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <label style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('department')}</label>
                         <select
                             value={deptFilter}
                             onChange={(e) => setDeptFilter(e.target.value)}
-                            style={{ padding: '0.75rem', borderRadius: 'var(--radius)', background: 'var(--bg-main)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                            style={{ padding: '0.6rem', borderRadius: '12px', background: 'var(--bg-main)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.85rem' }}
                         >
-                            <option>All Departments</option>
+                            <option>{language === 'es' ? 'Todos' : 'All'}</option>
                             {availableDepts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                         </select>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>From Date</label>
-                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius)', background: 'var(--bg-main)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.9rem' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <label style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{language === 'es' ? 'Desde' : 'From'}</label>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ width: '100%', padding: '0.6rem', borderRadius: '12px', background: 'var(--bg-main)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.85rem' }} />
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>To Date</label>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius)', background: 'var(--bg-main)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.9rem' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <label style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{language === 'es' ? 'Hasta' : 'To'}</label>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ width: '100%', padding: '0.6rem', borderRadius: '12px', background: 'var(--bg-main)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.85rem' }} />
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2rem', background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.05) 0%, transparent 100%)', borderRadius: 'var(--radius-lg)', marginBottom: '3rem', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.05) 0%, transparent 100%)', borderRadius: 'var(--radius-lg)', marginBottom: '2rem', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
                     <div>
-                        <p style={{ color: 'var(--danger)', fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Consolidated Outflow</p>
-                        <h3 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white' }}>${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3>
+                        <p style={{ color: 'var(--danger)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '4px' }}>Outflow Total</p>
+                        <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white' }}>${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>Period of Review</p>
-                        <p style={{ color: 'white', fontWeight: 700, fontSize: '1.125rem' }}>March 2026</p>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>March 2026</p>
                     </div>
                 </div>
 
@@ -439,34 +514,32 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                     <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Monthly Total: <strong style={{ color: '#0f172a' }}>${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong></span>
                 </div>
 
-                <div className="table-container">
-                    <table>
+                <div style={{ overflowX: 'auto', margin: '0 -1rem', padding: '0 1rem' }}>
+                    <table style={{ minWidth: '600px' }}>
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Description</th>
-                                <th>Category</th>
-                                <th>Department</th>
-                                <th>Amount</th>
-                                <th>Method</th>
-                                <th style={{ textAlign: 'right' }}>Actions</th>
+                                <th>{t('date')}</th>
+                                <th>{t('description')}</th>
+                                <th>{t('category')}</th>
+                                <th className="mobile-hide">{language === 'es' ? 'Depto' : 'Dept'}</th>
+                                <th>{t('amount')}</th>
+                                <th style={{ textAlign: 'right' }}>{t('actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {expenses.map((exp) => (
                                 <tr key={exp.id}>
-                                    <td style={{ fontWeight: 600 }}>{exp.date}</td>
-                                    <td style={{ color: 'white', fontWeight: 700 }}>{exp.description}</td>
+                                    <td style={{ fontSize: '0.8rem' }}>{exp.date}</td>
+                                    <td style={{ color: 'white', fontWeight: 700, fontSize: '0.9rem' }}>{exp.description}</td>
                                     <td>
-                                        <span style={{ fontSize: '0.7rem', padding: '4px 10px', borderRadius: '6px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary-light)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{exp.category}</span>
+                                        <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '6px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary-light)', fontWeight: 800, textTransform: 'uppercase' }}>{exp.category}</span>
                                     </td>
-                                    <td>{exp.department}</td>
-                                    <td style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--danger)' }}>-${exp.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                    <td style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>{exp.paymentMethod}</td>
+                                    <td className="mobile-hide" style={{ fontSize: '0.85rem' }}>{exp.department}</td>
+                                    <td style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--danger)' }}>-${exp.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                     <td style={{ textAlign: 'right' }}>
-                                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                            <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} onClick={() => handleEdit(exp)}><Edit2 size={16} /></button>
-                                            <button style={{ background: 'none', border: 'none', color: 'rgba(239, 68, 68, 0.5)', cursor: 'pointer' }} onClick={() => handleDelete(exp.id)}><Trash2 size={16} /></button>
+                                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                                            <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} onClick={() => handleEdit(exp)}><Edit2 size={14} /></button>
+                                            <button style={{ background: 'none', border: 'none', color: 'rgba(239, 68, 68, 0.5)', cursor: 'pointer' }} onClick={() => handleDelete(exp.id)}><Trash2 size={14} /></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -480,41 +553,73 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                 {showAddModal && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(2, 6, 23, 0.9)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={() => { setShowAddModal(false); resetForm(); }}>
                         <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="glass-card" style={{ width: '100%', maxWidth: '500px', borderRadius: '24px', padding: '3rem', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-                            <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '2rem', color: 'white', letterSpacing: '-0.02em' }}>{editingExpenseId ? 'Update Disbursement' : 'New Disbursement'}</h2>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem', color: 'white' }}>{editingExpenseId ? 'Update Expense' : 'New Expense'}</h2>
                             <form onSubmit={handleAddExpense}>
-                                <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-                                    <div
-                                        onClick={() => fileInputRef.current?.click()}
-                                        style={{ width: '100%', height: '120px', background: '#f8fafc', border: '2px dashed #e2e8f0', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden' }}
-                                    >
-                                        {isUploading ? (
-                                            <div style={{ textAlign: 'center' }}>
-                                                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
-                                                    <RotateCcw size={24} color="var(--primary)" />
-                                                </motion.div>
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '8px', display: 'block' }}>Uploading...</span>
-                                            </div>
-                                        ) : receiptImage ? (
-                                            <img src={receiptImage} alt="Receipt" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        ) : (
-                                            <>
-                                                <Camera size={24} color="#94a3b8" style={{ marginBottom: '8px' }} />
-                                                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Upload Receipt (Stored in Supabase)</span>
-                                            </>
-                                        )}
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Receipt Image or PDF</label>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                        <button 
+                                            type="button"
+                                            disabled={isUploading}
+                                            onClick={() => cameraInputRef.current?.click()}
+                                            style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.2)', color: 'var(--primary-light)', borderRadius: '12px', padding: '0.75rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: isUploading ? 0.5 : 1 }}
+                                        >
+                                            <Camera size={16} /> {t('useCamera')}
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            disabled={isUploading}
+                                            onClick={() => fileInputRef.current?.click()}
+                                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', borderRadius: '12px', padding: '0.75rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: isUploading ? 0.5 : 1 }}
+                                        >
+                                            <ScanLine size={16} /> {language === 'es' ? 'Subir Doc' : 'Upload Doc'}
+                                        </button>
                                     </div>
+                                    <input
+                                        type="file"
+                                        ref={cameraInputRef}
+                                        onChange={handleFileUpload}
+                                        style={{ display: 'none' }}
+                                        accept="image/*"
+                                        capture="environment"
+                                    />
                                     <input
                                         type="file"
                                         ref={fileInputRef}
                                         onChange={handleFileUpload}
                                         style={{ display: 'none' }}
-                                        accept="image/*"
+                                        accept="image/*,application/pdf"
                                     />
-                                    {receiptImage && (
-                                        <button type="button" onClick={() => setReceiptImage(null)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', marginTop: '8px', cursor: 'pointer' }}>Remove Image</button>
+                                    
+                                    {isUploading && (
+                                        <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--primary-light)', fontSize: '0.8rem' }}>
+                                            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+                                                <RotateCcw size={16} />
+                                            </motion.div>
+                                            Uploading secure document...
+                                        </div>
+                                    )}
+                                    
+                                    {receiptImage && !isUploading && (
+                                        <div style={{ marginTop: '1rem', position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '100px', border: '1px solid var(--border)' }}>
+                                            {receiptImage.includes('.pdf') ? (
+                                                <div style={{ height: '100%', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '8px' }}>
+                                                    <CheckCircle2 size={16} color="var(--success)" /> PDF uploaded
+                                                </div>
+                                            ) : (
+                                                <img src={receiptImage} alt="Receipt Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            )}
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setReceiptImage(null)}
+                                                style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
-
+ 
                                 <div style={{ marginBottom: '1.25rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</label>
                                     <input type="text" required value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Office Supplies" style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.95rem' }} />
@@ -638,42 +743,35 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
 
                             {scanStep === 'camera' && (
                                 <>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem', color: 'white' }}>Scan Receipt</h2>
-                                    <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '2rem' }}>Capture a photo or upload your expense receipt.</p>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        ref={fileInputRef}
-                                        style={{ display: 'none' }}
-                                        onChange={handleFileUpload}
-                                    />
-                                    <div
-                                        onClick={() => fileInputRef.current?.click()}
-                                        style={{
-                                            width: '100%',
-                                            aspectRatio: '3/4',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            borderRadius: '20px',
-                                            border: '2px dashed rgba(255,255,255,0.2)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            marginBottom: '2rem',
-                                            position: 'relative',
-                                            overflow: 'hidden',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        {scannedFile ? (
-                                            <img src={scannedFile} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        ) : (
-                                            <Camera size={48} color="rgba(255,255,255,0.2)" />
-                                        )}
-                                        <div style={{ position: 'absolute', inset: '20px', border: '2px solid rgba(255,255,255,0.1)', borderRadius: '10px' }} />
+                                    <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: 'black', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                                        <video 
+                                            ref={videoRef} 
+                                            autoPlay 
+                                            playsInline 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        />
+                                        <div style={{ position: 'absolute', inset: '20px', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '12px' }} />
+                                        
+                                        <button 
+                                            onClick={capturePhoto}
+                                            style={{ position: 'absolute', bottom: '15px', left: '50%', transform: 'translateX(-50%)', width: '50px', height: '50px', borderRadius: '50%', background: 'white', border: '4px solid rgba(255,255,255,0.3)', cursor: 'pointer' }}
+                                        />
                                     </div>
-                                    <button className="btn btn-primary" style={{ width: '100%', padding: '1rem' }} onClick={() => fileInputRef.current?.click()}>
-                                        Upload Receipt Image
-                                    </button>
+
+                                    <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <button 
+                                            className="btn btn-ghost"
+                                            onClick={() => cameraInputRef.current?.click()}
+                                        >
+                                            <Camera size={16} /> Use Camera App
+                                        </button>
+                                        <button 
+                                            className="btn btn-ghost"
+                                            onClick={() => fileInputRef.current?.click()}
+                                        >
+                                            <ScanLine size={16} /> Browse Files
+                                        </button>
+                                    </div>
                                 </>
                             )}
 
