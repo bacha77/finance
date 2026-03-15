@@ -241,7 +241,7 @@ function App() {
       case 'accounting':
         return <FundAccounting />;
       case 'departments':
-        return <Departments />;
+        return <Departments setActiveTab={setActiveTab} />;
       case 'members':
         return <MemberPortal memberLimit={church?.plan === 'trial' ? TRIAL_CONFIG.TRIAL_MEMBER_LIMIT : null} />;
       case 'payroll':
