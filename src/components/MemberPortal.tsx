@@ -105,16 +105,17 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         const donations = getMemberDonations(selectedMember.name);
         const total = donations.reduce((sum, tx) => sum + tx.amount, 0);
         
-        const subject = encodeURIComponent(`${churchInfo.name} - ${language === 'es' ? 'Estado de Contribución Oficial' : 'Official Contribution Statement'}: ${months[invoiceMonth]} ${invoiceYear}`);
+        const currentMonth = t(`month${invoiceMonth}`);
+        const subject = encodeURIComponent(`${churchInfo.name} - ${t('statementOfficialSubject')}: ${currentMonth} ${invoiceYear}`);
         
-        let bodyText = `Dear ${selectedMember.name},\n\n`;
-        bodyText += `We hope this letter finds you well. On behalf of ${churchInfo.name}, we would like to express our sincere gratitude for your continued support and faithful stewardship.\n\n`;
-        bodyText += `Attached or listed below is your financial contribution statement for ${months[invoiceMonth]} ${invoiceYear}.\n\n`;
-        bodyText += `Total Monthly Contribution: $${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
+        let bodyText = `${t('statementDear')} ${selectedMember.name},\n\n`;
+        bodyText += `${t('statementGratitude').replace('{churchName}', churchInfo.name)}\n\n`;
+        bodyText += `${t('statementAttached').replace('{month}', currentMonth).replace('{year}', invoiceYear.toString())}\n\n`;
+        bodyText += `${t('statementTotalContribution')}: $${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
         bodyText += `--------------------------------------------------\n`;
         
         if (donations.length > 0) {
-            bodyText += `TRANSACTION RECORD:\n`;
+            bodyText += `${t('statementTransactionRecord')}:\n`;
             donations.forEach(tx => {
                 bodyText += `• ${tx.date}: $${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} [${tx.fund}]\n`;
             });
@@ -122,10 +123,10 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         }
 
         bodyText += `--------------------------------------------------\n`;
-        bodyText += `Your contributions allow us to continue the work of the ministry and serve our community effectively. If you have any questions regarding this statement, please do not hesitate to contact the finance office.\n\n`;
-        bodyText += `Blessings,\n\n`;
+        bodyText += `${t('statementQuestions')}\n\n`;
+        bodyText += `${t('statementBlessings')},\n\n`;
         bodyText += `${treasurerName}\n`;
-        bodyText += `Treasurer, ${churchInfo.name}\n`;
+        bodyText += `${t('statementTreasurerLabel')}, ${churchInfo.name}\n`;
         bodyText += `${churchInfo.address || ''}`;
 
         const mailtoLink = `mailto:${selectedMember.email}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
@@ -151,7 +152,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         if (savedLedger) setLedger(JSON.parse(savedLedger));
     }, [showInvoiceModal]);
 
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const months = Array.from({ length: 12 }, (_, i) => t(`month${i}`));
 
     const getMemberDonations = (memberName: string) => {
         return ledger.filter(tx => {
@@ -195,8 +196,9 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         
         doc.setFontSize(10);
         doc.setTextColor(100);
-        doc.text(`${t('statementPeriod')}: ${months[invoiceMonth]} ${invoiceYear}`, 14, 62);
-        doc.text(`${t('statementDate')}: ${new Date().toLocaleDateString()}`, 140, 62);
+        const currentMonth = t(`month${invoiceMonth}`);
+        doc.text(`${t('statementPeriod')}: ${currentMonth} ${invoiceYear}`, 14, 62);
+        doc.text(`${t('statementDate')}: ${new Date().toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US')}`, 140, 62);
         
         // Donor Card
         doc.setFillColor(248, 250, 252);
@@ -219,8 +221,8 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
 
         autoTable(doc, {
             startY: 120,
-            head: [['Date', 'Fund Allocation', 'Description', 'Amount']],
-            body: donations.map(tx => [tx.date, tx.fund, tx.desc || 'Stewardship', `$${tx.amount.toLocaleString()}`]),
+            head: [[t('dateLabel'), t('fundAllocation'), t('description'), t('amount')]],
+            body: donations.map(tx => [tx.date, tx.fund, tx.desc || (language === 'es' ? 'Mayordomía' : 'Stewardship'), `$${tx.amount.toLocaleString()}`]),
             theme: 'striped',
             headStyles: { fillColor: [79, 70, 229], fontSize: 10, cellPadding: 4 },
             bodyStyles: { fontSize: 9, cellPadding: 3 },
@@ -231,7 +233,11 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         
         doc.setFontSize(10);
         doc.setTextColor(100);
-        const message = `This statement serves as an official receipt for your contributions to ${churchInfo?.name || 'the church'} for the period of ${months[invoiceMonth]} ${invoiceYear}. Your faithful support empowers our ministries and community initiatives. We thank you for your ongoing partnership in our mission.`;
+        const currentMonth = t(`month${invoiceMonth}`);
+        const message = t('statementOfficialReceipt')
+            .replace('{churchName}', churchInfo?.name || (language === 'es' ? 'la iglesia' : 'the church'))
+            .replace('{month}', currentMonth)
+            .replace('{year}', invoiceYear.toString());
         doc.text(doc.splitTextToSize(message, 170), 14, finalY + 20);
 
         // Signature Section
@@ -243,7 +249,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         doc.setTextColor(100);
         doc.text(t('churchTreasurer'), 14, finalY + 63);
 
-        doc.save(`${selectedMember.name.replace(/\s+/g, '_')}_Statement_${months[invoiceMonth]}_${invoiceYear}.pdf`);
+        doc.save(`${selectedMember.name.replace(/\s+/g, '_')}_Statement_${currentMonth}_${invoiceYear}.pdf`);
     };
 
     // Form States
