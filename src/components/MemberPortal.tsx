@@ -233,7 +233,6 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         
         doc.setFontSize(10);
         doc.setTextColor(100);
-        const currentMonth = t(`month${invoiceMonth}`);
         const message = t('statementOfficialReceipt')
             .replace('{churchName}', churchInfo?.name || (language === 'es' ? 'la iglesia' : 'the church'))
             .replace('{month}', currentMonth)
