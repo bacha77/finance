@@ -449,6 +449,9 @@ const translations = {
     transactionDetails: 'Transaction Details',
     noDonationsRecorded: 'No donations recorded for this period.',
     treasurerSignatureName: 'Treasurer Signature Name',
+    print: 'Print',
+    sendToMember: 'Send to Member',
+    emailSent: 'Email Sent!',
   },
   es: {
     dashboard: 'Panel de Control',
@@ -890,6 +893,9 @@ const translations = {
     transactionDetails: 'Detalles de la Transacción',
     noDonationsRecorded: 'No se registraron donaciones para este período.',
     treasurerSignatureName: 'Nombre de firma del tesorero',
+    print: 'Imprimir',
+    sendToMember: 'Enviar al Miembro',
+    emailSent: '¡Correo Enviado!',
   }
 };
 

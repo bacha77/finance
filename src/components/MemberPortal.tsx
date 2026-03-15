@@ -901,14 +901,14 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
 
                             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1rem' }}>
                                 <button className="btn" onClick={handleExportPDF} style={{ background: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0', padding: '1rem 1.5rem', fontSize: '0.875rem' }}>
-                                    <Download size={18} /> Export PDF
+                                    <Download size={18} /> {t('exportPDF')}
                                 </button>
                                 <button
                                     className="btn btn-primary"
                                     style={{ background: 'var(--primary-dark)', padding: '1rem 2rem', fontSize: '0.875rem' }}
                                     onClick={() => window.print()}
                                 >
-                                    <Printer size={18} /> Print
+                                    <Printer size={18} /> {t('print')}
                                 </button>
                                 <button
                                     className="btn btn-primary"
@@ -930,9 +930,9 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                             <Send size={18} />
                                         </motion.div>
                                     ) : sendSuccess ? (
-                                        "Email Sent!"
+                                        t('emailSent')
                                     ) : (
-                                        <><Mail size={18} /> Send to Member</>
+                                        <><Mail size={18} /> {t('sendToMember')}</>
                                     )}
                                 </button>
                             </div>
