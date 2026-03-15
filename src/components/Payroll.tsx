@@ -306,8 +306,8 @@ const Payroll: React.FC = () => {
                                         onChange={(e) => setActiveShift(e.target.value as any)}
                                         style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: '12px', color: 'white', padding: '0 12px', fontSize: '0.8rem' }}
                                     >
-                                        <option value="AM">{t('amShift') || 'AM Shift'}</option>
-                                        <option value="PM">{t('pmShift') || 'PM Shift'}</option>
+                                        <option value="AM">{t('amShift')}</option>
+                                        <option value="PM">{t('pmShift')}</option>
                                     </select>
                                 )}
                                 <button className="btn btn-primary" style={{ background: 'var(--success)', border: 'none' }} onClick={handleProcessPayroll} disabled={processing}>
@@ -461,7 +461,7 @@ const Payroll: React.FC = () => {
                                             <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--success)' }}>${processComplete.amount.toLocaleString()}</p>
                                         </div>
 
-                                        <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setProcessComplete(null)}>{t('done') || 'Done'}</button>
+                                        <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setProcessComplete(null)}>{t('done')}</button>
                                     </motion.div>
                                 </motion.div>
                             )}
@@ -477,15 +477,15 @@ const Payroll: React.FC = () => {
                                 <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>{t('nextPayrollRun')}</p>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
                                     <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>
-                                        {activeFrequency === 'Twice Daily' ? (t('today') || 'Today') : 'March 15'}
+                                        {activeFrequency === 'Twice Daily' ? t('today') : 'March 15'}
                                     </h2>
                                     <span style={{ fontSize: '0.875rem', color: 'var(--primary-light)', fontWeight: 700 }}>
-                                        {activeFrequency === 'Twice Daily' ? `${activeShift === 'AM' ? (t('morning') || 'Morning') : (t('evening') || 'Evening')} ${t('shift') || 'Shift'}` : (t('tMinus8Days') || 'T-Minus 8 Days')}
+                                        {activeFrequency === 'Twice Daily' ? `${activeShift === 'AM' ? t('morning') : t('evening')} ${t('shift')}` : t('tMinus8Days')}
                                     </span>
                                 </div>
                                 <div style={{ marginTop: '2rem', display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
                                     <Calendar size={20} className="gradient-text" />
-                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t('estDisbursement') || 'Est. Disbursement'}: <strong style={{ color: 'white' }}>$18,450.00</strong></p>
+                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t('estDisbursement')}: <strong style={{ color: 'white' }}>$18,450.00</strong></p>
                                 </div>
                             </motion.div>
 
@@ -493,11 +493,11 @@ const Payroll: React.FC = () => {
                                 <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>{t('activeWorkforce')}</p>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
                                     <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>12</h2>
-                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>8 FT / 4 {t('contractors') || 'contractors'}</span>
+                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>8 FT / 4 {t('contractors')}</span>
                                 </div>
                                 <div style={{ marginTop: '2rem', display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
                                     <Users size={20} className="gradient-text" />
-                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t('status')}: <strong style={{ color: 'var(--success)' }}>{t('allCompliant') || 'All Compliant'}</strong></p>
+                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t('status')}: <strong style={{ color: 'var(--success)' }}>{t('allCompliant')}</strong></p>
                                 </div>
                             </motion.div>
 
@@ -505,11 +505,11 @@ const Payroll: React.FC = () => {
                                 <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>{t('actionRequired')}</p>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
                                     <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>1</h2>
-                                    <span style={{ fontSize: '0.875rem', color: 'var(--danger)', fontWeight: 700 }}>{t('pendingApproval') || 'Pending Approval'}</span>
+                                    <span style={{ fontSize: '0.875rem', color: 'var(--danger)', fontWeight: 700 }}>{t('pendingApproval')}</span>
                                 </div>
                                 <div style={{ marginTop: '2rem', display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', backgroundColor: 'rgba(239, 68, 68, 0.05)', borderRadius: '12px' }}>
                                     <AlertCircle size={20} color="var(--danger)" />
-                                    <p style={{ fontSize: '0.9rem', color: 'var(--danger)', fontWeight: 600 }}>{t('invoiceVerificationNeeded') || 'Invoice verification needed'}</p>
+                                    <p style={{ fontSize: '0.9rem', color: 'var(--danger)', fontWeight: 600 }}>{t('invoiceVerificationNeeded')}</p>
                                 </div>
                             </motion.div>
                         </div>
@@ -519,7 +519,7 @@ const Payroll: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
                                     <div>
                                         <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{t('staffRegistry')}</h3>
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{t('staffRegistryDesc') || 'Centralized management of team structure and compensation'}</p>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{t('staffRegistryDesc')}</p>
                                     </div>
                                     <div style={{
                                         display: 'flex',
@@ -533,7 +533,7 @@ const Payroll: React.FC = () => {
                                         <Search size={18} color="var(--text-muted)" />
                                         <input
                                             type="text"
-                                            placeholder={t('searchDirectory') || 'Search directory...'}
+                                            placeholder={t('searchDirectory')}
                                             style={{
                                                 background: 'none',
                                                 border: 'none',
@@ -547,7 +547,7 @@ const Payroll: React.FC = () => {
                                     </div>
                                 </div>
                                 <button className="btn btn-ghost" style={{ gap: '8px' }}>
-                                    <Download size={18} /> {t('exportData') || 'Export Data'}
+                                    <Download size={18} /> {t('exportData')}
                                 </button>
                             </div>
 

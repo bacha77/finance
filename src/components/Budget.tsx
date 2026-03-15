@@ -500,7 +500,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                             <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: totalAllocatedPercent === 100 ? 'var(--success)' : 'var(--danger)' }}>
                                 {totalAllocatedPercent === 100 
                                     ? t('systemBalanced') 
-                                    : `${t('imbalance')}: ${totalAllocatedPercent}% weighted`}
+                                    : `${t('imbalance')}: ${totalAllocatedPercent}% ${t('weighted')}`}
                             </h4>
                         </div>
                         <div style={{ textAlign: 'right' }}>

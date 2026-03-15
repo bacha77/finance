@@ -406,7 +406,29 @@ const translations = {
     purpose: 'Purpose',
     active: 'Active',
     low: 'Low',
-    healthy: 'Healthy'
+    healthy: 'Healthy',
+    // New Payroll Keys
+    amShift: 'AM Shift',
+    pmShift: 'PM Shift',
+    tMinus8Days: 'T-Minus 8 Days',
+    estDisbursement: 'Est. Disbursement',
+    allCompliant: 'All Compliant',
+    pendingApproval: 'Pending Approval',
+    invoiceVerificationNeeded: 'Invoice verification needed',
+    staffRegistryDesc: 'Centralized management of team structure and compensation',
+    searchDirectory: 'Search directory...',
+    exportData: 'Export Data',
+    morning: 'Morning',
+    evening: 'Evening',
+    shift: 'Shift',
+    today: 'Today',
+    contractors: 'contractors',
+    done: 'Done',
+    payroll: 'Payroll',
+    logout: 'Logout',
+    member: 'Member',
+    notes: 'Notes',
+    weighted: 'weighted'
   },
   es: {
     dashboard: 'Panel de Control',
@@ -805,7 +827,29 @@ const translations = {
     purpose: 'Propósito',
     active: 'Activo',
     low: 'Bajo',
-    healthy: 'Saludable'
+    healthy: 'Saludable',
+    // New Payroll Keys
+    amShift: 'Turno AM',
+    pmShift: 'Turno PM',
+    tMinus8Days: 'Faltan 8 días',
+    estDisbursement: 'Desembolso Est.',
+    allCompliant: 'Todo en regla',
+    pendingApproval: 'Pendiente de aprobación',
+    invoiceVerificationNeeded: 'Se requiere verificación de factura',
+    staffRegistryDesc: 'Gestión centralizada de la estructura y compensación del equipo',
+    searchDirectory: 'Buscar en el directorio...',
+    exportData: 'Exportar Datos',
+    morning: 'Mañana',
+    evening: 'Tarde',
+    shift: 'Turno',
+    today: 'Hoy',
+    contractors: 'contratistas',
+    done: 'Hecho',
+    payroll: 'Nómina',
+    logout: 'Cerrar Sesión',
+    member: 'Miembro',
+    notes: 'Notas',
+    weighted: 'ponderado'
   }
 };
 
