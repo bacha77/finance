@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/finance/',
+  base: '/finance/finance/',
   server: {
     port: 5173,
     host: true
