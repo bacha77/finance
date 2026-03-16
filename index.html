@@ -1374,12 +1374,12 @@
             });
 
             // Persist
-            localStorage.setItem('landing_language', lang);
+            localStorage.setItem('language', lang);
             document.documentElement.lang = lang;
         }
 
         // Initialize from storage
-        const savedLang = localStorage.getItem('landing_language') || 'en';
+        const savedLang = localStorage.getItem('language') || 'en';
         if (savedLang === 'es') setLang('es');
     </script>
 </body>
