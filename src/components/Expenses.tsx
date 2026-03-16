@@ -784,7 +784,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                                     >
                                         <ScanLine size={64} color="var(--primary-light)" />
                                     </motion.div>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: 'white' }}>{t('processing')}</h2>
+                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: 'white' }}>{t('processingVision')}</h2>
                                     <p style={{ color: 'rgba(255,255,255,0.6)' }}>{t('extractingLineItems')}</p>
                                 </div>
                             )}
