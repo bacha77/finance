@@ -173,7 +173,7 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = ({ onBypass }) => {
-    const { t } = useLanguage();
+    const { language, setLanguage, t } = useLanguage();
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const [mode, setMode] = useState<'login' | 'signup' | 'verified'>('login');
     const [step, setStep] = useState(0); // sign-up step: 0=account, 1=church info
@@ -318,11 +318,31 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
             >
                 {/* Logo */}
                 <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                    <img
-                        src={`${import.meta.env.BASE_URL}logo.png`}
-                        alt="Storehouse Finance"
-                        style={{ height: '52px', width: 'auto', marginBottom: '0.5rem', filter: 'drop-shadow(0 0 16px rgba(37,99,235,0.4))' }}
-                    />
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+                        <img
+                            src={`${import.meta.env.BASE_URL}logo.png`}
+                            alt="Storehouse Finance"
+                            style={{ height: '52px', width: 'auto', marginBottom: '0.5rem', filter: 'drop-shadow(0 0 16px rgba(37,99,235,0.4))' }}
+                        />
+                        <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}>
+                             <button
+                                onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
+                                style={{
+                                    background: 'rgba(255,255,255,0.05)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '6px',
+                                    padding: '4px 8px',
+                                    color: '#94a3b8',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    textTransform: 'uppercase'
+                                }}
+                            >
+                                {language === 'en' ? 'ES' : 'EN'}
+                            </button>
+                        </div>
+                    </div>
                     <p style={{ color: '#475569', fontSize: '0.82rem' }}>
                         {mode === 'login' ? t('welcomeBack') :
                          mode === 'verified' ? t('almostThere') :
