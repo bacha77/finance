@@ -846,6 +846,39 @@
         }
 
         /* ============ RESPONSIVE ============ */
+        .nav-ctas {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .lang-switch {
+            display: flex;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 2px;
+            margin-right: 0.5rem;
+        }
+
+        .lang-btn {
+            padding: 4px 10px;
+            border: none;
+            background: none;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .lang-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
         @media (max-width: 900px) {
             nav {
                 padding: 1rem 1.5rem;
@@ -907,8 +940,12 @@
             <li><a href="#faq">FAQ</a></li>
         </ul>
         <div class="nav-ctas">
-            <a href="/finance/finance/" class="btn btn-ghost">Sign In</a>
-            <a href="/finance/finance/" class="btn btn-gold">Start Free Trial</a>
+            <div class="lang-switch">
+                <button class="lang-btn active" onclick="setLang('en')">EN</button>
+                <button class="lang-btn" onclick="setLang('es')">ES</button>
+            </div>
+            <a href="/finance/finance/" class="btn btn-ghost" data-en="Sign In" data-es="Iniciar Sesión">Sign In</a>
+            <a href="/finance/finance/" class="btn btn-gold" data-en="Start Free Trial" data-es="Prueba Gratis">Start Free Trial</a>
         </div>
     </nav>
 
@@ -922,13 +959,19 @@
 
         <div class="hero-badge"><span class="dot"></span> Purpose-built for churches</div>
 
-        <h1>Church Finances,<br /><span class="gradient-text">Beautifully Localized</span></h1>
+        <h1>
+            <span data-en="Church Finances," data-es="Finanzas de la Iglesia,">Church Finances,</span><br />
+            <span class="gradient-text" data-en="Beautifully Localized" data-es="Bellamente Localizadas">Beautifully Localized</span>
+        </h1>
 
-        <p>The all-in-one financial operating system for modern churches. Manage funds, payroll, members, and budgets — now with total <b>Spanish language parity</b> and neural stewardship tracking.</p>
+        <p data-en="The all-in-one financial operating system for modern churches. Manage funds, payroll, members, and budgets — now with total Spanish language parity and neural stewardship tracking." 
+           data-es="El sistema operativo financiero todo en uno para iglesias modernas. Gestione fondos, nómina, miembros y presupuestos — ahora con paridad total en español y seguimiento de mayordomía neural.">
+           The all-in-one financial operating system for modern churches. Manage funds, payroll, members, and budgets — now with total <b>Spanish language parity</b> and neural stewardship tracking.
+        </p>
 
         <div class="hero-ctas">
-            <a href="/finance/finance/" class="btn btn-gold btn-large">🚀 Start Free 30-Day Trial</a>
-            <a href="#features" class="btn btn-outline btn-large">See How It Works</a>
+            <a href="/finance/finance/" class="btn btn-gold btn-large" data-en="🚀 Start Free 30-Day Trial" data-es="🚀 Iniciar Prueba de 30 Días">🚀 Start Free 30-Day Trial</a>
+            <a href="#features" class="btn btn-outline btn-large" data-en="See How It Works" data-es="Ver Cómo Funciona">See How It Works</a>
         </div>
 
         <div class="hero-proof">
@@ -1310,6 +1353,34 @@
             }
             observer.observe(el);
         });
+    </script>
+    <script>
+        function setLang(lang) {
+            // Update buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.innerText.toLowerCase() === lang);
+            });
+
+            // Update elements
+            document.querySelectorAll('[data-en]').forEach(el => {
+                const text = el.getAttribute('data-' + lang);
+                if (text) {
+                    if (el.tagName === 'INPUT') {
+                        el.placeholder = text;
+                    } else {
+                        el.innerHTML = text;
+                    }
+                }
+            });
+
+            // Persist
+            localStorage.setItem('language', lang);
+            document.documentElement.lang = lang;
+        }
+
+        // Initialize from storage
+        const savedLang = localStorage.getItem('language') || 'en';
+        if (savedLang === 'es') setLang('es');
     </script>
 </body>
 
