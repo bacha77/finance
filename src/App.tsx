@@ -497,7 +497,7 @@ function App() {
                 className="btn btn-ghost"
                 style={{ color: 'var(--text-muted)' }}
               >
-                <LogOut size={18} /> {language === 'es' ? 'Cerrar Sesión' : 'Logout'}
+                <LogOut size={18} /> {t('logout')}
               </button>
             </div>
           )}
@@ -567,7 +567,7 @@ function App() {
                   <Search size={20} color="var(--text-muted)" />
                   <input
                     autoFocus
-                    placeholder="Search apps, members, or commands..."
+                    placeholder={t('searchPlaceholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     style={{ flex: 1, background: 'none', border: 'none', color: 'var(--text-main)', fontSize: '1.125rem', outline: 'none' }}

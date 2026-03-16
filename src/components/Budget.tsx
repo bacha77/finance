@@ -32,11 +32,25 @@ interface BudgetProps {
     setActiveTab: (tab: string) => void;
 }
 
+const DEFAULT_DEPARTMENTS = [
+    { id: '1', name: 'Tithes & Finance', head: 'Elder Samuel Ade', members: 5, status: 'Active', type: 'Operations', description: 'Oversees church financial records and tithe tracking.' },
+    { id: '2', name: 'Building & Facilities', head: 'Bro. David Chen', members: 12, status: 'Active', type: 'Operations', description: 'Maintenance and development of church properties.' },
+    { id: '3', name: 'Sabbath School', head: 'Sis. Mary Johnson', members: 45, status: 'Active', type: 'Education', description: 'Morning Bible study and spiritual education.' },
+    { id: '4', name: 'Sunday School', head: 'Sis. Elena Smith', members: 30, status: 'Active', type: 'Education', description: 'Children and adults education programs.' },
+    { id: '5', name: 'Youth Ministry', head: 'Pastor Tim Rivers', members: 60, status: 'Active', type: 'Ministry', description: 'Engagement and growth for the younger generation.' },
+    { id: '6', name: 'Evangelism & Outreach', head: 'Elder Mark Wilson', members: 25, status: 'Active', type: 'Ministry', description: 'Spreading the gospel and community support.' },
+    { id: '7', name: 'Media & Technology', head: 'Sis. Sarah Lee', members: 8, status: 'Active', type: 'Operations', description: 'Audio-visual and digital ministry support.' },
+    { id: '8', name: 'Health & Temperance', head: 'Dr. John Miller', members: 15, status: 'Active', type: 'Ministry', description: 'Promoting healthy living within the congregation.' },
+];
+
 const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
     const { t, language } = useLanguage();
     const [budgets, setBudgets] = useState<BudgetYear[]>([]);
     const [activeYear, setActiveYear] = useState(new Date().getFullYear());
-    const [departments, setDepartments] = useState<any[]>([]);
+    const [departments, setDepartments] = useState<any[]>(() => {
+        const saved = localStorage.getItem('sanctuary_departments');
+        return saved ? JSON.parse(saved) : DEFAULT_DEPARTMENTS;
+    });
     const [ledger, setLedger] = useState<any[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -48,7 +62,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
             try {
                 // Fetch Departments first
                 const { data: deptData } = await supabase.from('departments').select('*');
-                if (deptData) setDepartments(deptData);
+                if (deptData && deptData.length > 0) setDepartments(deptData);
 
                 // Fetch Ledger
                 const { data: ledgerData } = await supabase.from('ledger').select('*');
@@ -63,19 +77,20 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                     setBudgets(budgetData.map(b => ({
                         year: b.year,
                         totalBudget: b.total_budget,
-                        allocations: b.allocations
+                        allocations: b.allocations || []
                     })));
                 } else {
                     // Seed initial data if empty
                     const defaultYear = new Date().getFullYear();
+                    const availableDepts = deptData && deptData.length > 0 ? deptData : departments;
                     setBudgets([{
                         year: defaultYear,
                         totalBudget: 500000,
-                        allocations: deptData ? deptData.slice(0, 5).map(d => ({
+                        allocations: availableDepts.slice(0, 4).map((d: any) => ({
                             deptId: d.id,
-                            percentage: 20,
-                            amount: 100000
-                        })) : []
+                            percentage: 25,
+                            amount: 125000
+                        }))
                     }]);
                 }
 

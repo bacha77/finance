@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -86,6 +87,8 @@ const EmailVerifyScreen: React.FC<{ email: string; onResend: () => Promise<void>
         setTimeout(() => setResent(false), 5000);
     };
 
+    const { t } = useLanguage();
+
     return (
         <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
             style={{ textAlign: 'center', padding: '0.5rem 0' }}>
@@ -103,10 +106,10 @@ const EmailVerifyScreen: React.FC<{ email: string; onResend: () => Promise<void>
             </motion.div>
 
             <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'white', marginBottom: '0.5rem', letterSpacing: '-0.03em' }}>
-                Check Your Inbox!
+                {t('checkInbox')}
             </h2>
             <p style={{ color: '#64748b', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '0.5rem' }}>
-                We sent a confirmation link to:
+                {t('sentLinkTo')}
             </p>
             <div style={{
                 display: 'inline-block', padding: '0.4rem 1rem', borderRadius: '8px',
@@ -121,9 +124,9 @@ const EmailVerifyScreen: React.FC<{ email: string; onResend: () => Promise<void>
                 borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', textAlign: 'left',
             }}>
                 {[
-                    'Open the confirmation email from Storehouse Finance',
-                    'Click the "Confirm your email" button inside',
-                    'You will be automatically logged in',
+                    t('step1Verify'),
+                    t('step2Verify'),
+                    t('step3Verify'),
                 ].map((step, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: i < 2 ? '0.75rem' : 0 }}>
                         <div style={{
@@ -141,7 +144,7 @@ const EmailVerifyScreen: React.FC<{ email: string; onResend: () => Promise<void>
                 {resent && (
                     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#10b981', fontSize: '0.82rem', fontWeight: 600, marginBottom: '1rem' }}>
-                        <CheckCircle2 size={15} /> Email resent successfully!
+                        <CheckCircle2 size={15} /> {t('emailResent')}
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -154,11 +157,11 @@ const EmailVerifyScreen: React.FC<{ email: string; onResend: () => Promise<void>
                     opacity: resending ? 0.6 : 1,
                 }}>
                 <RefreshCw size={13} style={resending ? { animation: 'spin 1s linear infinite' } : {}} />
-                {resending ? 'Resending...' : "Didn't receive it? Resend email"}
+                {resending ? t('processing') : t('didntReceive')}
             </button>
 
             <p style={{ color: '#1e293b', fontSize: '0.72rem', marginTop: '1.5rem' }}>
-                Check your spam folder · Link expires in 24 hours
+                {t('checkSpam')}
             </p>
         </motion.div>
     );
@@ -170,6 +173,7 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = ({ onBypass }) => {
+    const { t } = useLanguage();
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const [mode, setMode] = useState<'login' | 'signup' | 'verified'>('login');
     const [step, setStep] = useState(0); // sign-up step: 0=account, 1=church info
@@ -320,9 +324,9 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                         style={{ height: '52px', width: 'auto', marginBottom: '0.5rem', filter: 'drop-shadow(0 0 16px rgba(37,99,235,0.4))' }}
                     />
                     <p style={{ color: '#475569', fontSize: '0.82rem' }}>
-                        {mode === 'login' ? 'Welcome back — sign in to your church account' :
-                         mode === 'verified' ? 'Almost there!' :
-                         step === 0 ? 'Create your church account' : 'Tell us about your church'}
+                        {mode === 'login' ? t('welcomeBack') :
+                         mode === 'verified' ? t('almostThere') :
+                         step === 0 ? t('createAccount') : t('tellUsAboutChurch')}
                     </p>
                 </div>
 
@@ -339,7 +343,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                     background: 'rgba(255,255,255,0.04)', color: '#64748b',
                                     fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                                 }}>
-                                ← Back to Sign In
+                                ← {t('backToSignIn') || 'Back to Sign In'}
                             </button>
                         </motion.div>
                     )}
@@ -363,19 +367,19 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                                 </svg>
-                                {googleLoading ? 'Redirecting...' : 'Continue with Google'}
+                                {googleLoading ? t('processing') : t('continueWithGoogle')}
                             </button>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
                                 <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-                                <span style={{ fontSize: '0.7rem', color: '#334155', fontWeight: 700 }}>OR</span>
+                                <span style={{ fontSize: '0.7rem', color: '#334155', fontWeight: 700 }}>{t('or')}</span>
                                 <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
                             </div>
 
                             <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <Field label="Email Address" placeholder="pastor@mychurch.org" type="email"
+                                <Field label={t('emailAddress')} placeholder="pastor@mychurch.org" type="email"
                                     value={email} onChange={setEmail} icon={Mail} required />
-                                <Field label="Password" placeholder="••••••••" type={showPw ? 'text' : 'password'}
+                                <Field label={t('password')} placeholder="••••••••" type={showPw ? 'text' : 'password'}
                                     value={password} onChange={setPassword} icon={Lock} required
                                     rightEl={
                                         <button type="button" onClick={() => setShowPw(p => !p)}
@@ -401,13 +405,13 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                         opacity: loading ? 0.7 : 1, marginTop: '0.25rem',
                                     }}>
                                     <LogIn size={16} />
-                                    {loading ? 'Signing in...' : 'Sign In'}
+                                    {loading ? t('signingIn') : t('signIn')}
                                 </button>
                             </form>
 
                             <button type="button" onClick={() => { setMode('signup'); reset(); setError(null); }}
                                 style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.82rem', cursor: 'pointer', marginTop: '1.25rem', fontWeight: 600, width: '100%', textAlign: 'center', fontFamily: 'inherit' }}>
-                                Don't have an account? <span style={{ color: '#60a5fa' }}>Create one free →</span>
+                                {t('dontHaveAccount')} <span style={{ color: '#60a5fa' }}>{t('createOneFree')}</span>
                             </button>
 
                             {isLocal && (
@@ -450,21 +454,21 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                                 </svg>
-                                {googleLoading ? 'Redirecting...' : 'Sign up with Google'}
+                                {googleLoading ? t('processing') : t('signUp') + ' with Google'}
                             </button>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
                                 <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-                                <span style={{ fontSize: '0.7rem', color: '#334155', fontWeight: 700 }}>OR WITH EMAIL</span>
+                                <span style={{ fontSize: '0.7rem', color: '#334155', fontWeight: 700 }}>{t('orWithEmail')}</span>
                                 <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
                             </div>
 
                             <form onSubmit={handleStep0} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <Field label="Email Address" placeholder="pastor@mychurch.org" type="email"
+                                <Field label={t('emailAddress')} placeholder="pastor@mychurch.org" type="email"
                                     value={email} onChange={setEmail} icon={Mail} required />
 
                                 <div>
-                                    <Field label="Password" placeholder="Min. 8 characters" type={showPw ? 'text' : 'password'}
+                                    <Field label={t('password')} placeholder="Min. 8 characters" type={showPw ? 'text' : 'password'}
                                         value={password} onChange={setPassword} icon={Lock} required
                                         rightEl={
                                             <button type="button" onClick={() => setShowPw(p => !p)}
@@ -492,7 +496,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                     )}
                                 </div>
 
-                                <Field label="Confirm Password" placeholder="Re-enter password" type={showConfirmPw ? 'text' : 'password'}
+                                <Field label={t('confirmPassword')} placeholder="Re-enter password" type={showConfirmPw ? 'text' : 'password'}
                                     value={confirmPassword} onChange={setConfirmPassword} icon={Shield} required
                                     rightEl={
                                         <button type="button" onClick={() => setShowConfirmPw(p => !p)}
@@ -504,8 +508,8 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                 {confirmPassword.length > 0 && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', marginTop: '-0.5rem' }}>
                                         {password === confirmPassword
-                                            ? <><CheckCircle2 size={12} color="#10b981" /><span style={{ color: '#10b981' }}>Passwords match</span></>
-                                            : <><AlertCircle size={12} color="#ef4444" /><span style={{ color: '#ef4444' }}>Passwords do not match</span></>}
+                                            ? <><CheckCircle2 size={12} color="#10b981" /><span style={{ color: '#10b981' }}>{t('passwordsMatch')}</span></>
+                                            : <><AlertCircle size={12} color="#ef4444" /><span style={{ color: '#ef4444' }}>{t('passwordsDoNotMatch')}</span></>}
                                     </div>
                                 )}
 
@@ -525,13 +529,13 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                                         marginTop: '0.25rem',
                                     }}>
-                                    Next — Church Info <ChevronRight size={16} />
+                                    {t('nextChurchInfo')} <ChevronRight size={16} />
                                 </button>
                             </form>
 
                             <button type="button" onClick={() => { setMode('login'); reset(); setError(null); }}
                                 style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.82rem', cursor: 'pointer', marginTop: '1.25rem', fontWeight: 600, width: '100%', textAlign: 'center', fontFamily: 'inherit' }}>
-                                Already have an account? <span style={{ color: '#60a5fa' }}>Sign in →</span>
+                                {t('alreadyHaveAccount')} <span style={{ color: '#60a5fa' }}>{t('signInLink')}</span>
                             </button>
                         </motion.div>
                     )}
@@ -544,23 +548,23 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                             <form onSubmit={handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                     <div style={{ gridColumn: '1 / -1' }}>
-                                        <Field label="Church Name" placeholder="Grace Community Church" type="text"
+                                        <Field label={t('churchNameLabel')} placeholder="Grace Community Church" type="text"
                                             value={churchName} onChange={setChurchName} icon={Church} required />
                                     </div>
                                     <div style={{ gridColumn: '1 / -1' }}>
-                                        <Field label="Senior Pastor / Leader Name" placeholder="Pastor John Smith" type="text"
+                                        <Field label={t('pastorNameLabel')} placeholder="Pastor John Smith" type="text"
                                             value={pastorName} onChange={setPastorName} icon={User} required />
                                     </div>
-                                    <Field label="Phone Number" placeholder="+1 (555) 000-0000" type="tel"
+                                    <Field label={t('phoneNumber')} placeholder="+1 (555) 000-0000" type="tel"
                                         value={phone} onChange={setPhone} icon={Phone} />
-                                    <Field label="Country" placeholder="United States" type="text"
+                                    <Field label={t('country')} placeholder="United States" type="text"
                                         value={country} onChange={setCountry} icon={Globe} />
                                 </div>
 
                                 {/* Denomination selector */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                     <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                                        Denomination / Type
+                                        {t('denominationType')}
                                     </label>
                                     <select
                                         value={denomination}
@@ -572,7 +576,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                             fontFamily: 'inherit', outline: 'none', colorScheme: 'dark',
                                         }}
                                     >
-                                        <option value="" style={{ background: '#0f172a' }}>Select denomination...</option>
+                                        <option value="" style={{ background: '#0f172a' }}>{t('selectDenomination')}</option>
                                         {['Baptist', 'Methodist', 'Pentecostal', 'Non-denominational', 'Catholic', 'Anglican / Episcopal',
                                           'Lutheran', 'Presbyterian', 'Adventist', 'Church of Christ', 'AME / Black Church', 'Other'].map(d => (
                                             <option key={d} value={d} style={{ background: '#0f172a' }}>{d}</option>
@@ -590,16 +594,16 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                             <DollarSign size={13} color="#10b981" />
                                         </div>
                                         <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                                            Church Treasurer
+                                            {t('churchTreasurerTitle')}
                                         </span>
-                                        <span style={{ fontSize: '0.65rem', color: '#334155' }}>— optional</span>
+                                        <span style={{ fontSize: '0.65rem', color: '#334155' }}>— {t('optional')}</span>
                                     </div>
-                                    <Field label="Treasurer Full Name" placeholder="e.g. Deacon Robert Lee"
+                                    <Field label={t('treasurerFullName')} placeholder="e.g. Deacon Robert Lee"
                                         value={treasurerName} onChange={setTreasurerName} icon={User} />
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-                                        <Field label="Treasurer Email" placeholder="treasurer@church.org" type="email"
+                                        <Field label={t('treasurerEmailLabel')} placeholder="treasurer@church.org" type="email"
                                             value={treasurerEmail} onChange={setTreasurerEmail} icon={Mail} />
-                                        <Field label="Treasurer Phone" placeholder="+1 (555) 000-0000" type="tel"
+                                        <Field label={t('treasurerPhoneLabel')} placeholder="+1 (555) 000-0000" type="tel"
                                             value={treasurerPhone} onChange={setTreasurerPhone} icon={Phone} />
                                     </div>
                                 </div>
@@ -610,10 +614,14 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                     background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)',
                                     fontSize: '0.75rem', color: '#64748b', lineHeight: 1.5,
                                 }}>
-                                    By creating an account you agree to our{' '}
-                                    <a href="#" style={{ color: '#60a5fa' }}>Terms of Service</a> and{' '}
-                                    <a href="#" style={{ color: '#60a5fa' }}>Privacy Policy</a>.
-                                    A confirmation email will be sent to <strong style={{ color: '#94a3b8' }}>{email}</strong>.
+                                    <div dangerouslySetInnerHTML={{ __html: 
+                                        t('termsAgreement')
+                                            .replace('{terms}', `<a href="#" style="color: #60a5fa; text-decoration: none;">${t('termsOfService')}</a>`)
+                                            .replace('{privacy}', `<a href="#" style="color: #60a5fa; text-decoration: none;">${t('privacyPolicy')}</a>`)
+                                    }} />
+                                    <div style={{ marginTop: '0.5rem', fontWeight: 600 }}>
+                                        {t('confirmationEmailSent').replace('{email}', email)}
+                                    </div>
                                 </div>
 
                                 {error && (
@@ -632,7 +640,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                             cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '4px',
                                             fontWeight: 700, fontSize: '0.85rem',
                                         }}>
-                                        <ChevronLeft size={15} /> Back
+                                        <ChevronLeft size={15} /> {t('back')}
                                     </button>
                                     <button type="submit" disabled={loading}
                                         style={{
@@ -643,7 +651,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                                         }}>
                                         <UserPlus size={16} />
-                                        {loading ? 'Creating account...' : 'Create Account'}
+                                        {loading ? t('creatingAccount') : t('createAccount')}
                                     </button>
                                 </div>
                             </form>

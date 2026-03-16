@@ -33,6 +33,9 @@ const DEFAULT_DEPARTMENTS: Department[] = [
     { id: '3', name: 'Sabbath School', head: 'Sis. Mary Johnson', members: 45, status: 'Active', type: 'Education', description: 'Morning Bible study and spiritual education.' },
     { id: '4', name: 'Sunday School', head: 'Sis. Elena Smith', members: 30, status: 'Active', type: 'Education', description: 'Children and adults education programs.' },
     { id: '5', name: 'Youth Ministry', head: 'Pastor Tim Rivers', members: 60, status: 'Active', type: 'Ministry', description: 'Engagement and growth for the younger generation.' },
+    { id: '6', name: 'Evangelism & Outreach', head: 'Elder Mark Wilson', members: 25, status: 'Active', type: 'Ministry', description: 'Spreading the gospel and community support.' },
+    { id: '7', name: 'Media & Technology', head: 'Sis. Sarah Lee', members: 8, status: 'Active', type: 'Operations', description: 'Audio-visual and digital ministry support.' },
+    { id: '8', name: 'Health & Temperance', head: 'Dr. John Miller', members: 15, status: 'Active', type: 'Ministry', description: 'Promoting healthy living within the congregation.' },
 ];
 
 const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
