@@ -158,7 +158,7 @@ const SmartGiving: React.FC = () => {
 
                     <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '2rem', color: 'white', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Designate Fund</h3>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '4rem' }}>
-                        {(availableFunds.length > 0 ? availableFunds.map(f => f.name) : ['General Fund', 'Building Fund', 'Missions']).map((f) => (
+                        {(availableFunds.length > 0 ? availableFunds.map(f => f.name) : []).map((f) => (
                             <button
                                 key={f}
                                 onClick={() => setFund(f)}

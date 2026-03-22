@@ -27,23 +27,14 @@ interface DepartmentsProps {
     setActiveTab: (tab: string) => void;
 }
 
-const DEFAULT_DEPARTMENTS: Department[] = [
-    { id: '1', name: 'Tithes & Finance', head: 'Elder Samuel Ade', members: 5, status: 'Active', type: 'Operations', description: 'Oversees church financial records and tithe tracking.' },
-    { id: '2', name: 'Building & Facilities', head: 'Bro. David Chen', members: 12, status: 'Active', type: 'Operations', description: 'Maintenance and development of church properties.' },
-    { id: '3', name: 'Sabbath School', head: 'Sis. Mary Johnson', members: 45, status: 'Active', type: 'Education', description: 'Morning Bible study and spiritual education.' },
-    { id: '4', name: 'Sunday School', head: 'Sis. Elena Smith', members: 30, status: 'Active', type: 'Education', description: 'Children and adults education programs.' },
-    { id: '5', name: 'Youth Ministry', head: 'Pastor Tim Rivers', members: 60, status: 'Active', type: 'Ministry', description: 'Engagement and growth for the younger generation.' },
-    { id: '6', name: 'Evangelism & Outreach', head: 'Elder Mark Wilson', members: 25, status: 'Active', type: 'Ministry', description: 'Spreading the gospel and community support.' },
-    { id: '7', name: 'Media & Technology', head: 'Sis. Sarah Lee', members: 8, status: 'Active', type: 'Operations', description: 'Audio-visual and digital ministry support.' },
-    { id: '8', name: 'Health & Temperance', head: 'Dr. John Miller', members: 15, status: 'Active', type: 'Ministry', description: 'Promoting healthy living within the congregation.' },
-];
+
 
 const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
     const { t } = useLanguage();
     const [showAddModal, setShowAddModal] = useState(false);
     const [departments, setDepartments] = useState<Department[]>(() => {
         const saved = localStorage.getItem('sanctuary_departments');
-        return saved ? JSON.parse(saved) : DEFAULT_DEPARTMENTS;
+        return saved ? JSON.parse(saved) : [];
     });
 
     // Supabase Sync
@@ -55,9 +46,7 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
                     .select('*');
 
                 if (error) throw error;
-                if (data && data.length > 0) {
-                    setDepartments(data);
-                }
+                setDepartments(data || []);
             } catch (err) {
                 console.error('Error fetching departments from Supabase:', err);
             }

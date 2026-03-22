@@ -10,8 +10,12 @@
 CREATE TABLE IF NOT EXISTS public.churches (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name        TEXT NOT NULL,
+    address     TEXT,
     city        TEXT,
     state       TEXT,
+    zip         TEXT,
+    country     TEXT,
+    denomination TEXT,
     size        TEXT,
     plan        TEXT DEFAULT 'trial',
     owner_id    UUID REFERENCES auth.users(id),

@@ -31,12 +31,7 @@ interface Member {
     status: string;
 }
 
-const DEFAULT_MEMBERS: Member[] = [
-    { name: 'David Wilson', email: 'david.w@example.com', role: 'Member', joined: 'Jan 2024', status: 'Active' },
-    { name: 'Emily Chen', email: 'emily.c@example.com', role: 'Volunteer', joined: 'Mar 2024', status: 'Active' },
-    { name: 'Michael Brown', email: 'mbrown@example.com', role: 'Member', joined: 'Dec 2023', status: 'Inactive' },
-    { name: 'Jessica Taylor', email: 'jtaylor@example.com', role: 'Deacon', joined: 'Jun 2022', status: 'Active' },
-];
+
 
 const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }) => {
     const { t, language } = useLanguage();
@@ -58,7 +53,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
 
     const [members, setMembers] = useState<Member[]>(() => {
         const saved = localStorage.getItem('sanctuary_members');
-        return saved ? JSON.parse(saved) : DEFAULT_MEMBERS;
+        return saved ? JSON.parse(saved) : [];
     });
 
     // Supabase Sync
@@ -70,9 +65,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                     .select('*')
                     .order('created_at', { ascending: false });
 
-                if (data && data.length > 0) {
-                    setMembers(data);
-                }
+                setMembers(data || []);
             } catch (err) {
                 console.error('Error fetching members from Supabase:', err);
             }

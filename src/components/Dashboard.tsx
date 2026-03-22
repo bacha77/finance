@@ -74,19 +74,8 @@ const StatCard: React.FC<StatCardProps> = ({
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay, duration: 0.4 }}
-        style={{
-            background: 'rgba(15,23,42,0.6)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: '16px',
-            padding: '1.5rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem',
-            backdropFilter: 'blur(12px)',
-            transition: 'border-color 0.2s, box-shadow 0.2s',
-            cursor: 'default',
-        }}
-        whileHover={{ borderColor: 'rgba(37,99,235,0.4)', boxShadow: '0 0 24px rgba(37,99,235,0.1)' }}
+        className="stat-card"
+        style={{ cursor: 'default' }}
     >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div style={{
@@ -97,20 +86,20 @@ const StatCard: React.FC<StatCardProps> = ({
             </div>
             <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: '4px',
-                fontSize: '0.72rem', fontWeight: 700,
-                color: up ? '#10b981' : '#ef4444',
-                background: up ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                fontSize: '0.72rem', fontWeight: 800,
+                color: up ? 'hsl(var(--success))' : 'hsl(var(--error))',
+                background: up ? 'hsla(var(--success) / 0.1)' : 'hsla(var(--error) / 0.1)',
                 padding: '3px 8px', borderRadius: '100px',
             }}>
                 {up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}{change}
             </span>
         </div>
         <div>
-            <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'white', lineHeight: 1.1, letterSpacing: '-0.03em' }}>
+            <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'white', lineHeight: 1.1, letterSpacing: '-0.04em' }}>
                 {value}
             </div>
-            {sub && <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700, marginTop: '2px' }}>{sub}</div>}
-            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, marginTop: '4px' }}>{label}</div>
+            {sub && <div style={{ fontSize: '0.72rem', color: 'hsl(var(--success))', fontWeight: 700, marginTop: '2px' }}>{sub}</div>}
+            <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 700, marginTop: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
         </div>
         {sparkline && <Sparkline values={sparkline} color={iconColor} />}
     </motion.div>
@@ -122,53 +111,41 @@ const FeatureCard: React.FC<{
     iconBg: string; iconColor: string; onClick: () => void; delay: number;
 }> = ({ icon: Icon, title, desc, iconBg, iconColor, onClick, delay }) => (
     <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay }}
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay, duration: 0.3 }}
         onClick={onClick}
+        className="glass-card"
         style={{
-            background: 'rgba(15,23,42,0.6)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: '16px',
             padding: '1.75rem',
             cursor: 'pointer',
-            transition: 'all 0.2s',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
-        whileHover={{ borderColor: 'rgba(37,99,235,0.4)', y: -3, boxShadow: '0 8px 32px rgba(37,99,235,0.12)' }}
+        whileHover={{ transform: 'translateY(-5px)', borderColor: 'hsla(var(--p)/0.4)', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.5)' }}
     >
         <div style={{
-            width: '52px', height: '52px', borderRadius: '14px',
+            width: '56px', height: '56px', borderRadius: '16px',
             background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            marginBottom: '1.25rem',
+            marginBottom: '1.5rem',
+            boxShadow: `0 8px 16px ${iconBg}`
         }}>
-            <Icon size={26} color={iconColor} strokeWidth={1.75} />
+            <Icon size={28} color={iconColor} strokeWidth={1.75} />
         </div>
-        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', marginBottom: '0.4rem' }}>{title}</div>
-        <div style={{ fontSize: '0.82rem', color: '#64748b', lineHeight: 1.5 }}>{desc}</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>{title}</div>
+        <div style={{ fontSize: '0.825rem', color: 'hsl(var(--text-muted))', lineHeight: 1.6 }}>{desc}</div>
     </motion.div>
 );
 
 // ── Main Dashboard ─────────────────────────────────────────────────────────
 const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
     const { t, language } = useLanguage();
-    const [stats, setStats] = useState({ balance: 142500, tithes: 28450, members: 1240, expenses: 19800 });
+    const [stats, setStats] = useState({ balance: 0, tithes: 0, members: 0, expenses: 0 });
     const [recentTx, setRecentTx] = useState<any[]>([]);
     const [syncing, setSyncing] = useState(false);
     const [projection, setProjection] = useState<{income: number, expense: number, confidence: number} | null>(null);
     const [anomalies, setAnomalies] = useState<any[]>([]);
-    const [goals, setGoals] = useState<any[]>([
-        { name: 'Building Fund', current: 125000, goal: 500000, color: '#2563eb', icon: ChurchIcon },
-        { name: 'Youth Mission', current: 8500, goal: 15000, color: '#a855f7', icon: HeartHandshake },
-        { name: 'Community Outreach', current: 4200, goal: 10000, color: '#10b981', icon: Users }
-    ]);
-    const [chartData] = useState<any[]>([
-        { name: 'Jan', income: 4000, expense: 2400 },
-        { name: 'Feb', income: 3200, expense: 1998 },
-        { name: 'Mar', income: 4500, expense: 2800 },
-        { name: 'Apr', income: 3780, expense: 1908 },
-        { name: 'May', income: 5890, expense: 4800 },
-        { name: 'Jun', income: 6390, expense: 3800 },
-    ]);
+    const [goals, setGoals] = useState<any[]>([]);
+    const [chartData] = useState<any[]>([]);
 
     const today = new Date().toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -184,12 +161,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                 const totalBalance = funds?.reduce((s: number, f: any) => s + (f.balance || 0), 0) || 0;
                 const totalTithes = ledger?.filter((t: any) => t.type === 'in').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
                 const totalExpenses = ledger?.filter((t: any) => t.type === 'out').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
-                setStats(prev => ({
-                    balance: totalBalance || prev.balance,
-                    tithes: totalTithes || prev.tithes,
-                    members: members?.length || prev.members,
-                    expenses: totalExpenses || prev.expenses,
-                }));
+                setStats({
+                    balance: totalBalance,
+                    tithes: totalTithes,
+                    members: members?.length || 0,
+                    expenses: totalExpenses,
+                });
                 if (ledger) {
                     setRecentTx(ledger.slice(0, 6));
                     const pred = predictNextMonth(ledger);
@@ -694,9 +671,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
 
                     {/* KPI rows */}
                     {[
-                        { label: 'Liquidity Ratio', value: '2.4x', status: 'Healthy', color: '#10b981', pct: 80 },
-                        { label: 'Budget Adherence', value: '94%', status: 'On Track', color: '#2563eb', pct: 94 },
-                        { label: 'Reserve Fund', value: `${fmtShort(stats.balance * 0.18)}`, status: 'Stable', color: '#f59e0b', pct: 65 },
+                        { label: 'Liquidity Ratio', value: stats.expenses > 0 ? `${(stats.balance / stats.expenses).toFixed(1)}x` : '0x', status: stats.balance > 0 ? 'Healthy' : 'N/A', color: '#10b981', pct: Math.min(100, (stats.balance / Math.max(stats.expenses, 1)) * 40) },
+                        { label: 'Budget Adherence', value: budgetUsed > 0 ? `${100 - budgetUsed}%` : '100%', status: budgetUsed < 90 ? 'On Track' : 'Warning', color: '#2563eb', pct: 100 - budgetUsed },
+                        { label: 'Reserve Fund', value: `${fmtShort(stats.balance * 0.1)}`, status: 'N/A', color: '#f59e0b', pct: 0 },
                     ].map((kpi, i) => (
                         <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -263,7 +263,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                         treasurer_email: treasurerEmail.trim(),
                         treasurer_phone: treasurerPhone.trim(),
                     },
-                    emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
+                    emailRedirectTo: window.location.href.split('#')[0].split('?')[0],
                 },
             });
             if (error) throw error;
@@ -280,7 +280,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
 
     const handleGoogleSignIn = async () => {
         setGoogleLoading(true); setError(null);
-        const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`;
+        const redirectTo = window.location.href.split('#')[0].split('?')[0];
         const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
         if (error) { setError(error.message); setGoogleLoading(false); }
     };

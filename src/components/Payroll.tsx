@@ -21,14 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const DEFAULT_STAFF = [
-    { name: 'Dr. Marcus Thorne', role: 'Senior Pastor', type: 'Full-time', salary: 7500, lastPaid: 'Mar 01, 2026', status: 'Paid', recurring: true, frequency: 'Monthly' },
-    { name: 'Sarah Jenkins', role: 'Worship Director', type: 'Full-time', salary: 5200, lastPaid: 'Mar 01, 2026', status: 'Paid', recurring: true, frequency: 'Monthly' },
-    { name: 'Kevin O\'Brian', role: 'Youth Pastor', type: 'Full-time', salary: 4800, lastPaid: 'Mar 01, 2026', status: 'Paid', recurring: true, frequency: 'Monthly' },
-    { name: 'Linda Vance', role: 'Cleaner', type: 'Contractor', salary: 1200, lastPaid: 'Feb 28, 2026', status: 'Paid', recurring: true, frequency: 'Monthly' },
-    { name: 'Tom Harris', role: 'IT Support', type: 'Contractor', salary: 2800, lastPaid: 'Feb 15, 2026', status: 'Pending', recurring: false, frequency: 'Monthly' },
-    { name: 'Jacob Miller', role: 'Security Detail', type: 'Contractor', salary: 150, lastPaid: 'Never', status: 'Pending', recurring: true, frequency: 'Twice Daily' },
-];
+const DEFAULT_STAFF: any[] = [];
 
 const Payroll: React.FC = () => {
     const { t } = useLanguage();
@@ -49,21 +42,17 @@ const Payroll: React.FC = () => {
             setIsLoading(true);
             try {
                 const { data } = await supabase.from('staff').select('*');
-                if (data && data.length > 0) {
-                    setStaff(data.map(s => ({
-                        id: s.id,
-                        name: s.name,
-                        role: s.role,
-                        type: s.type,
-                        salary: s.salary,
-                        lastPaid: s.last_paid,
-                        status: s.status,
-                        recurring: s.recurring,
-                        frequency: s.frequency
-                    })));
-                } else {
-                    setStaff(DEFAULT_STAFF);
-                }
+                setStaff(data ? data.map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    role: s.role,
+                    type: s.type,
+                    salary: s.salary,
+                    lastPaid: s.last_paid,
+                    status: s.status,
+                    recurring: s.recurring,
+                    frequency: s.frequency
+                })) : []);
             } catch (err) {
                 console.error('Error fetching staff:', err);
                 setStaff(DEFAULT_STAFF);
@@ -239,12 +228,7 @@ const Payroll: React.FC = () => {
         };
     };
 
-    const taxForms = [
-        { year: '2025', type: 'W-2', recipient: 'Dr. Marcus Thorne', status: 'Ready', date: 'Jan 15, 2026' },
-        { year: '2025', type: 'W-2', recipient: 'Sarah Jenkins', status: 'Ready', date: 'Jan 15, 2026' },
-        { year: '2025', type: '1099-NEC', recipient: 'Linda Vance', status: 'Ready', date: 'Jan 20, 2026' },
-        { year: '2025', type: '941', recipient: 'IRS (Q4)', status: 'Filed', date: 'Jan 31, 2026' },
-    ];
+    const taxForms: any[] = [];
 
     if (isLoading) {
         return (
@@ -485,14 +469,14 @@ const Payroll: React.FC = () => {
                                 </div>
                                 <div style={{ marginTop: '2rem', display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
                                     <Calendar size={20} className="gradient-text" />
-                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t('estDisbursement')}: <strong style={{ color: 'white' }}>$18,450.00</strong></p>
+                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t('estDisbursement')}: <strong style={{ color: 'white' }}>$0.00</strong></p>
                                 </div>
                             </motion.div>
 
                             <motion.div whileHover={{ y: -5 }} className="glass-card" style={{ padding: '2rem' }}>
                                 <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>{t('activeWorkforce')}</p>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
-                                    <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>12</h2>
+                                    <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>0</h2>
                                     <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>8 FT / 4 {t('contractors')}</span>
                                 </div>
                                 <div style={{ marginTop: '2rem', display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
@@ -667,10 +651,10 @@ const Payroll: React.FC = () => {
                             marginBottom: '4rem'
                         }}>
                             {[
-                                { label: 'YTD Federal Withholding', value: '$24,520.00', icon: ShieldCheck, color: 'var(--primary)' },
-                                { label: 'Employer FICA Liability', value: '$12,180.50', icon: Briefcase, color: '#a855f7' },
-                                { label: 'Active Tax Forms', value: '4 Ready', icon: FileText, color: 'var(--success)' },
-                                { label: 'Next Filing Deadline', value: 'April 30', icon: Calendar, color: '#f59e0b' },
+                                { label: 'YTD Federal Withholding', value: '$0.00', icon: ShieldCheck, color: 'var(--primary)' },
+                                { label: 'Employer FICA Liability', value: '$0.00', icon: Briefcase, color: '#a855f7' },
+                                { label: 'Active Tax Forms', value: '0 Ready', icon: FileText, color: 'var(--success)' },
+                                { label: 'Next Filing Deadline', value: 'N/A', icon: Calendar, color: '#f59e0b' },
                             ].map((stat, idx) => (
                                 <motion.div whileHover={{ scale: 1.02 }} key={idx} className="glass-card" style={{ padding: '2rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
@@ -786,12 +770,7 @@ const Payroll: React.FC = () => {
                                             <button onClick={() => setShowHistoryModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                            {[
-                                                { date: 'Mar 01, 2026', desc: 'Monthly Salary Run', amount: '$42,500.00', status: 'Completed' },
-                                                { date: 'Feb 15, 2026', desc: 'Mid-Month Contractor Run', amount: '$12,800.00', status: 'Completed' },
-                                                { date: 'Feb 01, 2026', desc: 'Monthly Salary Run', amount: '$42,500.00', status: 'Completed' },
-                                                { date: 'Jan 15, 2026', desc: 'Tax Filing Period Q4', amount: '$8,420.00', status: 'Completed' },
-                                            ].map((h, i) => (
+                                            {[].map((h: any, i) => (
                                                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid var(--border)' }}>
                                                     <div>
                                                         <p style={{ fontWeight: 800, color: 'white', fontSize: '1.1rem' }}>{h.date}</p>

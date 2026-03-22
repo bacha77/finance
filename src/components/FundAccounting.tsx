@@ -54,20 +54,9 @@ const FundAccounting: React.FC = () => {
     const [showReconcile, setShowReconcile] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
 
-    const DEFAULT_FUNDS: Fund[] = [
-        { id: 'gf', name: t('generalFundTithes'), balance: 85240.00, status: t('healthy'), color: '#6366f1', type: t('operational') },
-        { id: 'bc', name: t('buildingCampaign'), balance: 210000.00, status: t('restricted'), color: '#a855f7', type: t('restricted') },
-        { id: 'mo', name: t('missionsOutreach'), balance: 12450.00, status: t('active'), color: '#10b981', type: t('purpose') },
-        { id: 'ym', name: t('youthMinistry'), balance: 4200.00, status: t('low'), color: '#f59e0b', type: t('operational') },
-    ];
+    const DEFAULT_FUNDS: Fund[] = [];
 
-    const DEFAULT_LEDGER: Transaction[] = [
-        { id: 'tx_1', date: 'Mar 07, 2026', desc: `Online ${t('tithes')} - Recurring`, cat: t('tithes'), dept: t('tithesFinance'), fund: t('generalFundTithes'), fundId: 'gf', amount: 1250.00, type: 'in', auditTrail: [{ timestamp: '2026-03-07T10:00:00Z', user: 'System', action: 'CREATED', details: t('importedGateway') }] },
-        { id: 'tx_2', date: 'Mar 06, 2026', desc: `Sponsorship - ${t('youthMinistry')}`, cat: t('tithes'), dept: t('youthMinistry'), fund: t('youthMinistry'), fundId: 'ym', amount: 500.00, type: 'in', auditTrail: [{ timestamp: '2026-03-06T14:30:00Z', user: 'Admin', action: 'CREATED', details: 'Manual entry from youth director' }] },
-        { id: 'tx_3', date: 'Mar 05, 2026', desc: `Utility Bill - Main Bldg`, cat: t('operatingExp'), dept: t('buildingFacilities'), fund: t('generalFundTithes'), fundId: 'gf', amount: -840.20, type: 'out', auditTrail: [{ timestamp: '2026-03-05T09:15:00Z', user: 'Treasurer', action: 'CREATED', details: 'Automated bill pay' }] },
-        { id: 'tx_4', date: 'Mar 04, 2026', desc: 'HVAC Maintenance', cat: t('restrictedExp'), dept: t('buildingFacilities'), fund: t('buildingCampaign'), fundId: 'bc', amount: -320.00, type: 'out', auditTrail: [{ timestamp: '2026-03-04T11:45:00Z', user: 'Admin', action: 'CREATED', details: 'Manual check entry' }] },
-        { id: 'tx_5', date: 'Mar 03, 2026', desc: 'Mission Trip Deposit', cat: t('purposeExp'), dept: t('missionsOutreach'), fund: t('missionsOutreach'), fundId: 'mo', amount: -150.00, type: 'out', auditTrail: [{ timestamp: '2026-03-03T16:20:00Z', user: 'Secretary', action: 'CREATED', details: 'Mission fund allocation' }] },
-    ];
+    const DEFAULT_LEDGER: Transaction[] = [];
 
     const [funds, setFunds] = useState<Fund[]>(() => {
         const saved = localStorage.getItem('sanctuary_funds');
@@ -91,9 +80,7 @@ const FundAccounting: React.FC = () => {
                     .order('created_at', { ascending: false });
 
                 if (ledgerError) throw ledgerError;
-                if (ledgerData && ledgerData.length > 0) {
-                    setLedger(ledgerData);
-                }
+                setLedger(ledgerData || []);
 
                 // Fetch Funds
                 const { data: fundData, error: fundError } = await supabase
@@ -101,9 +88,7 @@ const FundAccounting: React.FC = () => {
                     .select('*');
 
                 if (fundError) throw fundError;
-                if (fundData && fundData.length > 0) {
-                    setFunds(fundData);
-                }
+                setFunds(fundData || []);
             } catch (err) {
                 console.error('Error syncing with Supabase:', err);
             } finally {
