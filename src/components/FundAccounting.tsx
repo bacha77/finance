@@ -32,62 +32,58 @@ interface AuditLog {
 }
 
 interface Transaction {
-    id: string;
+    id?: string;
     date: string;
-    desc: string;
-    cat: string;
-    dept: string;
+    description: string;
+    category: string;
+    department: string;
     fund: string;
-    fundId: string;
+    fund_id: string;
     amount: number;
-    type: 'in' | 'out';
+    type: 'in' | 'out' | 'expense' | 'revenue';
     member?: string;
     method?: string;
     notes?: string;
-    auditTrail: AuditLog[];
+    audit_trail: AuditLog[];
+    church_id?: string;
+    created_at?: string;
 }
 
-const FundAccounting: React.FC = () => {
+interface FundAccountingProps {
+    churchId: string;
+}
+
+const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
     const { t, language } = useLanguage();
     const [showNewTxModal, setShowNewTxModal] = useState(false);
     const [selectedTxForAudit, setSelectedTxForAudit] = useState<Transaction | null>(null);
     const [showReconcile, setShowReconcile] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
 
-    const DEFAULT_FUNDS: Fund[] = [];
-
-    const DEFAULT_LEDGER: Transaction[] = [];
-
-    const [funds, setFunds] = useState<Fund[]>(() => {
-        const saved = localStorage.getItem('sanctuary_funds');
-        return saved ? JSON.parse(saved) : DEFAULT_FUNDS;
-    });
-
-    const [ledger, setLedger] = useState<Transaction[]>(() => {
-        const saved = localStorage.getItem('sanctuary_ledger');
-        return saved ? JSON.parse(saved) : DEFAULT_LEDGER;
-    });
+    const [funds, setFunds] = useState<Fund[]>([]);
+    const [ledger, setLedger] = useState<Transaction[]>([]);
 
     // Supabase Sync
     useEffect(() => {
         const fetchData = async () => {
+            if (!churchId) return;
             setIsSyncing(true);
             try {
                 // Fetch Ledger
-                const { data: ledgerData, error: ledgerError } = await supabase
+                const { data: ledgerData } = await supabase
                     .from('ledger')
                     .select('*')
+                    .eq('church_id', churchId)
                     .order('created_at', { ascending: false });
 
-                if (ledgerError) throw ledgerError;
                 setLedger(ledgerData || []);
 
                 // Fetch Funds
-                const { data: fundData, error: fundError } = await supabase
+                const { data: fundData } = await supabase
                     .from('funds')
-                    .select('*');
+                    .select('*')
+                    .eq('church_id', churchId);
 
-                if (fundError) throw fundError;
                 setFunds(fundData || []);
             } catch (err) {
                 console.error('Error syncing with Supabase:', err);
@@ -97,7 +93,7 @@ const FundAccounting: React.FC = () => {
         };
 
         fetchData();
-    }, []);
+    }, [churchId]);
 
     useEffect(() => {
         localStorage.setItem('sanctuary_funds', JSON.stringify(funds));
@@ -120,24 +116,27 @@ const FundAccounting: React.FC = () => {
     const [availableDepts, setAvailableDepts] = useState<{ id: string, name: string }[]>([]);
 
     useEffect(() => {
-        const savedMembers = localStorage.getItem('sanctuary_members');
-        if (savedMembers) {
-            setAvailableMembers(JSON.parse(savedMembers));
-        }
+        const loadContext = async () => {
+            if (!churchId) return;
 
-        const savedDepts = localStorage.getItem('sanctuary_departments');
-        if (savedDepts) {
-            setAvailableDepts(JSON.parse(savedDepts));
-        } else {
-            setAvailableDepts([
-                { id: '1', name: t('tithesFinance') },
-                { id: '2', name: t('buildingFacilities') },
-                { id: '3', name: t('sabbathSchool') },
-                { id: '4', name: t('sundaySchool') },
-                { id: '5', name: t('youthMinistry') },
-            ]);
-        }
-    }, [showNewTxModal]);
+            const { data: membersData } = await supabase.from('members').select('name').eq('church_id', churchId);
+            if (membersData) setAvailableMembers(membersData);
+
+            const { data: deptsData } = await supabase.from('departments').select('id, name').eq('church_id', churchId);
+            if (deptsData && deptsData.length > 0) {
+                setAvailableDepts(deptsData);
+            } else {
+                setAvailableDepts([
+                    { id: '1', name: t('tithesFinance') },
+                    { id: '2', name: t('buildingFacilities') },
+                    { id: '3', name: t('sabbathSchool') },
+                    { id: '4', name: t('sundaySchool') },
+                    { id: '5', name: t('youthMinistry') },
+                ]);
+            }
+        };
+        loadContext();
+    }, [churchId, showNewTxModal]);
 
     const handleAllocationChange = (index: number, field: string, value: string) => {
         const newAllocations = [...allocations];
@@ -148,7 +147,7 @@ const FundAccounting: React.FC = () => {
     const handleAddTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (allocations.length === 0) return;
+        if (allocations.length === 0 || !churchId) return;
 
         const newTxs: Transaction[] = [];
         const updatedFunds = [...funds];
@@ -161,21 +160,21 @@ const FundAccounting: React.FC = () => {
             const selectedDept = availableDepts.find(d => d.id === alloc.deptId);
 
             newTxs.push({
-                id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 date: new Date(txDate).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-                desc: txNotes ? `${t('donations')}: ${txNotes}` : `${t('donations')} ${t('to')} ${selectedDept?.name}`,
-                cat: t('revenue'),
+                description: txNotes ? `${t('donations')}: ${txNotes}` : `${t('donations')} ${t('to')} ${selectedDept?.name}`,
+                category: t('revenue'),
                 fund: selectedFund?.name || t('generalFundTithes'),
-                fundId: alloc.fundId,
-                dept: selectedDept?.name || 'General',
+                fund_id: alloc.fundId,
+                department: selectedDept?.name || 'General',
                 amount: amount,
                 type: 'in',
                 member: txMember,
                 method: paymentMethod,
                 notes: txNotes,
-                auditTrail: [{
+                church_id: churchId,
+                audit_trail: [{
                     timestamp: new Date().toISOString(),
-                    user: 'Admin (Simulated)',
+                    user: 'Admin',
                     action: 'CREATED',
                     details: t('recordedManually').replace('{method}', paymentMethod)
                 }]
@@ -200,14 +199,24 @@ const FundAccounting: React.FC = () => {
 
             // Update Funds in Supabase
             for (const fund of updatedFunds) {
-                const { error: fundError } = await supabase
-                    .from('funds')
-                    .update({ balance: fund.balance })
-                    .eq('id', fund.id);
-                if (fundError) console.error('Error updating fund balance:', fundError);
+                if (fund.id && fund.id.length > 5) { // Skip local temp IDs
+                    const { error: fundError } = await supabase
+                        .from('funds')
+                        .update({ balance: fund.balance })
+                        .eq('id', fund.id)
+                        .eq('church_id', churchId);
+                    if (fundError) console.error('Error updating fund balance:', fundError);
+                }
             }
 
-            setLedger([...newTxs, ...ledger]);
+            // Refresh local state from DB to keep UI in sync
+            const { data: freshLedger } = await supabase
+                .from('ledger')
+                .select('*')
+                .eq('church_id', churchId)
+                .order('created_at', { ascending: false });
+            
+            if (freshLedger) setLedger(freshLedger);
             setFunds(updatedFunds);
         } catch (err) {
             console.error('Error saving transaction to Supabase:', err);
@@ -409,7 +418,7 @@ const FundAccounting: React.FC = () => {
                                                 <td style={{ fontWeight: 600 }}>{tx.date}</td>
                                                 <td>
                                                     <div>
-                                                        <div style={{ color: 'white', fontWeight: 700, fontSize: '0.95rem' }}>{tx.desc}</div>
+                                                        <div style={{ color: 'white', fontWeight: 700, fontSize: '0.95rem' }}>{tx.description}</div>
                                                         {tx.member && (
                                                             <div style={{ fontSize: '0.75rem', color: 'var(--primary-light)', marginTop: '4px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                                                 {t('contributor')}: {tx.member}
@@ -419,8 +428,8 @@ const FundAccounting: React.FC = () => {
                                                 </td>
                                                 <td>
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                        <span style={{ fontSize: '0.875rem', color: 'var(--text-main)', fontWeight: 600 }}>{tx.cat}</span>
-                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tx.dept || 'General Ops'}</span>
+                                                        <span style={{ fontSize: '0.875rem', color: 'var(--text-main)', fontWeight: 600 }}>{tx.category}</span>
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tx.department || 'General Ops'}</span>
                                                     </div>
                                                 </td>
                                                 <td>
@@ -617,11 +626,11 @@ const FundAccounting: React.FC = () => {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                {selectedTxForAudit.auditTrail.map((log, i) => (
+                                {selectedTxForAudit.audit_trail.map((log: AuditLog, i: number) => (
                                     <div key={i} style={{ display: 'flex', gap: '1rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary)', marginBottom: '4px' }} />
-                                            {i !== selectedTxForAudit.auditTrail.length - 1 && <div style={{ width: '1px', flex: 1, background: 'var(--border)' }} />}
+                                            {i !== selectedTxForAudit.audit_trail.length - 1 && <div style={{ width: '1px', flex: 1, background: 'var(--border)' }} />}
                                         </div>
                                         <div style={{ flex: 1, paddingBottom: '1rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>

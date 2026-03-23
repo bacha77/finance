@@ -23,7 +23,11 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 const DEFAULT_STAFF: any[] = [];
 
-const Payroll: React.FC = () => {
+interface PayrollProps {
+    churchId: string;
+}
+
+const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
     const { t } = useLanguage();
     const [view, setView] = useState<'staff' | 'tax'>('staff');
     const [showHireModal, setShowHireModal] = useState(false);
@@ -36,12 +40,26 @@ const Payroll: React.FC = () => {
     const [downloadingForm, setDownloadingForm] = useState<number | null>(null);
     const [downloadedForms, setDownloadedForms] = useState<number[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [timeLeft, setTimeLeft] = useState({ hours: 14, minutes: 22, seconds: 45 });
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
+                if (prev.minutes > 0) return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+                if (prev.hours > 0) return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
+                return { hours: 23, minutes: 59, seconds: 59 };
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         const fetchStaff = async () => {
+            if (!churchId) return;
             setIsLoading(true);
             try {
-                const { data } = await supabase.from('staff').select('*');
+                const { data } = await supabase.from('staff').select('*').eq('church_id', churchId);
                 setStaff(data ? data.map(s => ({
                     id: s.id,
                     name: s.name,
@@ -61,7 +79,7 @@ const Payroll: React.FC = () => {
             }
         };
         fetchStaff();
-    }, []);
+    }, [churchId]);
 
     // Hire Form States
     const [hireName, setHireName] = useState('');
@@ -98,16 +116,15 @@ const Payroll: React.FC = () => {
                     const lastPaidStr = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) + shiftLabel;
 
                     ledgerEntries.push({
-                        id: `payroll_${Date.now()}_${s.id}`,
-                        date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-                        desc: `Payroll Disbursement: ${s.name}${shiftLabel}`,
-                        cat: 'Payroll',
-                        dept: 'HR & Administration',
+                        date: new Date().toISOString().split('T')[0],
+                        description: `Payroll Disbursement: ${s.name}${shiftLabel}`,
+                        category: 'Payroll',
+                        department: 'HR & Administration',
                         fund: 'General Fund (Tithes)',
-                        fundId: 'gf',
                         amount: -taxes.net,
                         type: 'out',
                         notes: `${s.frequency} ${s.type} salary run${shiftLabel}`,
+                        church_id: churchId,
                         created_at: new Date().toISOString()
                     });
 
@@ -124,7 +141,20 @@ const Payroll: React.FC = () => {
 
             // Update Supabase
             if (ledgerEntries.length > 0) {
-                const { error: ledgerError } = await supabase.from('ledger').insert(ledgerEntries);
+                // Find General Fund to associate and deduct from
+                const { data: gf } = await supabase
+                    .from('funds')
+                    .select('*')
+                    .eq('church_id', churchId)
+                    .eq('name', 'General Fund')
+                    .maybeSingle();
+
+                const finalLedgerEntries = ledgerEntries.map(tx => ({
+                    ...tx,
+                    fund_id: gf?.id
+                }));
+
+                const { error: ledgerError } = await supabase.from('ledger').insert(finalLedgerEntries);
                 if (ledgerError) throw ledgerError;
 
                 // Update Staff in Supabase
@@ -132,13 +162,16 @@ const Payroll: React.FC = () => {
                     await supabase.from('staff').update({
                         status: update.status,
                         last_paid: update.last_paid
-                    }).eq('id', update.id);
+                    }).eq('id', update.id).eq('church_id', churchId);
                 }
 
                 // Update General Fund balance
-                const { data: fundData } = await supabase.from('funds').select('balance').eq('id', 'gf').single();
-                if (fundData) {
-                    await supabase.from('funds').update({ balance: fundData.balance - totalNet }).eq('id', 'gf');
+                if (gf) {
+                    await supabase
+                        .from('funds')
+                        .update({ balance: gf.balance - totalNet })
+                        .eq('id', gf.id)
+                        .eq('church_id', churchId);
                 }
             }
 
@@ -167,6 +200,7 @@ const Payroll: React.FC = () => {
                 status: 'Pending',
                 frequency: hireFrequency,
                 recurring: hireRecurring,
+                church_id: churchId,
                 created_at: new Date().toISOString()
             };
 
@@ -174,7 +208,7 @@ const Payroll: React.FC = () => {
             if (error) throw error;
 
             // Refresh staff list
-            const { data } = await supabase.from('staff').select('*');
+            const { data } = await supabase.from('staff').select('*').eq('church_id', churchId);
             if (data) {
                 setStaff(data.map(s => ({
                     id: s.id,
@@ -260,6 +294,26 @@ const Payroll: React.FC = () => {
                                 </h1>
                                 <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>{t('payrollDesc')}</p>
                             </div>
+
+                            {/* ── PAYROLL SYNC COUNTDOWN ── */}
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                                style={{ 
+                                    background: 'hsla(var(--p)/0.1)', border: '1px solid hsla(var(--p)/0.2)',
+                                    padding: '1rem 1.5rem', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '1rem'
+                                }}
+                            >
+                                <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'hsl(var(--p))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Zap size={22} color="white" fill="white" strokeWidth={2.5} />
+                                </div>
+                                <div style={{ minWidth: '120px' }}>
+                                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'hsl(var(--p))', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Payroll Sync Window</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'white', fontVariantNumeric: 'tabular-nums' }}>
+                                        {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
+                                    </div>
+                                </div>
+                            </motion.div>
+
                             <div style={{ display: 'flex', gap: '1rem' }}>
                                 <button className="btn btn-ghost" onClick={() => setView('tax')}>
                                     <FileCheck size={18} /> {t('taxCenter')}

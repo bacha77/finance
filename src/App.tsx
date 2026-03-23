@@ -23,20 +23,30 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from './contexts/LanguageContext';
+import React from 'react'; // Added React import for React.useState
 
 function App() {
   const { t } = useLanguage();
 
   const [session, setSession] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [showCommandCenter, setShowCommandCenter] = useState(false);
+  const [profileLoading, setProfileLoading] = React.useState(true);
+  const [showSignupSuccess, setShowSignupSuccess] = React.useState(false);
+  const [showCommandCenter, setShowCommandCenter] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState('');
+
+  const [activeTab, setActiveTabState] = React.useState(() => {
+    return localStorage.getItem('sanctuary_active_tab') || 'dashboard';
+  });
+
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    localStorage.setItem('sanctuary_active_tab', tab);
+  };
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
-  const [showSignupSuccess, setShowSignupSuccess] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -45,19 +55,9 @@ function App() {
       if (!mobile) setSidebarOpen(true);
     };
 
-    // Keyboard shortcut for Command Center
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setShowCommandCenter(prev => !prev);
-      }
-    };
-
     window.addEventListener('resize', handleResize);
-    window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -119,12 +119,12 @@ function App() {
     localStorage.removeItem('sanctuary_budgets');
     localStorage.removeItem('sanctuary_expense_categories');
 
-    setSession({ user: { id: 'dev-user', email: 'dev@storehouse.org' } });
+    setSession({ user: { id: '00000000-0000-0000-0000-000000000000', email: 'dev@storehouse.org' } });
     setProfile({
-      id: 'dev-user',
+      id: '00000000-0000-0000-0000-000000000000',
       full_name: 'Administrator',
       churches: {
-        id: 'clean-workspace-01',
+        id: '11111111-1111-1111-1111-111111111111', // Valid UUID for Dev Church
         name: 'New Church Workspace',
         plan: 'enterprise',
         city: 'City',
@@ -136,6 +136,55 @@ function App() {
 
   const church = profile?.churches;
 
+  const handleUpdateChurch = async (newData: any) => {
+    try {
+      if (!church?.id) return;
+      const { error } = await supabase
+        .from('churches')
+        .update({
+          name: newData.name,
+          address: newData.address,
+          website: newData.website,
+          tax_id: newData.taxId,
+          currency: newData.currency,
+          fiscal_year_start: newData.fiscalYearStart,
+          logo_url: newData.logo_url
+        })
+        .eq('id', church.id);
+
+      if (error) throw error;
+
+      // Update local state without reload
+      setProfile({
+        ...profile,
+        churches: {
+          ...church,
+          ...newData,
+          // Map snake_case from DB back to the camelCase local if needed, 
+          // or just ensure church object reflects standard naming
+          logo_url: newData.logo_url 
+        }
+      });
+    } catch (err) {
+      console.error('Update failed:', err);
+      alert('Failed to save changes to database.');
+    }
+  };
+
+  // ── KEYBOARD SHORTCUTS ──
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandCenter(prev => !prev);
+      }
+      if (e.key === 'Escape') setShowCommandCenter(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   if (!session) return <Auth onBypass={handleBypass} />;
 
   if (isAdmin) {
@@ -144,7 +193,7 @@ function App() {
 
   if (profileLoading) {
     return (
-      <div className="flex-center" style={{ minHeight: '100vh', background: 'hsl(var(--bg-main))' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', minHeight: '100vh', padding: '2rem 1rem', width: '100%', background: 'hsl(var(--bg-main))' }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-center" style={{ flexDirection: 'column', gap: '1.5rem' }}>
           <div className="spin" style={{ width: '40px', height: '40px', border: '3px solid hsla(var(--p)/0.2)', borderTopColor: 'hsl(var(--p))', borderRadius: '50%' }} />
           <div style={{ color: 'hsl(var(--text-muted))', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Synchronizing Shard...</div>
@@ -153,7 +202,7 @@ function App() {
     );
   }
 
-  if (!profile) {
+  if (!profile || !profile.churches) {
     return (
       <Onboarding
         userId={session.user.id}
@@ -183,6 +232,12 @@ function App() {
         open={sidebarOpen} 
         setOpen={setSidebarOpen} 
         isMobile={isMobile}
+        church={church}
+        onLogout={async () => {
+          await supabase.auth.signOut();
+          setProfile(null);
+          setSession(null);
+        }}
       />
 
       <main style={{ 
@@ -262,16 +317,16 @@ function App() {
               transition={{ duration: 0.2 }}
               style={{ height: '100%' }}
             >
-              {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
-              {activeTab === 'accounting' && <FundAccounting />}
-              {activeTab === 'members' && <MemberPortal />}
-              {activeTab === 'payroll' && <Payroll />}
-              {activeTab === 'reports' && <Reports />}
-              {activeTab === 'departments' && <Departments setActiveTab={setActiveTab} />}
-              {activeTab === 'expenses' && <Expenses setActiveTab={setActiveTab} />}
-              {activeTab === 'budget' && <Budget setActiveTab={setActiveTab} />}
+              {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} churchId={church.id} />}
+              {activeTab === 'accounting' && <FundAccounting churchId={church.id} />}
+              {activeTab === 'members' && <MemberPortal churchId={church.id} />}
+              {activeTab === 'payroll' && <Payroll churchId={church.id} />}
+              {activeTab === 'reports' && <Reports churchId={church.id} />}
+              {activeTab === 'departments' && <Departments setActiveTab={setActiveTab} churchId={church.id} />}
+              {activeTab === 'expenses' && <Expenses setActiveTab={setActiveTab} churchId={church.id} />}
+              {activeTab === 'budget' && <Budget setActiveTab={setActiveTab} churchId={church.id} />}
               {activeTab === 'tax' && <TaxCompliance churchId={church.id} churchName={church.name} />}
-              {activeTab === 'settings' && <Settings churchData={church} />}
+              {activeTab === 'settings' && <Settings churchData={church} onUpdateChurch={handleUpdateChurch} />}
               {activeTab === 'pricing' && <Pricing currentPlan={church.plan} churchId={church.id} />}
             </motion.div>
           </AnimatePresence>
@@ -330,16 +385,36 @@ function App() {
                   <Search size={22} color="var(--primary)" />
                   <input 
                     autoFocus 
-                    placeholder="Search transactions, members, or settings..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search modules or settings..." 
                     style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.1rem', width: '100%', outline: 'none' }}
                   />
                   <div style={{ padding: '4px 8px', background: 'hsla(var(--text-main)/0.05)', borderRadius: '6px', fontSize: '0.6rem', color: 'var(--text-muted)' }}>ESC</div>
                 </div>
-                <div style={{ padding: '1rem', maxHeight: '400px', overflowY: 'auto' }}>
+                <div style={{ padding: '1rem', maxHeight: '70vh', overflowY: 'auto' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', padding: '0 0.5rem' }}>Jump to Module</div>
-                  {['Dashboard', 'Accounting', 'Members', 'Analytics', 'Settings'].map(mod => (
-                    <div key={mod} className="btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', padding: '0.75rem 1rem', border: 'none', borderRadius: '10px' }}>
-                      <CmdIcon size={16} /> {mod}
+                  {[
+                    { id: 'dashboard', label: 'Dashboard', icon: CmdIcon },
+                    { id: 'accounting', label: 'Accounting', icon: CmdIcon },
+                    { id: 'members', label: 'Members', icon: CmdIcon },
+                    { id: 'payroll', label: 'Payroll', icon: CmdIcon },
+                    { id: 'reports', label: 'Reports', icon: CmdIcon },
+                    { id: 'expenses', label: 'Expenses', icon: CmdIcon },
+                    { id: 'budget', label: 'Budget', icon: CmdIcon },
+                    { id: 'settings', label: 'Settings', icon: CmdIcon }
+                  ].filter(m => m.label.toLowerCase().includes(searchQuery.toLowerCase())).map(mod => (
+                    <div 
+                      key={mod.id} 
+                      className="btn-ghost" 
+                      onClick={() => { setActiveTab(mod.id); setShowCommandCenter(false); }}
+                      style={{ 
+                        width: '100%', justifyContent: 'flex-start', padding: '0.75rem 1rem', 
+                        border: 'none', borderRadius: '10px', cursor: 'pointer', gap: '12px',
+                        background: 'transparent'
+                      }}
+                    >
+                      <mod.icon size={16} color="var(--primary-light)" /> {mod.label}
                     </div>
                   ))}
                 </div>

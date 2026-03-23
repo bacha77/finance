@@ -27,13 +27,19 @@ interface Member {
     email: string;
     phone?: string;
     role: string;
-    joined: string;
+    join_date: string;
     status: string;
+    church_id: string | null;
 }
 
 
 
-const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }) => {
+interface MemberPortalProps {
+    memberLimit?: number | null;
+    churchId: string;
+}
+
+const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) => {
     const { t, language } = useLanguage();
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [openMenuId, setOpenMenuId] = useState<number | null>(null);
@@ -51,18 +57,18 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    const [members, setMembers] = useState<Member[]>(() => {
-        const saved = localStorage.getItem('sanctuary_members');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [members, setMembers] = useState<Member[]>([]);
 
     // Supabase Sync
     useEffect(() => {
-        const fetchMembers = async () => {
+        const fetchData = async () => {
+            if (!churchId) return;
+
             try {
                 const { data } = await supabase
                     .from('members')
                     .select('*')
+                    .eq('church_id', churchId)
                     .order('created_at', { ascending: false });
 
                 setMembers(data || []);
@@ -71,8 +77,8 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
             }
         };
 
-        fetchMembers();
-    }, []);
+        fetchData();
+    }, [churchId]);
 
     useEffect(() => {
         localStorage.setItem('sanctuary_members', JSON.stringify(members));
@@ -132,13 +138,14 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
         }, 1000);
     };
 
-    const [churchInfo, setChurchInfo] = useState<{name: string, city: string, state: string, address?: string} | null>(null);
+    const [churchInfo, setChurchInfo] = useState<{name: string, city: string, state: string, address?: string, logo_url?: string} | null>(null);
 
     useEffect(() => {
-        supabase.from('churches').select('name, city, state, address').limit(1).single().then(({data}) => {
+        if (!churchId) return;
+        supabase.from('churches').select('name, city, state, address, logo_url').eq('id', churchId).single().then(({data}) => {
             if (data) setChurchInfo(data);
         });
-    }, []);
+    }, [churchId]);
 
     useEffect(() => {
         const savedLedger = localStorage.getItem('sanctuary_ledger');
@@ -166,18 +173,27 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
 
         const doc = new jsPDF();
         
-        // Header / Logo Placeholder
-        doc.setFillColor(79, 70, 229);
-        doc.rect(14, 15, 10, 10, 'F');
+        // Header / Logo
+        if (churchInfo?.logo_url) {
+            try {
+                doc.addImage(churchInfo.logo_url, 'PNG', 14, 15, 12, 12);
+            } catch (e) {
+                doc.setFillColor(79, 70, 229);
+                doc.rect(14, 15, 10, 10, 'F');
+            }
+        } else {
+            doc.setFillColor(79, 70, 229);
+            doc.rect(14, 15, 10, 10, 'F');
+        }
         
         doc.setFontSize(22);
         doc.setTextColor(30, 41, 59);
-        doc.text(churchInfo?.name || 'Sanctuary Finance', 28, 24);
+        doc.text(churchInfo?.name || 'Sanctuary Finance', 30, 24);
         
         doc.setFontSize(10);
         doc.setTextColor(100);
         const fullAddress = churchInfo?.address || `${churchInfo?.city || ''}, ${churchInfo?.state || ''}`;
-        doc.text(fullAddress, 28, 30);
+        doc.text(fullAddress, 30, 30);
         
         // Divider
         doc.setDrawColor(226, 232, 240);
@@ -261,19 +277,23 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
     const [availableDepts, setAvailableDepts] = useState<{ id: string, name: string }[]>([]);
 
     useEffect(() => {
-        const saved = localStorage.getItem('sanctuary_departments');
-        if (saved) {
-            setAvailableDepts(JSON.parse(saved));
-        } else {
-            setAvailableDepts([
-                { id: '1', name: 'Tithes & Finance' },
-                { id: '2', name: 'Building & Facilities' },
-                { id: '3', name: 'Sabbath School' },
-                { id: '4', name: 'Sunday School' },
-                { id: '5', name: 'Youth Ministry' },
-            ]);
-        }
-    }, [showAddMemberModal]);
+        const loadDepts = async () => {
+            if (!churchId) return;
+            const { data } = await supabase.from('departments').select('id, name').eq('church_id', churchId);
+            if (data && data.length > 0) {
+                setAvailableDepts(data);
+            } else {
+                setAvailableDepts([
+                    { id: '1', name: 'Tithes & Finance' },
+                    { id: '2', name: 'Building & Facilities' },
+                    { id: '3', name: 'Sabbath School' },
+                    { id: '4', name: 'Sunday School' },
+                    { id: '5', name: 'Youth Ministry' },
+                ]);
+            }
+        };
+        loadDepts();
+    }, [churchId, showAddMemberModal]);
 
     const [bulkSending, setBulkSending] = useState(false);
 
@@ -300,8 +320,9 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
             email: newMemberEmail,
             phone: newMemberPhone,
             role: `${newMemberRole} (${newMemberDept})`,
-            joined: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-            status: 'Active'
+            join_date: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            status: 'Active',
+            church_id: churchId
         };
 
         try {
@@ -478,7 +499,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                     </span>
                                 )}
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                                    <Clock size={14} /> {t('joined')} {member.joined}
+                                    <Clock size={14} /> {t('joined')} {member.join_date}
                                 </span>
                             </div>
                         </div>
@@ -786,9 +807,17 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '2rem', marginBottom: '2rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '2rem' }}>
                                 <div style={{ flex: '1 1 min-content' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
-                                        <div style={{ width: '40px', height: '40px', background: 'var(--primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <ShieldCheck color="white" size={24} />
-                                        </div>
+                                        {churchInfo?.logo_url ? (
+                                            <img 
+                                                src={churchInfo.logo_url} 
+                                                alt="Logo" 
+                                                style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'cover' }} 
+                                            />
+                                        ) : (
+                                            <div style={{ width: '40px', height: '40px', background: 'var(--primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <ShieldCheck color="white" size={24} />
+                                            </div>
+                                        )}
                                         <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 1.75rem)', fontWeight: 800, color: '#1e293b', margin: 0 }}>{churchInfo?.name || 'Storehouse Finance'}</h2>
                                     </div>
                                     <p style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500, maxWidth: '300px' }}>{churchInfo?.address || `${churchInfo?.city || ''}, ${churchInfo?.state || ''}`}</p>
@@ -831,7 +860,7 @@ const MemberPortal: React.FC<{ memberLimit?: number | null }> = ({ memberLimit }
                                     <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.05em' }}>{t('donorInformation')}</p>
                                     <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>{selectedMember.name}</h3>
                                     <p style={{ color: '#64748b', fontWeight: 500 }}>{selectedMember.email}</p>
-                                    <p style={{ color: '#64748b', fontWeight: 500, marginTop: '4px' }}>{t('memberSince')} {selectedMember.joined}</p>
+                                    <p style={{ color: '#64748b', fontWeight: 500, marginTop: '4px' }}>{t('memberSince')} {selectedMember.join_date}</p>
                                 </div>
                                 <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                     <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t('statementTotalContribution')}</p>

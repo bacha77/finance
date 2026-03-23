@@ -240,7 +240,8 @@ const PricingCard: React.FC<{
     onSelect: () => void;
     index: number;
     hasChurchId: boolean;
-}> = ({ plan, current, onSelect, index, hasChurchId }) => {
+    isAnnual: boolean;
+}> = ({ plan, current, onSelect, index, hasChurchId, isAnnual }) => {
     const isPopular = plan.badge === 'Most Popular';
     const isFree = plan.price === null;
 
@@ -294,11 +295,16 @@ const PricingCard: React.FC<{
 
             <div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                    <span style={{ fontSize: '2.5rem', fontWeight: 900, color: plan.color, lineHeight: 1 }}>{plan.priceLabel}</span>
+                    <span style={{ fontSize: '2.5rem', fontWeight: 900, color: plan.color, lineHeight: 1 }}>
+                        ${(plan.price ? (isAnnual ? (plan.price * 0.8) : plan.price) : 0).toLocaleString(undefined, { minimumFractionDigits: isFree ? 0 : 2 })}
+                    </span>
                     {plan.price !== null && (
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>/mo</span>
                     )}
                 </div>
+                {isAnnual && plan.price && (
+                    <p style={{ fontSize: '0.65rem', color: 'var(--primary-light)', marginTop: '4px', fontWeight: 800 }}>Billed ${(plan.price * 12 * 0.8).toFixed(2)} yearly</p>
+                )}
                 {isFree && <p style={{ fontSize: '0.75rem', color: '#34d399', marginTop: '4px', fontWeight: 600 }}>No credit card required</p>}
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 600 }}>
                     {plan.memberLimit !== null
@@ -351,6 +357,7 @@ const PricingCard: React.FC<{
 // ── Main Pricing Component ─────────────────────────────────────────────────
 const Pricing: React.FC<PricingProps> = ({ currentPlan = 'trial', churchId, onUpgradeSuccess }) => {
     const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
+    const [isAnnual, setIsAnnual] = useState(false);
 
     const handleSelect = (plan: Plan) => {
         if (!plan.price || !churchId) return;
@@ -386,6 +393,46 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan = 'trial', churchId, onUp
                 <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', maxWidth: '500px', margin: '0 auto' }}>
                     Start free, grow at your own pace. No hidden fees, cancel anytime.
                 </p>
+
+                {/* Toggle Group */}
+                <div style={{ 
+                    marginTop: '2.5rem', display: 'inline-flex', alignItems: 'center', 
+                    gap: '12px', background: 'rgba(255,255,255,0.03)', 
+                    padding: '6px', borderRadius: '100px', border: '1px solid rgba(255,255,255,0.05)' 
+                }}>
+                    <button 
+                        onClick={() => setIsAnnual(false)}
+                        style={{ 
+                            padding: '8px 24px', borderRadius: '100px', border: 'none', 
+                            background: !isAnnual ? 'white' : 'transparent',
+                            color: !isAnnual ? 'black' : 'white', fontWeight: 800, 
+                            fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.3s'
+                        }}
+                    >
+                        Monthly
+                    </button>
+                    <button 
+                        onClick={() => setIsAnnual(true)}
+                        style={{ 
+                            padding: '8px 24px', borderRadius: '100px', border: 'none', 
+                            background: isAnnual ? 'var(--primary)' : 'transparent',
+                            color: 'white', fontWeight: 800, fontSize: '0.75rem', 
+                            cursor: 'pointer', transition: 'all 0.2s', position: 'relative'
+                        }}
+                    >
+                        Yearly
+                        {isAnnual && (
+                             <div style={{ 
+                                position: 'absolute', top: '-12px', right: '-12px', 
+                                background: '#34d399', color: 'black', padding: '2px 8px', 
+                                borderRadius: '6px', fontSize: '0.6rem', fontWeight: 900 
+                            }}>
+                                SAVE 20%
+                            </div>
+                        )}
+                    </button>
+                </div>
+                
                 {!churchId && (
                     <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.75rem', fontWeight: 600 }}>
                         ⚠️ Complete onboarding first to enable plan upgrades.
@@ -406,6 +453,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan = 'trial', churchId, onUp
                         current={plan.id === currentPlan}
                         onSelect={() => handleSelect(plan)}
                         hasChurchId={!!churchId}
+                        isAnnual={isAnnual}
                     />
                 ))}
             </div>

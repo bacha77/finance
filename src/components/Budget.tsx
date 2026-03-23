@@ -30,18 +30,16 @@ interface BudgetYear {
 
 interface BudgetProps {
     setActiveTab: (tab: string) => void;
+    churchId: string;
 }
 
 
 
-const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
+const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId }) => {
     const { t, language } = useLanguage();
     const [budgets, setBudgets] = useState<BudgetYear[]>([]);
     const [activeYear, setActiveYear] = useState(new Date().getFullYear());
-    const [departments, setDepartments] = useState<any[]>(() => {
-        const saved = localStorage.getItem('sanctuary_departments');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [departments, setDepartments] = useState<any[]>([]);
     const [ledger, setLedger] = useState<any[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -49,20 +47,22 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!churchId) return;
             setIsLoading(true);
             try {
                 // Fetch Departments first
-                const { data: deptData } = await supabase.from('departments').select('*');
+                const { data: deptData } = await supabase.from('departments').select('*').eq('church_id', churchId);
                 if (deptData && deptData.length > 0) setDepartments(deptData);
 
                 // Fetch Ledger
-                const { data: ledgerData } = await supabase.from('ledger').select('*');
+                const { data: ledgerData } = await supabase.from('ledger').select('*').eq('church_id', churchId);
                 if (ledgerData) setLedger(ledgerData);
 
                 // Fetch Budgets
                 const { data: budgetData } = await supabase
                     .from('budgets')
-                    .select('*');
+                    .select('*')
+                    .eq('church_id', churchId);
 
                 setBudgets(budgetData ? budgetData.map(b => ({
                     year: b.year,
@@ -78,7 +78,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
         };
 
         fetchData();
-    }, []);
+    }, [churchId]);
 
     useEffect(() => {
         const syncBudgets = async () => {
@@ -155,20 +155,16 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
     };
 
     const handleSaveBudget = async () => {
-        if (!currentBudget) return;
+        if (!currentBudget || !churchId) return;
         setIsSaving(true);
         try {
-            // Get current church_id for the upsert
-            const { data: profile } = await supabase.from('profiles').select('church_id').single();
-            if (!profile?.church_id) throw new Error('No church context found');
-
             const { error } = await supabase
                 .from('budgets')
                 .upsert({
                     year: activeYear,
                     total_budget: currentBudget.totalBudget,
                     allocations: currentBudget.allocations,
-                    church_id: profile.church_id
+                    church_id: churchId
                 }, { onConflict: 'year,church_id' }); // Conflict should be on year AND church for multi-tenancy
 
             if (error) throw error;
@@ -191,7 +187,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
         setActiveYear(nextYear);
     };
 
-    const isBudgetLoaded = budgets.length > 0 && !!currentBudget;
+
 
     const HistoryModal = () => (
         <AnimatePresence>
@@ -208,7 +204,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>Strategic Audit Log</h2>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{t('auditLog')}</h2>
                             <button onClick={() => setShowHistoryModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                                 <Trash2 size={20} />
                             </button>
@@ -225,18 +221,18 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                                         <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{h.date}</p>
                                     </div>
                                     <p style={{ color: 'white', fontWeight: 600, fontSize: '0.95rem', marginBottom: '8px' }}>{h.details}</p>
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Actioned by: <span style={{ color: 'white' }}>{h.user}</span></p>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('actionedBy')}: <span style={{ color: 'white' }}>{h.user}</span></p>
                                 </div>
                             ))}
                         </div>
-                        <button className="btn btn-primary" style={{ width: '100%', marginTop: '2.5rem' }} onClick={() => setShowHistoryModal(false)}>Close Audit Log</button>
+                        <button className="btn btn-primary" style={{ width: '100%', marginTop: '2.5rem' }} onClick={() => setShowHistoryModal(false)}>{t('done')}</button>
                     </motion.div>
                 </div>
             )}
         </AnimatePresence>
     );
 
-    if (isLoading || !isBudgetLoaded || !currentBudget) {
+    if (isLoading) {
         return (
             <div style={{ height: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.5rem' }}>
                 <motion.div
@@ -249,6 +245,38 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab }) => {
                 <p style={{ color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em' }}>
                     {t('syncing').toUpperCase()}
                 </p>
+            </div>
+        );
+    }
+
+    if (budgets.length === 0 || !currentBudget) {
+        return (
+            <div className="container" style={{ padding: '3rem 2rem' }}>
+                <div className="glass-card" style={{ padding: '4rem', textAlign: 'center', maxWidth: '600px', margin: '4rem auto' }}>
+                    <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
+                        <Target size={40} className="gradient-text" />
+                    </div>
+                    <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'white', marginBottom: '1rem' }}>{t('budgetPlanning')}</h2>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: '2.5rem', lineHeight: 1.6 }}>
+                        {t('noBudgetFoundDesc') || "No budget plans found for your church. Start by initializing a strategic budget for the current fiscal year to track allocations and departmental spending."}
+                    </p>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                        <button 
+                            className="btn btn-primary" 
+                            style={{ padding: '0.75rem 2.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+                            onClick={() => {
+                                const newBudget: BudgetYear = {
+                                    year: activeYear,
+                                    totalBudget: 0,
+                                    allocations: []
+                                };
+                                setBudgets([newBudget]);
+                            }}
+                        >
+                            <Plus size={20} /> {t('initializeBudget') || "Initialize Budget"}
+                        </button>
+                    </div>
+                </div>
             </div>
         );
     }

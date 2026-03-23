@@ -183,9 +183,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
 
     return (
         <div style={{
-            minHeight: '100vh', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', background: 'var(--bg-dark)', padding: '1.5rem',
-            fontFamily: "'Inter', sans-serif"
+            minHeight: '100vh', display: 'flex', alignItems: 'flex-start',
+            justifyContent: 'center', background: 'var(--bg-dark)', padding: '4rem 1.5rem',
+            fontFamily: "'Inter', sans-serif", overflowY: 'auto'
         }}>
             {/* Background effects */}
             <div style={{

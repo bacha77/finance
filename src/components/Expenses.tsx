@@ -48,12 +48,14 @@ const DEFAULT_CATEGORIES = [
 
 interface ExpensesProps {
     setActiveTab: (tab: string) => void;
+    churchId: string;
 }
 
-const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
+const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, churchId }) => {
     const { t, language } = useLanguage();
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [scanStep, setScanStep] = useState<'camera' | 'processing' | 'done'>('camera');
@@ -97,22 +99,25 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
 
     const [availableDepts, setAvailableDepts] = useState<{ id: string, name: string }[]>([]);
 
+
     useEffect(() => {
         const fetchData = async () => {
+            if (!churchId) return;
             try {
                 // Fetch Ledger (type: out) from Supabase
                 const { data: ledger } = await supabase
                     .from('ledger')
                     .select('*')
-                    .eq('type', 'out');
+                    .eq('type', 'out')
+                    .eq('church_id', churchId);
 
                 if (ledger) {
                     const expenseList = ledger.map((tx: any) => ({
                         id: tx.id,
                         date: tx.date,
-                        description: tx.desc,
-                        category: tx.cat?.replace(' Exp', '').toUpperCase(),
-                        department: tx.dept,
+                        description: tx.description || tx.desc,
+                        category: (tx.category || tx.cat || '').replace(' Exp', '').toUpperCase(),
+                        department: tx.department || tx.dept,
                         amount: Math.abs(tx.amount),
                         paymentMethod: tx.method || 'CASH',
                         receiptImage: tx.receipt_url || tx.receiptImage
@@ -121,34 +126,16 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                 }
 
                 // Fetch Departments
-                const { data: depts } = await supabase.from('departments').select('*');
+                const { data: depts } = await supabase.from('departments').select('*').eq('church_id', churchId);
                 if (depts) setAvailableDepts(depts);
             } catch (err) {
                 console.error('Error fetching expenses from Supabase:', err);
-
-                // Fallback
-                const savedLedger = localStorage.getItem('sanctuary_ledger');
-                if (savedLedger) {
-                    const ledger = JSON.parse(savedLedger);
-                    const expenseList = ledger
-                        .filter((tx: any) => tx.type === 'out')
-                        .map((tx: any, idx: number) => ({
-                            id: tx.id || idx.toString(),
-                            date: tx.date,
-                            description: tx.desc,
-                            category: tx.cat.replace(' Exp', '').toUpperCase(),
-                            department: tx.dept,
-                            amount: Math.abs(tx.amount),
-                            paymentMethod: tx.method || 'CASH',
-                            receiptImage: tx.receiptImage
-                        }));
-                    setExpenses(expenseList);
-                }
+            } finally {
+                setIsLoading(false);
             }
         };
-
         fetchData();
-    }, [showAddModal]);
+    }, [churchId, showAddModal]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -184,21 +171,38 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
         const amt = parseFloat(amount);
         if (isNaN(amt)) return;
 
-        const expenseData = {
-            id: editingExpenseId || `exp_${Date.now()}`,
+        const expenseData: any = {
             date: new Date(date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }),
-            desc: desc, // Using ledger schema 'desc'
-            cat: `${cat} Exp`,
-            dept: dept,
+            description: desc,
+            category: `${cat} Exp`,
+            department: dept,
             fund: 'General Fund (Tithes)',
-            fundId: 'gf',
+            fund_id: 'gf',
             amount: -amt,
             type: 'out',
             method: method.toUpperCase(),
             receipt_url: receiptImage,
+            church_id: churchId,
             created_at: new Date().toISOString()
         };
 
+        // Find General Fund to deduct from
+        const { data: gf } = await supabase
+            .from('funds')
+            .select('*')
+            .eq('church_id', churchId)
+            .eq('name', 'General Fund')
+            .maybeSingle();
+
+        if (gf) {
+            expenseData.fund_id = gf.id;
+        }
+
+        if (editingExpenseId) {
+            expenseData.id = editingExpenseId;
+        }
+
+        setIsLoading(true);
         try {
             if (editingExpenseId) {
                 const { error } = await supabase
@@ -211,6 +215,14 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                     .from('ledger')
                     .insert([expenseData]);
                 if (error) throw error;
+
+                // ── UPDATE FUND BALANCE ──
+                if (gf) {
+                    await supabase
+                        .from('funds')
+                        .update({ balance: gf.balance - amt })
+                        .eq('id', gf.id);
+                }
             }
 
             // Refresh list
@@ -218,19 +230,9 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
             resetForm();
         } catch (err) {
             console.error('Error saving expense to Supabase:', err);
-            // Fallback for UI
-            setExpenses([{
-                id: expenseData.id,
-                date: expenseData.date,
-                description: expenseData.desc,
-                category: cat.toUpperCase(),
-                department: dept,
-                amount: amt,
-                paymentMethod: expenseData.method,
-                receiptImage: expenseData.receipt_url
-            }, ...expenses]);
-            setShowAddModal(false);
-            resetForm();
+            // Fallback for UI if needed, but error is now caught
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -693,7 +695,13 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab }) => {
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
                                     <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setShowAddModal(false); resetForm(); }}>{t('cancel')}</button>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingExpenseId ? t('recordUpdate') : t('commitToLedger')}</button>
+                                    <button type="submit" disabled={isLoading} className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                        {isLoading ? (
+                                            <div className="spin" style={{ width: '16px', height: '16px', border: '2px solid hsla(var(--pc)/0.2)', borderTopColor: 'white', borderRadius: '50%' }} />
+                                        ) : (
+                                            editingExpenseId ? t('recordUpdate') : t('commitToLedger')
+                                        )}
+                                    </button>
                                 </div>
                             </form>
                         </motion.div>

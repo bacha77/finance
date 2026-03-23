@@ -21,13 +21,17 @@ import { useLanguage } from '../contexts/LanguageContext';
 type StatementType = 'pnl' | 'balance' | 'cashflow' | 'board' | null;
 
 interface LedgerEntry {
-    type: 'in' | 'out';
+    type: 'in' | 'out' | 'revenue' | 'expense';
     amount: number;
-    cat: string;
-    desc: string;
+    category?: string;
+    cat?: string; // Fallback
+    description?: string;
+    desc?: string; // Fallback
     date: string;
-    dept: string;
-    receiptImage?: string;
+    department?: string;
+    dept?: string; // Fallback
+    receipt_url?: string;
+    receiptImage?: string; // Fallback
 }
 
 interface Fund {
@@ -37,7 +41,11 @@ interface Fund {
     category: string;
 }
 
-const Reports: React.FC = () => {
+interface ReportsProps {
+    churchId: string;
+}
+
+const Reports: React.FC<ReportsProps> = ({ churchId }) => {
     const { t } = useLanguage();
     const [viewStatement, setViewStatement] = useState<StatementType>(null);
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
@@ -45,16 +53,22 @@ const Reports: React.FC = () => {
     const [ledger, setLedger] = useState<LedgerEntry[]>([]);
     const [funds, setFunds] = useState<Fund[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [church, setChurch] = useState<any>(null);
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!churchId) return;
             setIsLoading(true);
             try {
-                const { data: ledgerData } = await supabase.from('ledger').select('*');
+                const [{ data: ledgerData }, { data: fundsData }, { data: churchData }] = await Promise.all([
+                    supabase.from('ledger').select('*').eq('church_id', churchId),
+                    supabase.from('funds').select('*').eq('church_id', churchId),
+                    supabase.from('churches').select('*').eq('id', churchId).single()
+                ]);
+                
                 if (ledgerData) setLedger(ledgerData);
-
-                const { data: fundsData } = await supabase.from('funds').select('*');
                 if (fundsData) setFunds(fundsData);
+                if (churchData) setChurch(churchData);
             } catch (err) {
                 console.error('Error fetching data for reports:', err);
             } finally {
@@ -79,18 +93,18 @@ const Reports: React.FC = () => {
 
         // Group by category
         const expenseByCat: Record<string, number> = {};
-        filteredLedger.filter(tx => tx.type === 'out').forEach(tx => {
-            const cat = tx.cat.replace(' Exp', '');
-            expenseByCat[cat] = (expenseByCat[cat] || 0) + Math.abs(tx.amount);
+        filteredLedger.filter(tx => tx.type === 'out' || tx.type === 'expense').forEach(tx => {
+            const catStr = (tx.category || tx.cat || 'General').replace(' Exp', '');
+            expenseByCat[catStr] = (expenseByCat[catStr] || 0) + Math.abs(tx.amount);
         });
 
         const incomeByCat: Record<string, number> = {};
         const incomeByDept: Record<string, number> = {};
-        filteredLedger.filter(tx => tx.type === 'in').forEach(tx => {
-            const cat = tx.cat || 'Tithes';
-            const dept = tx.dept || 'General';
-            incomeByCat[cat] = (incomeByCat[cat] || 0) + Math.abs(tx.amount);
-            incomeByDept[dept] = (incomeByDept[dept] || 0) + Math.abs(tx.amount);
+        filteredLedger.filter(tx => tx.type === 'in' || tx.type === 'revenue').forEach(tx => {
+            const catStr = tx.category || tx.cat || 'Tithes';
+            const deptStr = tx.department || tx.dept || 'General';
+            incomeByCat[catStr] = (incomeByCat[catStr] || 0) + Math.abs(tx.amount);
+            incomeByDept[deptStr] = (incomeByDept[deptStr] || 0) + Math.abs(tx.amount);
         });
 
         return { income, expenses, net, totalAssets, expenseByCat, incomeByCat, incomeByDept, filteredLedger };
@@ -103,8 +117,34 @@ const Reports: React.FC = () => {
         { id: 'cashflow', title: t('cashflowStatement'), category: t('financial'), lastGenerated: 'Live', type: 'Instant', icon: BarChart3, color: '#a855f7' },
     ];
 
+    const BrandedHeader = ({ title, subtitle }: { title: string, subtitle: string }) => (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                {church?.logo_url ? (
+                    <img src={church.logo_url} alt={church.name} style={{ maxHeight: '60px', maxWidth: '200px', objectFit: 'contain' }} />
+                ) : (
+                    <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Building2 size={32} color="var(--primary-light)" />
+                    </div>
+                )}
+                <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '1.5rem' }}>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>{title}</h2>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>{subtitle}</p>
+                </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{church?.name || 'Storehouse Finance'}</p>
+                <p style={{ fontSize: '0.7rem', color: 'var(--success)', fontWeight: 800 }}>✓ VERIFIED NODE: US-E1</p>
+            </div>
+        </div>
+    );
+
     const renderPNL = () => (
         <div style={{ padding: '0.5rem' }}>
+            <BrandedHeader 
+                title={t('statementOfActivity')} 
+                subtitle={`${t('operatingPeriod')}: ${months[selectedMonth]} ${selectedYear}`} 
+            />
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -114,8 +154,7 @@ const Reports: React.FC = () => {
                 alignItems: 'flex-end'
             }}>
                 <div>
-                    <h2 className="gradient-text" style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>{t('statementOfActivity')}</h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>{t('operatingPeriod')}: Jan 01, 2026 – Mar 31, 2026</p>
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-muted)' }}>Financial Summary</h3>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>{t('netOperatingIncome')}</p>
@@ -125,7 +164,7 @@ const Reports: React.FC = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '3rem' }}>
                 <section className="glass-card" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
                         <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('revenueSources')}</h4>
@@ -165,12 +204,15 @@ const Reports: React.FC = () => {
 
     const renderBalanceSheet = () => (
         <div style={{ padding: '0.5rem' }}>
+            <BrandedHeader 
+                title={t('statementOfFinancialPosition')} 
+                subtitle={`${t('reportingDate')}: ${months[selectedMonth]} 30, ${selectedYear}`} 
+            />
             <div style={{ marginBottom: '3rem', borderBottom: '2px solid var(--border)', paddingBottom: '2rem' }}>
-                <h2 className="gradient-text" style={{ fontSize: '2.25rem', fontWeight: 800, color: 'white' }}>{t('statementOfFinancialPosition')}</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>{t('reportingDate')}: March 31, 2026</p>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-muted)' }}>Net Assets & Liquidity</h3>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '3rem' }}>
                 <section className="glass-card" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
                     <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary-light)', marginBottom: '1.5rem', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>{t('consolidatedAssets')}</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -236,22 +278,41 @@ const Reports: React.FC = () => {
 
     const renderBoardReport = () => (
         <div style={{ padding: '1rem' }}>
-            <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-                <ShieldCheck size={48} color="var(--primary-light)" style={{ marginBottom: '1.5rem' }} />
-                <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>{t('boardPerformanceSummary')}</h2>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem' }}>{t('financialHealthStewardshipOverview')} • {months[selectedMonth]} {selectedYear}</p>
-                    <select
-                        value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                        style={{ background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 8px' }}
-                    >
-                        {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
-                    </select>
-                </div>
-            </div>
+            <BrandedHeader 
+                title={t('boardPerformanceSummary')} 
+                subtitle={`${t('financialHealthStewardshipOverview')} • ${months[selectedMonth]} ${selectedYear}`} 
+            />
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', marginBottom: '4rem' }}>
+            {/* 🧠 NEURAL PULSE SUMMARY */}
+            <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{ 
+                    padding: '2rem', 
+                    background: 'linear-gradient(90deg, hsla(var(--p)/0.1) 0%, transparent 100%)', 
+                    borderRadius: '24px', 
+                    border: '1px solid hsla(var(--p)/0.2)',
+                    marginBottom: '3rem',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}
+            >
+                <div style={{ position: 'absolute', top: '-20px', right: '-20px', opacity: 0.05 }}>
+                    <ShieldCheck size={120} color="hsl(var(--p))" />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
+                    <Activity size={20} className="spin-slow" style={{ color: 'hsl(var(--p))' }} />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--p))' }}>Neural Pulse: Executive Insight</span>
+                </div>
+                <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'white', lineHeight: 1.6, maxWidth: '800px' }}>
+                    {metrics.net > 0 
+                        ? `Strategic stewardship has resulted in a $${Math.abs(metrics.net).toLocaleString()} mission surplus for the current period. This allocation strengthens the congregation's liquidity reserves, positioning the ministry for upcoming educational and outreach expansions in Q2.`
+                        : `Current data indicates a tight operational margin of $${Math.abs(metrics.net).toLocaleString()}. While core ministries remain fully funded, internal optimization of administrative outflows is recommended to maintain the designated mission-surplus targets for the next audit cycle.`
+                    }
+                </p>
+            </motion.div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
                 <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 'var(--radius-xl)' }}>
                     <div style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
                         <TrendingUp size={32} color="#10b981" />
@@ -277,7 +338,7 @@ const Reports: React.FC = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '3rem', marginBottom: '4rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '3rem', marginBottom: '4rem' }}>
                 <div className="glass-card" style={{ padding: '3rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                         <div>

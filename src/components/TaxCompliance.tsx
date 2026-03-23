@@ -147,7 +147,7 @@ function FormRow({
 // ── Main Component ─────────────────────────────────────────────────────────
 const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propChurchName, churchId }) => {
     const [staff, setStaff] = useState<any[]>([]);
-    const [churchInfo, setChurchInfo] = useState({ name: propChurchName || 'Your Church', ein: 'XX-XXXXXXX', address: '' });
+    const [churchInfo, setChurchInfo] = useState({ name: propChurchName || 'Your Church', ein: 'XX-XXXXXXX', address: '', logo_url: '' });
     const [stats, setStats] = useState({ income: 0, expenses: 0, balance: 0, members: 0 });
     const [dlStatus, setDlStatus] = useState<Record<string, 'idle' | 'loading' | 'done'>>({});
     const [selectedQuarter, setSelectedQuarter] = useState(1);
@@ -160,10 +160,10 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
             setLoading(true);
             try {
                 const [{ data: staffData }, { data: ledger }, { data: funds }, { data: members }, { data: church }] = await Promise.all([
-                    supabase.from('staff').select('*'),
-                    supabase.from('ledger').select('*'),
-                    supabase.from('funds').select('*'),
-                    supabase.from('members').select('id'),
+                    supabase.from('staff').select('*').eq('church_id', churchId),
+                    supabase.from('ledger').select('*').eq('church_id', churchId),
+                    supabase.from('funds').select('*').eq('church_id', churchId),
+                    supabase.from('members').select('id').eq('church_id', churchId),
                     churchId ? supabase.from('churches').select('*').eq('id', churchId).single() : { data: null },
                 ]);
 
@@ -193,6 +193,7 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                         name: church.name || propChurchName || 'Your Church',
                         ein: church.ein || 'XX-XXXXXXX',
                         address: church.address || '',
+                        logo_url: church.logo_url || '',
                     });
                     setEinInput(church.ein || '');
                 }
@@ -217,7 +218,7 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
         catch (e) { console.error(e); setStatus(key, 'idle'); }
     };
 
-    const church = { name: churchInfo.name, ein: churchInfo.ein, address: churchInfo.address };
+    const church = { name: churchInfo.name, ein: churchInfo.ein, address: churchInfo.address, logo_url: churchInfo.logo_url };
     const employees = staff.filter(s => s.type === 'Full-time' || s.type === 'Part-time');
     const contractors = staff.filter(s => s.type === 'Contractor');
 

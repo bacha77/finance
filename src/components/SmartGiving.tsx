@@ -64,12 +64,14 @@ const SmartGiving: React.FC = () => {
         try {
             await new Promise(resolve => setTimeout(resolve, 2000));
             
+            const selectedFund = availableFunds.find(f => f.name === fund);
             const newTx = {
                 date: new Date().toISOString().split('T')[0],
                 description: `${fund} - Online Contribution (${frequency})`,
                 category: 'Income',
                 department: 'Stewardship',
                 fund: fund,
+                fund_id: selectedFund?.id,
                 amount: amt,
                 type: 'in',
                 method: paymentMethod.toUpperCase(),
@@ -77,8 +79,16 @@ const SmartGiving: React.FC = () => {
                 created_at: new Date().toISOString()
             };
 
-            const { error } = await supabase.from('ledger').insert([newTx]);
-            if (error) throw error;
+            const { error: txError } = await supabase.from('ledger').insert([newTx]);
+            if (txError) throw txError;
+
+            // Update fund balance
+            if (selectedFund && churchId) {
+                const { data: currentFund } = await supabase.from('funds').select('balance').eq('id', selectedFund.id).single();
+                if (currentFund) {
+                    await supabase.from('funds').update({ balance: currentFund.balance + amt }).eq('id', selectedFund.id);
+                }
+            }
 
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);

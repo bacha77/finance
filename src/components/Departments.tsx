@@ -20,32 +20,33 @@ interface Department {
     members: number;
     status: 'Active' | 'Inactive';
     type: 'Ministry' | 'Operations' | 'Education' | 'Offerings' | 'Conference';
-    description: string;
+    description:string;
+    annual_budget?: number;
+    spent_so_far?: number;
 }
 
 interface DepartmentsProps {
     setActiveTab: (tab: string) => void;
+    churchId: string;
 }
 
 
 
-const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
+const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => {
     const { t } = useLanguage();
     const [showAddModal, setShowAddModal] = useState(false);
-    const [departments, setDepartments] = useState<Department[]>(() => {
-        const saved = localStorage.getItem('sanctuary_departments');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [departments, setDepartments] = useState<Department[]>([]);
 
     // Supabase Sync
     useEffect(() => {
         const fetchDepts = async () => {
+            if (!churchId) return;
             try {
-                const { data, error } = await supabase
+                const { data } = await supabase
                     .from('departments')
-                    .select('*');
+                    .select('*')
+                    .eq('church_id', churchId);
 
-                if (error) throw error;
                 setDepartments(data || []);
             } catch (err) {
                 console.error('Error fetching departments from Supabase:', err);
@@ -53,17 +54,17 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
         };
 
         fetchDepts();
-    }, []);
+    }, [churchId]);
 
-    useEffect(() => {
-        localStorage.setItem('sanctuary_departments', JSON.stringify(departments));
-    }, [departments]);
+
 
     // Form States
     const [newName, setNewName] = useState('');
     const [newHead, setNewHead] = useState('');
     const [newType, setNewType] = useState<'Ministry' | 'Operations' | 'Education' | 'Offerings' | 'Conference'>('Ministry');
     const [newDesc, setNewDesc] = useState('');
+    const [newBudget, setNewBudget] = useState<number>(0);
+    const [newSpent, setNewSpent] = useState<number>(0);
 
     // Edit States
     const [isEditMode, setIsEditMode] = useState(false);
@@ -73,14 +74,16 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
         e.preventDefault();
         if (!newName) return;
 
-        const newDept: Department = {
-            id: (departments.length + 1).toString(),
+        const newDept = {
             name: newName,
             head: newHead,
             members: 0,
             status: 'Active',
             type: newType,
-            description: newDesc
+            description: newDesc,
+            annual_budget: newBudget,
+            spent_so_far: newSpent,
+            church_id: churchId
         };
 
         try {
@@ -93,7 +96,6 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
             if (data) setDepartments([...departments, data[0]]);
         } catch (err) {
             console.error('Error adding department to Supabase:', err);
-            setDepartments([...departments, newDept]);
         }
 
         setShowAddModal(false);
@@ -108,6 +110,8 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
         setNewHead(dept.head);
         setNewType(dept.type);
         setNewDesc(dept.description);
+        setNewBudget(dept.annual_budget || 0);
+        setNewSpent(dept.spent_so_far || 0);
         setIsEditMode(true);
         setShowAddModal(true);
     };
@@ -146,6 +150,8 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
         setNewName('');
         setNewHead('');
         setNewDesc('');
+        setNewBudget(0);
+        setNewSpent(0);
     };
 
     const handleCloseModal = () => {
@@ -155,6 +161,8 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
         setNewName('');
         setNewHead('');
         setNewDesc('');
+        setNewBudget(0);
+        setNewSpent(0);
     };
 
     const getTypeIcon = (type: string) => {
@@ -257,13 +265,33 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
                                         <option value="Conference">Conference</option>
                                     </select>
                                 </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>Annual Budget ($)</label>
+                                        <input
+                                            type="number"
+                                            value={newBudget}
+                                            onChange={(e) => setNewBudget(Number(e.target.value))}
+                                            style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>Spent So Far ($)</label>
+                                        <input
+                                            type="number"
+                                            value={newSpent}
+                                            onChange={(e) => setNewSpent(Number(e.target.value))}
+                                            style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
+                                        />
+                                    </div>
+                                </div>
                                 <div style={{ marginBottom: '2rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('description')}</label>
                                     <textarea
                                         value={newDesc}
                                         onChange={(e) => setNewDesc(e.target.value)}
                                         placeholder={t('briefPurposeDesc')}
-                                        style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', height: '80px', resize: 'none' }}
+                                        style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', height: '60px', resize: 'none' }}
                                     />
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem' }}>
@@ -321,9 +349,33 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab }) => {
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>{dept.type}</span>
                         </div>
 
-                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1 }}>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                             {dept.description}
                         </p>
+
+                        <div style={{ marginTop: '0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Budget Health</span>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: (dept.spent_so_far || 0) > (dept.annual_budget || 0) ? '#ef4444' : 'var(--primary-light)' }}>
+                                    {Math.round(((dept.spent_so_far || 0) / (dept.annual_budget || 1)) * 100)}% Used
+                                </span>
+                            </div>
+                            <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '100px', overflow: 'hidden' }}>
+                                <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${Math.min(100, ((dept.spent_so_far || 0) / (dept.annual_budget || 1)) * 100)}%` }}
+                                    style={{ 
+                                        height: '100%', 
+                                        background: (dept.spent_so_far || 0) > (dept.annual_budget || 0) ? '#ef4444' : 'var(--primary-light)',
+                                        borderRadius: '100px' 
+                                    }} 
+                                />
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.75rem', fontWeight: 600 }}>
+                                <span style={{ color: 'var(--text-muted)' }}>Spent: <span style={{ color: 'white' }}>${(dept.spent_so_far || 0).toLocaleString()}</span></span>
+                                <span style={{ color: 'var(--text-muted)' }}>Limit: <span style={{ color: 'white' }}>${(dept.annual_budget || 0).toLocaleString()}</span></span>
+                            </div>
+                        </div>
 
                         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

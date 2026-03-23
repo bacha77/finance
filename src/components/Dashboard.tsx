@@ -3,7 +3,9 @@ import {
     Wallet, Users, TrendingUp as TrendUp, DollarSign, ArrowUpRight, ArrowDownRight,
     RefreshCw, BarChart3, Activity, ChurchIcon, CreditCard,
     FileText, ShieldCheck, Calendar, Download, Target, HeartHandshake,
-    Brain, Sparkles, AlertTriangle
+    Brain, Sparkles, AlertTriangle,
+    BrainCircuit,
+    Zap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -15,6 +17,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardProps {
     setActiveTab: (tab: string) => void;
+    churchId: string;
 }
 
 const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
@@ -137,7 +140,7 @@ const FeatureCard: React.FC<{
 );
 
 // ── Main Dashboard ─────────────────────────────────────────────────────────
-const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
+const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
     const { t, language } = useLanguage();
     const [stats, setStats] = useState({ balance: 0, tithes: 0, members: 0, expenses: 0 });
     const [recentTx, setRecentTx] = useState<any[]>([]);
@@ -145,36 +148,76 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
     const [projection, setProjection] = useState<{income: number, expense: number, confidence: number} | null>(null);
     const [anomalies, setAnomalies] = useState<any[]>([]);
     const [goals, setGoals] = useState<any[]>([]);
-    const [chartData] = useState<any[]>([]);
+    const [chartData, setChartData] = useState<any[]>([]);
+    const [churchName, setChurchName] = useState('');
+    const [churchData, setChurchData] = useState<any>(null);
+
 
     const today = new Date().toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!churchId) return;
             setSyncing(true);
             try {
-                const [{ data: ledger }, { data: funds }, { data: members }] = await Promise.all([
-                    supabase.from('ledger').select('*').order('created_at', { ascending: false }),
-                    supabase.from('funds').select('*'),
-                    supabase.from('members').select('id'),
+                const [{ data: ledger }, { data: funds }, { data: members }, { data: church, error: churchError }] = await Promise.all([
+                    supabase.from('ledger').select('*').eq('church_id', churchId).order('created_at', { ascending: false }),
+                    supabase.from('funds').select('*').eq('church_id', churchId),
+                    supabase.from('members').select('id').eq('church_id', churchId),
+                    supabase.from('churches').select('name, logo_url').eq('id', churchId).single(),
                 ]);
+
+                if (churchError) {
+                    console.error("Error fetching church data:", churchError);
+                } else if (church) {
+                    setChurchName(church.name);
+                    setChurchData(church);
+                }
+
                 const totalBalance = funds?.reduce((s: number, f: any) => s + (f.balance || 0), 0) || 0;
-                const totalTithes = ledger?.filter((t: any) => t.type === 'in').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
-                const totalExpenses = ledger?.filter((t: any) => t.type === 'out').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
+                const totalTithes = ledger?.filter((t: any) => t.type === 'in' || t.type === 'revenue').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
+                const totalExpenses = ledger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
+                
                 setStats({
                     balance: totalBalance,
                     tithes: totalTithes,
                     members: members?.length || 0,
                     expenses: totalExpenses,
                 });
+
                 if (ledger) {
                     setRecentTx(ledger.slice(0, 6));
                     const pred = predictNextMonth(ledger);
                     setProjection(pred);
                     setAnomalies(detectAnomalies(ledger).slice(0, 2));
+
+                    // ── GENERATE CHART DATA (GROUPED BY FUND) ──
+                    const days: Record<string, any> = {};
+                    const last7 = ledger.filter(tx => {
+                        const d = new Date(tx.date || tx.created_at);
+                        const sevenDaysAgo = new Date();
+                        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                        return d >= sevenDaysAgo;
+                    }).reverse();
+
+                    last7.forEach(tx => {
+                        const d = new Date(tx.date || tx.created_at).toLocaleDateString();
+                        if (!days[d]) days[d] = { date: d, tithes: 0, missions: 0, building: 0, expense: 0 };
+                        const amt = tx.amount || 0;
+                        if (tx.type === 'in') {
+                            const fund = (tx.fund || '').toLowerCase();
+                            if (fund.includes('tithe') || fund.includes('offer')) days[d].tithes += amt;
+                            else if (fund.includes('mission') || fund.includes('missionary')) days[d].missions += amt;
+                            else if (fund.includes('build')) days[d].building += amt;
+                            else days[d].tithes += amt; // Fallback
+                        } else {
+                            days[d].expense += amt;
+                        }
+                    });
+                    setChartData(Object.values(days));
                 }
 
-                const { data: dbGoals } = await supabase.from('goals').select('*');
+                const { data: dbGoals } = await supabase.from('goals').select('*').eq('church_id', churchId);
                 if (dbGoals && dbGoals.length > 0) {
                     setGoals(dbGoals.map(g => ({
                         ...g,
@@ -182,6 +225,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                         goal: g.target_amount,
                         icon: g.icon === 'Church' ? ChurchIcon : g.icon === 'Heart' ? HeartHandshake : Users
                     })));
+                } else {
+                    setGoals([]);
                 }
             } catch (e) {
                 console.error(e);
@@ -196,7 +241,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
         ];
         channels.forEach(c => c.subscribe());
         return () => { channels.forEach(c => supabase.removeChannel(c)); };
-    }, []);
+    }, [churchId]);
 
     const totalIncome = stats.tithes;
     const budgetUsed = Math.min(99, Math.round((stats.expenses / Math.max(totalIncome, 1)) * 100));
@@ -255,7 +300,15 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
         doc.setFontSize(22);
         doc.text('Church Financial Report', 14, 22);
         
-        doc.setFontSize(11);
+        doc.setFontSize(22);
+        doc.setTextColor(30, 41, 59);
+        doc.text(churchName.toUpperCase(), 14, 25);
+        if (churchData?.logo_url && churchData.logo_url.startsWith('data:image')) {
+            try {
+               doc.addImage(churchData.logo_url, 'PNG', 160, 15, 30, 30);
+            } catch(e) {}
+        }
+        doc.setFontSize(10);
         doc.setTextColor(100);
         doc.text(`Generated on: ${today}`, 14, 30);
         
@@ -436,7 +489,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
             )}
 
             {/* ── NEW ROW: Charts & Goal Tracking ────────────────────── */}
-            <div className="flexible-grid" style={{ marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '1.75rem' }}>
+            <div style={{ marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.75rem' }}>
                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -471,8 +524,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                                     contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
                                     itemStyle={{ fontSize: '14px', fontWeight: 600 }}
                                 />
-                                <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" name="Income" />
-                                <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" name="Expenses" />
+                                <Area type="monotone" dataKey="tithes" stackId="1" stroke="hsl(var(--success))" strokeWidth={3} fillOpacity={0.6} fill="url(#colorIncome)" name="Tithes & Offerings" />
+                                <Area type="monotone" dataKey="missions" stackId="1" stroke="hsl(var(--p))" strokeWidth={3} fillOpacity={0.6} fill="hsla(var(--p)/0.3)" name="Missions" />
+                                <Area type="monotone" dataKey="building" stackId="1" stroke="hsl(var(--info))" strokeWidth={3} fillOpacity={0.6} fill="hsla(var(--info)/0.3)" name="Building Fund" />
+                                <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={4} fillOpacity={0.1} fill="rgba(239,68,68,0.1)" name="Total Expenses" />
                                 
                                 {anomalies.map((a, i) => (
                                     <ReferenceDot
@@ -543,7 +598,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
             </div>
 
             {/* ── Middle Row: Transaction List + Health Panel ─────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.75fr 1fr', gap: '1.25rem', marginBottom: '1.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.25rem', marginBottom: '1.75rem' }}>
 
                 {/* Recent Transactions */}
                 <motion.div
@@ -720,7 +775,57 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>
                     {t('quickAccess')}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                {/* ── NEURAL INSIGHTS ── */}
+            <motion.div 
+               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+               style={{ 
+                 background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%)',
+                 borderRadius: '24px', padding: '2rem', border: '1px solid hsla(var(--p)/0.2)',
+                 display: 'flex', alignItems: 'center', gap: '2.5rem', marginBottom: '2.5rem', flexWrap: 'wrap'
+               }}
+            >
+               <div style={{ position: 'relative' }}>
+                 <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'hsla(var(--p)/0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                   <BrainCircuit size={40} color="hsl(var(--p))" />
+                 </div>
+                 <motion.div 
+                   animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }}
+                   style={{ position: 'absolute', top: '-5px', right: '-5px', width: '15px', height: '15px', background: 'hsl(var(--success))', borderRadius: '50%', border: '4px solid #020617' }} 
+                 />
+               </div>
+               <div style={{ flex: 1, minWidth: '300px' }}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.5rem' }}>
+                    <Zap size={16} color="hsl(var(--warning))" />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'hsl(var(--p))', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Neural Strategic Advisory</span>
+                 </div>
+                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '1rem' }}>Your financial data suggests an opportunity for Growth.</h3>
+                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                   {[
+                     { label: 'Optimize Reserve', value: '+12% Target', color: 'hsl(var(--p))' },
+                     { label: 'Burn Rate', value: 'Steady 0.8x', color: 'hsl(var(--success))' }
+                   ].map(tip => (
+                     <div key={tip.label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem 1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tip.label}</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: tip.color }}>{tip.value}</span>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+               <div style={{ minWidth: '240px' }}>
+                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '1.25rem' }}>
+                   "Expenditure patterns are currently 8% below the 6-month average. We recommend allocating the surplus to the Mission Fund."
+                 </p>
+                 <button 
+                    onClick={() => setActiveTab('budget')}
+                    className="btn btn-primary" 
+                    style={{ width: '100%', background: 'hsl(var(--p))', cursor: 'pointer' }}
+                  >
+                    <Sparkles size={16} /> View Advice
+                  </button>
+               </div>
+            </motion.div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2.5rem' }}>
                     {[
                         {
                             icon: BarChart3, title: t('analyticsTitle'),

@@ -11,8 +11,11 @@ import {
   Globe,
   Settings as SettingsIcon,
   Save,
-  ChevronLeft
+  ChevronLeft,
+  Upload,
+  Loader2
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSubscriptionStatus } from '../lib/subscriptionConfig';
 import { PLANS } from '../lib/trialConfig';
@@ -43,6 +46,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
     currency: churchData?.currency || 'USD',
     taxId: churchData?.tax_id || '',
     fiscalYearStart: churchData?.fiscal_year_start || 'January',
+    logo_url: churchData?.logo_url || '',
     theme: 'Dark',
     brandColor: '#6366f1',
     density: 'Compact',
@@ -57,6 +61,55 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
       announcements: true
     }
   });
+
+  const [isUploading, setIsUploading] = useState(false);
+  const logoInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // Sanitize filename: remove spaces and special characters
+      const cleanFileName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
+      const fileName = `logo_${churchData?.id || Date.now()}_${cleanFileName}`;
+      
+      // Try 'logos' bucket first
+      let { data, error } = await supabase.storage
+        .from('logos')
+        .upload(fileName, file);
+
+      // Fallback to 'receipts' bucket if 'logos' fails
+      if (error) {
+        console.warn('Logos bucket failed, trying receipts bucket...', error);
+        const retry = await supabase.storage
+          .from('receipts')
+          .upload(fileName, file);
+        data = retry.data;
+        error = retry.error;
+      }
+
+      if (error) {
+         // Show specific error from Supabase
+         throw new Error(error.message || 'Unknown storage error');
+      }
+
+      if (data) {
+        const { data: { publicUrl } } = supabase.storage
+          .from(data.path.startsWith('receipts/') ? 'receipts' : 'logos')
+          .getPublicUrl(data.path);
+
+        setFormData({ ...formData, logo_url: publicUrl });
+      }
+    } catch (err: any) {
+      console.error('Final upload error:', err);
+      // SHOW ACTUAL ERROR to help debug
+      alert(`Upload failed: ${err.message || err}. Ensure your bucket policies allow Authenticated uploads.`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const settingsCards = [
     {
@@ -232,6 +285,63 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
               rows={3}
               style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem', borderRadius: '0.75rem', color: 'white', outline: 'none', resize: 'none' }}
             />
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Organization Branding</h3>
+          <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+            <div 
+              onClick={() => !isUploading && logoInputRef.current?.click()}
+              style={{ 
+                width: '100px', height: '100px', borderRadius: '16px', 
+                background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden', cursor: 'pointer', position: 'relative'
+              }}
+            >
+              {isUploading && (
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+                   <Loader2 className="spin" size={24} color="var(--primary-light)" />
+                </div>
+              )}
+              {formData.logo_url ? (
+                <img src={formData.logo_url} alt="Logo Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              ) : (
+                <div style={{ textAlign: 'center' }}>
+                  <Upload size={24} color="var(--text-muted)" style={{ marginBottom: '4px' }} />
+                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700 }}>UPLOAD</div>
+                </div>
+              )}
+              <input 
+                type="file" 
+                ref={logoInputRef} 
+                onChange={handleLogoUpload} 
+                style={{ display: 'none' }} 
+                accept="image/*" 
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>LOGO URL</label>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <input 
+                  type="text" 
+                  value={formData.logo_url}
+                  onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                  placeholder="https://example.com/logo.png"
+                  style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem', borderRadius: '0.75rem', color: 'white', outline: 'none' }}
+                />
+                <button 
+                  onClick={() => logoInputRef.current?.click()}
+                  className="btn btn-ghost" 
+                  style={{ padding: '0 1.5rem' }}
+                  disabled={isUploading}
+                >
+                  <Upload size={18} />
+                </button>
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>Recommended: PNG or SVG with transparent background.</p>
+            </div>
           </div>
         </div>
 

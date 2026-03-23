@@ -37,7 +37,7 @@ function drawBox(doc: jsPDF, x: number, y: number, w: number, h: number, label?:
     }
 }
 
-function pageHeader(doc: jsPDF, title: string, subtitle: string, year: string) {
+function pageHeader(doc: jsPDF, title: string, subtitle: string, year: string, logoUrl?: string) {
     doc.setFillColor(10, 36, 90);
     doc.rect(0, 0, 612, 52, 'F');
     doc.setFontSize(16);
@@ -47,6 +47,18 @@ function pageHeader(doc: jsPDF, title: string, subtitle: string, year: string) {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text(subtitle, 40, 38);
+    
+    if (logoUrl && logoUrl.startsWith('data:image')) {
+        try {
+            // Draw a white circle background for the logo
+            doc.setFillColor(255, 255, 255);
+            doc.circle(560, 26, 20, 'F');
+            doc.addImage(logoUrl, 'PNG', 545, 11, 30, 30);
+        } catch (e) {
+            console.error('PDF Logo Error:', e);
+        }
+    }
+
     doc.setFontSize(12);
     doc.setTextColor(255, 200, 80);
     doc.text(`Tax Year ${year}`, 520, 28, { align: 'right' });
@@ -61,12 +73,12 @@ function footer(doc: jsPDF, note: string) {
 }
 
 // ── W-2 Generator ────────────────────────────────────────────────────────────
-export function generateW2(employee: { name: string; role: string; salary: number }, church: { name: string; ein: string; address?: string }) {
+export function generateW2(employee: { name: string; role: string; salary: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
     const { doc, churchName, ein } = baseDoc(church.name, church.ein);
     const taxes = calcTaxes(employee.salary * 12, true); // Annualize monthly salary
     const addr = church.address || '123 Church Street, City, ST 00000';
 
-    pageHeader(doc, 'Form W-2', 'Wage and Tax Statement', TAX_YEAR);
+    pageHeader(doc, 'Form W-2', 'Wage and Tax Statement', TAX_YEAR, church.logo_url);
 
     // Employee / Employer boxes
     let y = 65;
@@ -143,12 +155,12 @@ export function generateW2(employee: { name: string; role: string; salary: numbe
 }
 
 // ── 1099-NEC Generator ───────────────────────────────────────────────────────
-export function generate1099NEC(contractor: { name: string; role: string; salary: number }, church: { name: string; ein: string; address?: string }) {
+export function generate1099NEC(contractor: { name: string; role: string; salary: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
     const { doc, churchName, ein } = baseDoc(church.name, church.ein);
     const annual = contractor.salary * 12;
     const addr = church.address || '123 Church Street, City, ST 00000';
 
-    pageHeader(doc, 'Form 1099-NEC', 'Nonemployee Compensation', TAX_YEAR);
+    pageHeader(doc, 'Form 1099-NEC', 'Nonemployee Compensation', TAX_YEAR, church.logo_url);
 
     let y = 70;
     drawBox(doc, 40, y, 525, 35, 'PAYER (Church) — Name, Address, Phone', `${churchName} | ${addr}`);
@@ -197,11 +209,11 @@ export function generate1099NEC(contractor: { name: string; role: string; salary
 }
 
 // ── Form 941 Generator ───────────────────────────────────────────────────────
-export function generate941(staff: any[], church: { name: string; ein: string }, quarter: number) {
+export function generate941(staff: any[], church: { name: string; ein: string; logo_url?: string }, quarter: number) {
     const { doc, churchName, ein } = baseDoc(church.name, church.ein);
     const qNames = ['', 'January – March', 'April – June', 'July – September', 'October – December'];
 
-    pageHeader(doc, "Form 941", "Employer's Quarterly Federal Tax Return", TAX_YEAR);
+    pageHeader(doc, "Form 941", "Employer's Quarterly Federal Tax Return", TAX_YEAR, church.logo_url);
 
     let y = 70;
     doc.setFontSize(9); doc.setTextColor(40, 40, 40);
@@ -251,7 +263,7 @@ export function generate941(staff: any[], church: { name: string; ein: string },
 }
 
 // ── W-3 Generator ────────────────────────────────────────────────────────────
-export function generateW3(staff: any[], church: { name: string; ein: string }) {
+export function generateW3(staff: any[], church: { name: string; ein: string; logo_url?: string }) {
     const { doc, churchName, ein } = baseDoc(church.name, church.ein);
     const employees = staff.filter((s: any) => s.type === 'Full-time' || s.type === 'Part-time');
     const totals = employees.reduce(
@@ -267,7 +279,7 @@ export function generateW3(staff: any[], church: { name: string; ein: string }) 
         { gross: 0, ss: 0, medicare: 0, federal: 0 }
     );
 
-    pageHeader(doc, 'Form W-3', 'Transmittal of Wage and Tax Statements', TAX_YEAR);
+    pageHeader(doc, 'Form W-3', 'Transmittal of Wage and Tax Statements', TAX_YEAR, church.logo_url);
 
     let y = 70;
     drawBox(doc, 40, y, 260, 32, 'b  Kind of Payer', 'Church / Religious Organization');
@@ -315,10 +327,10 @@ export function generateW3(staff: any[], church: { name: string; ein: string }) 
 }
 
 // ── Form 990 Summary ─────────────────────────────────────────────────────────
-export function generate990Summary(totals: { income: number; expenses: number; balance: number; members: number }, church: { name: string; ein: string }) {
+export function generate990Summary(totals: { income: number; expenses: number; balance: number; members: number }, church: { name: string; ein: string; logo_url?: string }) {
     const { doc, churchName, ein } = baseDoc(church.name, church.ein);
 
-    pageHeader(doc, 'Form 990 — Summary Worksheet', 'Return of Organization Exempt From Income Tax (Nonprofit)', TAX_YEAR);
+    pageHeader(doc, 'Form 990 — Summary Worksheet', 'Return of Organization Exempt From Income Tax (Nonprofit)', TAX_YEAR, church.logo_url);
 
     let y = 70;
     drawBox(doc, 40, y, 350, 32, 'Organization Name', churchName);
