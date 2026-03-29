@@ -862,15 +862,16 @@
         }
 
         .lang-btn {
-            padding: 4px 10px;
+            padding: 2px 4px;
             border: none;
             background: none;
             color: var(--text-muted);
-            font-size: 0.75rem;
-            font-weight: 700;
+            font-size: 0.55rem;
+            font-weight: 800;
             cursor: pointer;
-            border-radius: 6px;
+            border-radius: 4px;
             transition: all 0.2s;
+            text-transform: uppercase;
         }
 
         .lang-btn.active {
@@ -1382,41 +1383,56 @@
         const savedLang = localStorage.getItem('language') || 'en';
         if (savedLang === 'es') setLang('es');
 
-        // Professional Legal Modal for Landing Page
         const legalData = {
           en: {
-            termsTitle: "Terms of Service",
-            privacyTitle: "Privacy & Security Policy",
-            close: "Close",
-            lastUpdated: "Last Updated",
-            t1: "1. Service Scope", c1: "Storehouse Finance provides cloud-based financial stewardship and accounting tools dedicated to ecclesiastical organizations. By using our service, you agree to provide accurate financial records for your church.",
-            t2: "2. Account Security", c2: "Primary administrators are responsible for maintaining the confidentiality of their account credentials and for all activities that occur under their ecclesiastical workspace.",
-            t3: "3. Data Stewardship", c3: "As the user, you retain all rights to your own financial data. Storehouse Finance acts as a steward of this data, providing secure cloud synchronization and reporting tools.",
-            t4: "4. Compliance", c4: "Users are responsible for ensuring their use of the platform complies with local tax laws (e.g., 501(c)(3) in the US) and ecclesiastical governance requirements.",
-            p1: "1. Financial Data", pc1: "We employ 256-bit bank-grade encryption for all financial records. Your church's tithes, offerings, and payroll records are never shared with third parties.",
-            p2: "2. Personal Privacy", pc2: "Member data, including names and contact information, is used solely for the internal ministry purposes of the church and for generating tax-compliant statements.",
-            p3: "3. Storage & Sync", pc3: "Data is stored in highly secure, geographically redundant data centers. We maintain full audit logs of all access to ensure the integrity of your congregation's trust.",
-            p4: "4. Transparency", pc4: "You can export all your data in standard spreadsheet or PDF formats at any time. We believe you should have total control over your sanctuary's records."
+            termsTitle: "Professional Terms of Service",
+            privacyTitle: "Comprehensive Privacy & Security Policy",
+            close: "Close Agreement",
+            lastUpdated: "Last Formal Update",
+            t1: "1. Strategic Service Scope & Authorized Ecclesiastical Use", 
+            c1: "Storehouse Finance delivers a highly specialized, cloud-native financial stewardship environment engineered specifically for the distinct operational requirements of ecclesiastical organizations. By accessing this platform, you certify that you represent an authorized church body and will maintain the integrity of its financial records. Our services provide unified fund accounting, automated payroll distribution, and precision budgeting tools designed to support your organization’s mission with absolute transparency.",
+            t2: "2. Account Stewardship & Advanced Security Protocols", 
+            c2: "Primary church administrators and financial officers bear the sole responsibility for the vigilant protection of their access credentials. This includes the secure management of passwords and the active use of Multi-Factor Authentication (MFA) where available. You must immediately notify our technical response team of any suspected security irregularities. The user organization remains strictly accountable for all activities conducted within its encrypted workspace.",
+            t3: "3. Sovereign Data Stewardship & Irrevocable Ownership", 
+            c3: "Your ecclesiastical organization retains absolute, perpetual sovereignty over all financial data, member registries, and recorded transactions stored within our infrastructure. Storehouse Finance serves as a secure, technical steward, utilizing geographically redundant systems and real-time synchronization to ensure your records are always accessible. We solemnly commit to never utilizing your sensitive organizational data for any secondary purposes without explicit authorization.",
+            t4: "4. Global Regulatory Compliance & Temporal Financial Governance", 
+            c4: "The managing organization is solely responsible for ensuring that its use of Storehouse Finance aligns with all applicable local, regional, and national tax regulations, including 501(c)(3) status compliance in the United States or equivalent charitable governance frameworks globally. While we provide the technical infrastructure for accurate stewardship, the final responsibility for legal tax filing and ecclesiastical transparency lies with your church administration.",
+            p1: "1. Financial Data Integrity & Military-Grade 256-Bit Protection", 
+            pc1: "We utilize advanced bank-grade, 256-bit AES encryption for all data at rest and in transit. Your sanctuary’s tithes, restricted offerings, and confidential payroll records are shielded by multi-layered cryptographic defenses. We maintain a zero-tolerance policy regarding unauthorized data access, ensuring that the sacred trust between your congregation and its financial records remains impeccably protected from third-party interference.",
+            p2: "2. Personal Privacy & Confidential Ministerial Data Usage", 
+            pc2: "Member profiles, contact information, and specific donation histories are classified as highly sensitive ministerial records. This data is utilized exclusively for generating tax-compliant documentation and facilitating internal ministry engagement. We implement 'Secret-Access' logic, ensuring that sensitive donor information is only viewable by staff members who have been specifically cleared by your church’s primary administrator.",
+            p3: "3. redundant Infrastructure & Immutable Audit Tracking", 
+            pc3: "Your data is mirrored across multiple high-security data centers featuring 24/7 physical monitoring and predictive threat detection. We maintain comprehensive, unalterable system logs of every administrative action and access request to provide a transparent audit trail. Our infrastructure is engineered for 99.99% reliability, ensuring that your financial leadership has constant access to the critical insights required for mission success.",
+            p4: "4. Absolute Transparency & Immediate Data Portability", 
+            pc4: "We are committed to total transparency in our role as your technical steward. You have the inherent right to export your congregation’s complete history in industry-standard spreadsheet or PDF formats at any time. We believe that your church should never be locked into a platform; you maintain total control over your records, ensuring that your financial legacy is portable and permanent, regardless of future technology shifts."
           },
           es: {
-            termsTitle: "Términos de Servicio",
-            privacyTitle: "Política de Privacidad y Seguridad",
-            close: "Cerrar",
-            lastUpdated: "Última Actualización",
-            t1: "1. Alcance del Servicio", c1: "Storehouse Finance proporciona herramientas de contabilidad y mayordomía financiera basadas en la nube para organizaciones eclesiásticas. Al utilizar nuestro servicio, usted acepta proporcionar registros financieros precisos para su iglesia.",
-            t2: "2. Seguridad de la Cuenta", c2: "Los administradores principales son responsables de mantener la confidencialidad de sus credenciales y de todas las actividades que ocurran bajo su espacio de trabajo eclesiástico.",
-            t3: "3. Mayordomía de Datos", c3: "Como usuario, usted conserva todos los derechos sobre sus propios datos financieros. Storehouse Finance actúa como administrador de estos datos, proporcionando herramientas seguras de sincronización y reportes.",
-            t4: "4. Cumplimiento", c4: "Los usuarios son responsables de garantizar que el uso de la plataforma cumpla con las leyes fiscales locales (ej. 501(c)(3) en EE. UU.) y los requisitos de gobernanza eclesiástica.",
-            p1: "1. Datos Financieros", pc1: "Empleamos encriptación de grado bancario de 256 bits para todos los registros financieros. Los diezmos, ofrendas y registros de nómina de su iglesia nunca se comparten con terceros.",
-            p2: "2. Privacidad Personal", pc2: "Los datos de los miembros, incluidos nombres e información de contacto, se utilizan únicamente para los fines del ministerio interno de la iglesia y para generar estados de cuenta fiscales.",
-            p3: "3. Almacenamiento y Sincronización", pc3: "Los datos se almacenan en centros de datos altamente seguros y geográficamente redundantes. Mantenemos registros de auditoría de todo acceso para garantizar la integridad de su congregación.",
-            p4: "4. Transparencia", pc4: "Puede exportar todos sus datos en formatos estándar de hoja de cálculo o PDF en cualquier momento. Creemos que usted debe tener el control total de los registros de su santuario."
+            termsTitle: "Términos Profesionales de Servicio",
+            privacyTitle: "Política Integral de Privacidad y Seguridad",
+            close: "Cerrar Contrato",
+            lastUpdated: "Última Actualización Formal",
+            t1: "1. Alcance Estratégico y Uso Eclesiástico Autorizado", 
+            c1: "Storehouse Finance ofrece un entorno de mayordomía financiera especializado, diseñado específicamente para los requisitos operativos de las organizaciones eclesiásticas. Al acceder a esta plataforma, usted certifica que representa a un cuerpo eclesiástico autorizado y que mantendrá la integridad de sus registros financieros. Nuestros servicios proporcionan contabilidad unificada, distribución automatizada de nómina y herramientas de presupuesto de precisión para apoyar su misión.",
+            t2: "2. Mayordomía de Cuentas y Protocolos de Seguridad Avanzada", 
+            c2: "Los administradores principales y los oficiales financieros de la iglesia tienen la responsabilidad única de la protección vigilante de sus credenciales de acceso. Esto incluye la gestión segura de contraseñas y el uso activo de la autenticación de múltiples factores. Debe notificar inmediatamente a nuestro equipo de respuesta técnica sobre cualquier irregularidad de seguridad sospechosa. La organización sigue siendo estrictamente responsable de todas las actividades.",
+            t3: "3. Mayordomía Soberana de Datos y Propiedad Irrevocable", 
+            c3: "Su organización eclesiástica conserva la soberanía absoluta y perpetua sobre todos los datos financieros y registros de miembros almacenados en nuestra infraestructura. Storehouse Finance actúa como un administrador técnico seguro, utilizando sistemas redundantes y sincronización en tiempo real para garantizar que sus registros estén siempre accesibles. Nos comprometemos solemnemente a nunca utilizar sus datos organizativos para fines secundarios.",
+            t4: "4. Cumplimiento Regulatorio Global y Gobernanza Financiera Temporal", 
+            c4: "La organización gestora es la única responsable de garantizar que el uso de Storehouse Finance se alinee con todas las regulaciones fiscales locales, regionales y nacionales aplicables, incluyendo el estatus 501(c)(3) en los Estados Unidos o marcos equivalentes. Aunque proporcionamos la infraestructura técnica, la responsabilidad final de la transparencia eclesiástica recae en la administración de su iglesia.",
+            p1: "1. Integridad de Datos y Protección de Grado Militar de 256 bits", 
+            pc1: "Utilizamos cifrado avanzado AES de 256 bits para todos los datos. Los diezmos, las ofrendas restringidas y los registros de nómina confidenciales de su santuario están protegidos por defensas criptográficas de múltiples capas. Mantenemos una política de tolerancia cero con respecto al acceso no autorizado a los datos, asegurando que la confianza sagrada entre su congregación y sus registros permanezca impecablemente protegida.",
+            p2: "2. Privacidad Personal y Uso de Datos Ministeriales Confidenciales", 
+            pc2: "Los perfiles de los miembros y los historiales de donaciones se clasifican como registros ministeriales altamente sensibles. Estos datos se utilizan exclusivamente para generar documentación que cumple con los impuestos y facilitar el compromiso ministerial interno. Implementamos una lógica de 'Acceso Secreto', asegurando que la información sensible de los donantes solo sea visible para el personal autorizado por el administrador.",
+            p3: "3. Infraestructura Redundante y Seguimiento de Auditoría Inmutable", 
+            pc3: "Sus datos se reflejan en múltiples centros de datos de alta seguridad con monitoreo físico las 24 horas y detección predictiva de amenazas. Mantenemos registros de sistema completos e inalterables de cada acción administrativa para proporcionar una pista de auditoría transparente. Nuestra infraestructura está diseñada para una confiabilidad del 99.99%, asegurando que su liderazgo financiero tenga acceso constante.",
+            p4: "4. Transparencia Absoluta y Portabilidad Inmediata de Datos", 
+            pc4: "Estamos comprometidos con la transparencia total en nuestra función como su administrador técnico. Usted tiene el derecho inherente de exportar el historial completo de su congregación en formatos de hoja de cálculo o PDF estándar en cualquier momento. Creemos que su iglesia nunca debería estar bloqueada en una plataforma; usted mantiene el control total sobre sus registros, asegurando que su legado financiero sea portátil y permanente."
           }
         };
 
         function showLegal(type) {
           const lang = localStorage.getItem('language') || 'en';
-          const data = legalData[lang];
+          const data = legalData[lang] || legalData['en'];
           const isTerms = type === 'terms';
           
           const title = isTerms ? data.termsTitle : data.privacyTitle;
@@ -1450,19 +1466,19 @@
               <div class="legal-content" style="padding:2rem; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:2rem;">
                 <div style="display:flex; gap:1.5rem;">
                   <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🛡️</div>
-                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section1}</h3><p style="color:#94a3b8; font-size:0.92rem; line-height:1.75; margin:0;">${content1}</p></div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section1}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content1}</p></div>
                 </div>
                 <div style="display:flex; gap:1.5rem;">
                   <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🔒</div>
-                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section2}</h3><p style="color:#94a3b8; font-size:0.92rem; line-height:1.75; margin:0;">${content2}</p></div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section2}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content2}</p></div>
                 </div>
                 <div style="display:flex; gap:1.5rem;">
                   <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">📜</div>
-                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section3}</h3><p style="color:#94a3b8; font-size:0.92rem; line-height:1.75; margin:0;">${content3}</p></div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section3}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content3}</p></div>
                 </div>
                 <div style="display:flex; gap:1.5rem;">
                   <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🏢</div>
-                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section4}</h3><p style="color:#94a3b8; font-size:0.92rem; line-height:1.75; margin:0;">${content4}</p></div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section4}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content4}</p></div>
                 </div>
               </div>
               <div style="padding:1.5rem 2rem; border-top:1px solid rgba(255,255,255,0.05); text-align:right; flex-shrink:0; background: rgba(255,255,255,0.02);">
