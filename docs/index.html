@@ -1318,8 +1318,8 @@
             <ul class="footer-links">
                 <li><a href="#features">Features</a></li>
                 <li><a href="#pricing">Pricing</a></li>
-                <li><a href="#">Privacy Policy</a></li>
-                <li><a href="#">Terms of Service</a></li>
+                <li><a href="javascript:void(0)" onclick="showLegal('privacy')" data-en="Privacy Policy" data-es="Política de Privacidad">Privacy Policy</a></li>
+                <li><a href="javascript:void(0)" onclick="showLegal('terms')" data-en="Terms of Service" data-es="Términos de Servicio">Terms of Service</a></li>
                 <li><a href="mailto:hello@storehousefinance.com">Contact</a></li>
             </ul>
         </div>
@@ -1381,6 +1381,99 @@
         // Initialize from storage
         const savedLang = localStorage.getItem('language') || 'en';
         if (savedLang === 'es') setLang('es');
+
+        // Professional Legal Modal for Landing Page
+        const legalData = {
+          en: {
+            termsTitle: "Terms of Service",
+            privacyTitle: "Privacy & Security Policy",
+            close: "Close",
+            lastUpdated: "Last Updated",
+            t1: "1. Service Scope", c1: "Storehouse Finance provides cloud-based financial stewardship and accounting tools dedicated to ecclesiastical organizations. By using our service, you agree to provide accurate financial records for your church.",
+            t2: "2. Account Security", c2: "Primary administrators are responsible for maintaining the confidentiality of their account credentials and for all activities that occur under their ecclesiastical workspace.",
+            t3: "3. Data Stewardship", c3: "As the user, you retain all rights to your own financial data. Storehouse Finance acts as a steward of this data, providing secure cloud synchronization and reporting tools.",
+            t4: "4. Compliance", c4: "Users are responsible for ensuring their use of the platform complies with local tax laws (e.g., 501(c)(3) in the US) and ecclesiastical governance requirements.",
+            p1: "1. Financial Data", pc1: "We employ 256-bit bank-grade encryption for all financial records. Your church's tithes, offerings, and payroll records are never shared with third parties.",
+            p2: "2. Personal Privacy", pc2: "Member data, including names and contact information, is used solely for the internal ministry purposes of the church and for generating tax-compliant statements.",
+            p3: "3. Storage & Sync", pc3: "Data is stored in highly secure, geographically redundant data centers. We maintain full audit logs of all access to ensure the integrity of your congregation's trust.",
+            p4: "4. Transparency", pc4: "You can export all your data in standard spreadsheet or PDF formats at any time. We believe you should have total control over your sanctuary's records."
+          },
+          es: {
+            termsTitle: "Términos de Servicio",
+            privacyTitle: "Política de Privacidad y Seguridad",
+            close: "Cerrar",
+            lastUpdated: "Última Actualización",
+            t1: "1. Alcance del Servicio", c1: "Storehouse Finance proporciona herramientas de contabilidad y mayordomía financiera basadas en la nube para organizaciones eclesiásticas. Al utilizar nuestro servicio, usted acepta proporcionar registros financieros precisos para su iglesia.",
+            t2: "2. Seguridad de la Cuenta", c2: "Los administradores principales son responsables de mantener la confidencialidad de sus credenciales y de todas las actividades que ocurran bajo su espacio de trabajo eclesiástico.",
+            t3: "3. Mayordomía de Datos", c3: "Como usuario, usted conserva todos los derechos sobre sus propios datos financieros. Storehouse Finance actúa como administrador de estos datos, proporcionando herramientas seguras de sincronización y reportes.",
+            t4: "4. Cumplimiento", c4: "Los usuarios son responsables de garantizar que el uso de la plataforma cumpla con las leyes fiscales locales (ej. 501(c)(3) en EE. UU.) y los requisitos de gobernanza eclesiástica.",
+            p1: "1. Datos Financieros", pc1: "Empleamos encriptación de grado bancario de 256 bits para todos los registros financieros. Los diezmos, ofrendas y registros de nómina de su iglesia nunca se comparten con terceros.",
+            p2: "2. Privacidad Personal", pc2: "Los datos de los miembros, incluidos nombres e información de contacto, se utilizan únicamente para los fines del ministerio interno de la iglesia y para generar estados de cuenta fiscales.",
+            p3: "3. Almacenamiento y Sincronización", pc3: "Los datos se almacenan en centros de datos altamente seguros y geográficamente redundantes. Mantenemos registros de auditoría de todo acceso para garantizar la integridad de su congregación.",
+            p4: "4. Transparencia", pc4: "Puede exportar todos sus datos en formatos estándar de hoja de cálculo o PDF en cualquier momento. Creemos que usted debe tener el control total de los registros de su santuario."
+          }
+        };
+
+        function showLegal(type) {
+          const lang = localStorage.getItem('language') || 'en';
+          const data = legalData[lang];
+          const isTerms = type === 'terms';
+          
+          const title = isTerms ? data.termsTitle : data.privacyTitle;
+          const section1 = isTerms ? data.t1 : data.p1;
+          const content1 = isTerms ? data.c1 : data.pc1;
+          const section2 = isTerms ? data.t2 : data.p2;
+          const content2 = isTerms ? data.c2 : data.pc2;
+          const section3 = isTerms ? data.t3 : data.p3;
+          const content3 = isTerms ? data.c3 : data.pc3;
+          const section4 = isTerms ? data.t4 : data.p4;
+          const content4 = isTerms ? data.c4 : data.pc4;
+
+          const modal = document.createElement('div');
+          modal.style = "position:fixed; inset:0; z-index:10000; background:rgba(2,6,23,0.95); backdrop-filter:blur(16px); display:flex; align-items:center; justify-content:center; padding:1rem;";
+          modal.id = "legal-modal";
+          modal.innerHTML = `
+            <div style="width:95%; max-width:640px; max-height:85vh; background:#0f172a; border:1px solid rgba(255,255,255,0.1); border-radius:24px; box-shadow:0 30px 60px -12px rgba(0,0,0,0.7); overflow:hidden; display:flex; flex-direction:column; animation: modalFadeIn 0.3s ease-out;">
+              <style>
+                @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+                .legal-content::-webkit-scrollbar { width: 6px; }
+                .legal-content::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+                .legal-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+              </style>
+              <div style="padding:2rem; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+                <div>
+                  <h2 style="color:white; font-size:1.5rem; font-weight:900; letter-spacing:-0.02em; margin:0;">${title}</h2>
+                  <p style="color:#64748b; font-size:0.85rem; font-weight:500; margin-top:4px; margin-bottom:0;">${data.lastUpdated}: March 2026</p>
+                </div>
+                <button onclick="document.getElementById('legal-modal').remove()" style="width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.04); border:none; color:#94a3b8; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.2rem;">&times;</button>
+              </div>
+              <div class="legal-content" style="padding:2rem; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:2rem;">
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🛡️</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section1}</h3><p style="color:#94a3b8; font-size:0.92rem; line-height:1.75; margin:0;">${content1}</p></div>
+                </div>
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🔒</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section2}</h3><p style="color:#94a3b8; font-size:0.92rem; line-height:1.75; margin:0;">${content2}</p></div>
+                </div>
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">📜</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section3}</h3><p style="color:#94a3b8; font-size:0.92rem; line-height:1.75; margin:0;">${content3}</p></div>
+                </div>
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🏢</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section4}</h3><p style="color:#94a3b8; font-size:0.92rem; line-height:1.75; margin:0;">${content4}</p></div>
+                </div>
+              </div>
+              <div style="padding:1.5rem 2rem; border-top:1px solid rgba(255,255,255,0.05); text-align:right; flex-shrink:0; background: rgba(255,255,255,0.02);">
+                <button onclick="document.getElementById('legal-modal').remove()" style="padding:0.8rem 2.5rem; border-radius:14px; background:linear-gradient(135deg, #2563eb, #1d4ed8); color:white; border:none; font-weight:800; font-family:'Inter', sans-serif; cursor:pointer; font-size:0.9rem; letter-spacing:0.02em; box-shadow:0 8px 20px -4px rgba(37,99,235,0.4);">
+                  ${data.close}
+                </button>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(modal);
+        }
     </script>
 </body>
 
