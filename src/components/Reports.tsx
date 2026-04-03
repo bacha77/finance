@@ -205,18 +205,37 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
 
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
+                    @page { size: portrait; margin: 15mm; }
                     body * { visibility: hidden; }
-                    #certified-audit-report, #certified-audit-report * { visibility: visible; }
-                    #certified-audit-report { 
-                        position: absolute; 
-                        left: 0; top: 0; width: 100%; 
-                        background: white !important; 
-                        color: black !important;
-                        padding: 2rem !important;
-                        box-shadow: none !important;
-                        min-height: 100vh;
+                    #certified-audit-report, #certified-audit-report * { 
+                        visibility: visible !important; 
                     }
-                    .glass-card { background: white !important; border: 2px solid #e2e8f0 !important; }
+                    #certified-audit-report { 
+                        position: absolute !important; 
+                        left: 0 !important; 
+                        top: 0 !important; 
+                        width: 100% !important; 
+                        max-width: 100% !important; 
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: transparent !important;
+                        color: black !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                        transform: none !important;
+                    }
+                    #certified-audit-report h1 { color: black !important; }
+                    #certified-audit-report div { 
+                        border-color: #eee !important; 
+                        background: white !important; 
+                    }
+                    #certified-audit-report p, #certified-audit-report span { color: black !important; }
+                    .glass-card { 
+                        background: white !important; 
+                        border: 1px solid #ddd !important; 
+                        box-shadow: none !important;
+                        max-width: 100% !important;
+                    }
                     .no-print { display: none !important; }
                 }
             ` }} />
