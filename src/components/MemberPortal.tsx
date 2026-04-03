@@ -1050,9 +1050,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                 <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)' }} />
                                 <h4 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>{t('churchMessage')}</h4>
                                 <p style={{ fontSize: '1.125rem', lineHeight: 1.6, opacity: 0.9, fontWeight: 500 }}>
-                                    {t('stewardshipMessage')
-                                        .replace('{name}', selectedMember.name)
-                                        .replace('{amount}', `<strong>$${getMemberDonations(selectedMember.name).reduce((sum, tx) => sum + tx.amount, 0).toLocaleString()}</strong>`)}
+                                    {t('stewardshipMessageBefore') || 'Dear'} {selectedMember.name}, {t('stewardshipMessageMiddle') || 'thank you for your faithful stewardship this month. Your contribution of'} <strong style={{ fontWeight: 800 }}>${getMemberDonations(selectedMember.name).reduce((sum, tx) => sum + tx.amount, 0).toLocaleString()}</strong> {t('stewardshipMessageAfter') || 'helps us continue our mission.'}
                                 </p>
                                 <div style={{ marginTop: '2.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                     <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1070,11 +1068,11 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                     <Download size={18} /> {t('exportPDF')}
                                 </button>
                                 <button
-                                    className="btn btn-primary"
-                                    style={{ background: 'var(--primary-dark)', padding: '1rem 2rem', fontSize: '0.875rem' }}
+                                    className="btn"
+                                    style={{ background: '#0f172a', color: 'white', border: 'none', padding: '1rem 2rem', fontSize: '0.875rem' }}
                                     onClick={() => window.print()}
                                 >
-                                    <Printer size={18} /> {t('print')}
+                                    <Printer size={18} /> {t('print') || 'Print'}
                                 </button>
                                 <button
                                     className="btn btn-primary"
