@@ -205,36 +205,46 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
 
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
-                    @page { size: portrait; margin: 15mm; }
-                    body * { visibility: hidden; }
+                    @page { size: auto; margin: 0mm; }
+                    body { background: white !important; -webkit-print-color-adjust: exact; }
+                    body * { display: none !important; }
                     #certified-audit-report, #certified-audit-report * { 
-                        visibility: visible !important; 
-                    }
-                    #certified-audit-report { 
-                        position: absolute !important; 
-                        left: 0 !important; 
-                        top: 0 !important; 
-                        width: 100% !important; 
-                        max-width: 100% !important; 
-                        margin: 0 !important;
-                        padding: 0 !important;
+                        display: block !important; 
+                        visibility: visible !important;
                         background: transparent !important;
                         color: black !important;
+                    }
+                    #certified-audit-report { 
+                        display: block !important;
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 210mm !important; /* Fixed A4 Width to avoid browser scaling bugs */
+                        height: 297mm !important;
+                        padding: 20mm !important;
+                        margin: 0 !important;
                         box-shadow: none !important;
                         border: none !important;
                         transform: none !important;
+                        box-sizing: border-box !important;
                     }
-                    #certified-audit-report h1 { color: black !important; }
+                    #certified-audit-report h1 { 
+                        font-size: 2.25rem !important; 
+                        margin-top: 1rem !important;
+                        width: 100% !important;
+                        text-align: center !important;
+                    }
                     #certified-audit-report div { 
-                        border-color: #eee !important; 
-                        background: white !important; 
+                        border-color: #eee !important;
                     }
-                    #certified-audit-report p, #certified-audit-report span { color: black !important; }
+                    #certified-audit-report p, #certified-audit-report span { 
+                        color: black !important;
+                    }
                     .glass-card { 
-                        background: white !important; 
-                        border: 1px solid #ddd !important; 
-                        box-shadow: none !important;
+                        background: transparent !important;
+                        border: none !important;
                         max-width: 100% !important;
+                        width: 100% !important;
                     }
                     .no-print { display: none !important; }
                 }
