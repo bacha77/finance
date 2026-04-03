@@ -1,25 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-    UserPlus,
-    Mail,
-    MoreVertical,
-    Clock,
-    Send,
-    FileText,
-    Printer,
-    Download,
-    X,
-    ShieldCheck,
-    Phone,
-    Edit3,
-    Trash2,
-    Check,
-    TrendingUp
+import { 
+    Download, FileText, Mail, MoreVertical, Phone, 
+    Trash2, UserPlus, X, Printer, ShieldCheck, 
+    Check, Edit3, TrendingUp, Clock, Send 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { sendResendEmail } from '../lib/resend';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface Member {
@@ -130,25 +119,39 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
         bodyText += `${t('statementBlessings')},\n\n`;
         bodyText += `${treasurerName}\n`;
         bodyText += `${t('statementTreasurerLabel')}, ${churchInfo.name}\n`;
-        bodyText += `${churchInfo.address || ''}`;
-
-        // 🚀 REAL-SEND DELIVERY PIPELINE
-        // while continuing to log the archival data in the background.
-        const mailtoLink = `mailto:${selectedMember.email}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
-        window.location.href = mailtoLink;
-
+        bodyText += `${churchInfo.address || ''}`;        // 🚀 RESEND DEEP-SEND RELAY
+        // Dispatches the invoice silently in the background
         setTimeout(async () => {
             try {
+                // Generate a beautiful HTML body for the actual email
+                const emailHtml = `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+                        <h2 style="color: #1e293b;">${churchInfo.name} - Official Giving Statement</h2>
+                        <p>Dear ${selectedMember.name},</p>
+                        <p>Thank you for your faithful stewardship this month. Please find your detailed contribution record below:</p>
+                        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                            <span style="font-size: 14px; color: #64748b; display: block; margin-bottom: 8px;">Total Monthly Contribution</span>
+                            <span style="font-size: 32px; font-weight: 800; color: #4f46e5;">$${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <p style="color: #64748b; font-size: 14px; line-height: 1.6;">Your generosity empowers our ministries and transforms lives through faith. You can also view this and past statements in your secure member vault.</p>
+                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+                        <p style="font-size: 12px; color: #94a3b8; text-align: center;">© ${new Date().getFullYear()} ${churchInfo.name}. All rights reserved.</p>
+                    </div>
+                `;
+
+                // Dispatch via Resend
+                await sendResendEmail(selectedMember.email, decodeURIComponent(subject), emailHtml, churchInfo.name);
+
                 // Log the successful dispatch to the Secure Vault
                 await supabase.from('documents').insert({
                     church_id: churchId,
                     name: `Invoice: ${selectedMember.name} - ${currentMonth} ${invoiceYear}`,
                     type: 'invoice',
                     metadata: { 
-                        status: 'dispatched_via_client', 
+                        status: 'dispatched_via_resend', 
                         recipient: selectedMember.email,
                         subject: decodeURIComponent(subject),
-                        method: 'Local Mailer'
+                        method: 'Resend API Relay'
                     }
                 });
 
@@ -156,10 +159,11 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                 setSendSuccess(true);
                 setTimeout(() => setSendSuccess(false), 3000);
             } catch (err) {
-                console.error('Vault logging failed:', err);
+                console.error('Resend Dispatch failed:', err);
                 setIsSending(false);
+                alert(`Dispatch Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
             }
-        }, 1500);
+        }, 1200);
     };
 
     const [churchInfo, setChurchInfo] = useState<{name: string, city: string, state: string, address?: string, logo_url?: string} | null>(null);

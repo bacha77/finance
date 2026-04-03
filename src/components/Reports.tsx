@@ -1,29 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-    BarChart3,
-    TrendingUp,
-    DownloadCloud,
-    ArrowLeft,
-    CheckCircle2,
-    ArrowDownRight,
-    Building2,
-    ShieldCheck,
-    Calendar,
-    FileText,
-    Activity,
-    Clock,
-    FileCheck,
-    X,
-    Shield,
-    PieChart,
-    Landmark,
-    LineChart,
-    Users,
-    Search
+    BarChart3, TrendingUp, DownloadCloud, ArrowLeft,
+    CheckCircle2, ArrowDownRight, Building2, ShieldCheck,
+    Calendar, FileText, Activity, Clock, FileCheck, X,
+    Shield, PieChart, Landmark, LineChart, Users, Search,
+    Send, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
+import { sendResendEmail } from '../lib/resend';
 
 type StatementType = 'pnl' | 'balance' | 'cashflow' | 'board' | null;
 type ViewMode = 'overview' | 'statement-view' | 'vault-view';
@@ -71,6 +57,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
     const [showRecipientsModal, setShowRecipientsModal] = useState(false);
     const [recipients, setRecipients] = useState<string[]>([]); // Array of member IDs
     const [allMembers, setAllMembers] = useState<any[]>([]);
+    const [isDispatching, setIsDispatching] = useState(false);
 
     const fetchRecipients = async () => {
         if (!churchId) return;
@@ -1044,6 +1031,83 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                                         />
                                                         {t('activeSchedule').toUpperCase()}
                                                     </div>
+                                                    <button 
+                                                        className="btn btn-primary" 
+                                                        disabled={isDispatching}
+                                                        style={{ width: '100%', fontSize: '0.875rem', height: '48px', fontWeight: 800, gap: '8px', marginTop: '1rem' }}
+                                                        onClick={async () => {
+                                                            const recipientEmails = allMembers.filter(m => recipients.includes(m.id)).map(m => m.email);
+                                                            if (recipientEmails.length === 0) {
+                                                                alert('Please select at least one recipient first.');
+                                                                return;
+                                                            }
+
+                                                            setIsDispatching(true);
+                                                            try {
+                                                                const currentMonthName = months[selectedMonth];
+                                                                const reportHtml = `
+                                                                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+                                                                        <div style="background: #4f46e5; padding: 30px; border-radius: 12px; color: white; text-align: center; margin-bottom: 30px;">
+                                                                            <h1 style="margin: 0; font-size: 24px;">Monthly Financial Report</h1>
+                                                                            <p style="opacity: 0.8; margin-top: 5px;">${currentMonthName} ${selectedYear}</p>
+                                                                        </div>
+                                                                        <p>Dear Stakeholder,</p>
+                                                                        <p>The financial reports for <strong>${currentMonthName}</strong> have been finalized. The internal balance sheet and profit & loss statements are now available for review.</p>
+                                                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0;">
+                                                                            <div style="padding: 15px; background: #f8fafc; border-radius: 8px;">
+                                                                                <span style="font-size: 11px; color: #64748b; text-transform: uppercase;">Total Income</span>
+                                                                                <div style="font-size: 20px; font-weight: 800; color: #10b981;">+$${metrics.income.toLocaleString()}</div>
+                                                                            </div>
+                                                                            <div style="padding: 15px; background: #f8fafc; border-radius: 8px;">
+                                                                                <span style="font-size: 11px; color: #64748b; text-transform: uppercase;">Total Expenses</span>
+                                                                                <div style="font-size: 20px; font-weight: 800; color: #ef4444;">-$${metrics.expenses.toLocaleString()}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <p style="font-size: 14px; color: #64748b; font-style: italic;">Note: This is an official digital closure statement. Detailed transaction sub-ledgers can be viewed directly in the church finance portal.</p>
+                                                                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+                                                                        <p style="font-size: 12px; color: #94a3b8; text-align: center;">Authorized by: Storehouse Internal Audit Engine</p>
+                                                                    </div>
+                                                                `;
+
+                                                                // Dispatch to all recipients in parallel
+                                                                await Promise.all(recipientEmails.map(email => 
+                                                                    sendResendEmail(email, `Monthly Financial Close: ${currentMonthName} ${selectedYear}`, reportHtml, 'Storehouse Reports')
+                                                                ));
+
+                                                                // Log transmission
+                                                                await supabase.from('documents').insert({
+                                                                    church_id: churchId,
+                                                                    name: `Board Report: ${currentMonthName} ${selectedYear}`,
+                                                                    type: 'report',
+                                                                    metadata: { 
+                                                                        status: 'dispatched_via_resend', 
+                                                                        recipients: recipientEmails,
+                                                                        method: 'Resend API Relay'
+                                                                    }
+                                                                });
+
+                                                                alert('Financial Report dispatched successfully to all recipients.');
+                                                            } catch (err) {
+                                                                console.error('Dispatch failed:', err);
+                                                                alert(`Dispatch Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                                                            } finally {
+                                                                setIsDispatching(false);
+                                                            }
+                                                        }}
+                                                    >
+                                                        {isDispatching ? (
+                                                            <>
+                                                                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+                                                                    <RefreshCw size={18} />
+                                                                </motion.div>
+                                                                Dispatching...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Send size={18} /> Send Report Now
+                                                            </>
+                                                        )}
+                                                    </button>
                                                 </div>
                                                 <button 
                                                     className="btn glass" 
