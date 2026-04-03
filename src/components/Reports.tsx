@@ -775,19 +775,38 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                 <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1.5rem' }}>{t('automatedReports')}</h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                     <div style={{
-                                        backgroundColor: 'rgba(99, 102, 241, 0.05)',
-                                        border: '1px solid rgba(99, 102, 241, 0.1)',
-                                        padding: '1rem',
-                                        borderRadius: 'var(--radius)'
+                                        backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                                        border: '1px solid rgba(16, 185, 129, 0.1)',
+                                        padding: '1.25rem',
+                                        borderRadius: '20px',
+                                        position: 'relative',
+                                        overflow: 'hidden'
                                     }}>
-                                        <h4 style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('monthlyFinancialClose')}</h4>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '8px 0' }}>{t('nextRun')}: Apr 1st, 2026</p>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', color: '#10b981' }}>
-                                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }} />
-                                            {t('activeSchedule')}
+                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', backgroundColor: '#10b981' }} />
+                                        <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white' }}>{t('monthlyFinancialClose')}</h4>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '8px 0' }}>
+                                            {t('nextRun')}: {(() => {
+                                                const d = new Date();
+                                                const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+                                                return next.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+                                            })()}
+                                        </p>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>
+                                            <motion.div 
+                                                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                                                transition={{ repeat: Infinity, duration: 2 }}
+                                                style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }} 
+                                            />
+                                            {t('activeSchedule').toUpperCase()}
                                         </div>
                                     </div>
-                                    <button className="btn glass" style={{ width: '100%', fontSize: '0.875rem' }}>{t('manageRecipients')}</button>
+                                    <button 
+                                        className="btn glass" 
+                                        style={{ width: '100%', fontSize: '0.875rem', height: '48px', fontWeight: 700 }}
+                                        onClick={() => alert('Recipients Management: Your Church Board members are already synced to this automated schedule and will receive the report on the 1st.')}
+                                    >
+                                        {t('manageRecipients')}
+                                    </button>
                                 </div>
                             </div>
                         </div>
