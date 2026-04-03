@@ -18,13 +18,15 @@ import {
     PieChart,
     Landmark,
     LineChart,
-    Users
+    Users,
+    Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 
 type StatementType = 'pnl' | 'balance' | 'cashflow' | 'board' | null;
+type ViewMode = 'overview' | 'statement-view' | 'vault-view';
 
 interface LedgerEntry {
     type: 'in' | 'out' | 'revenue' | 'expense';
@@ -55,6 +57,7 @@ interface ReportsProps {
 
 const Reports: React.FC<ReportsProps> = ({ churchId }) => {
     const { t } = useLanguage();
+    const [viewMode, setViewMode] = useState<ViewMode>('overview');
     const [viewStatement, setViewStatement] = useState<StatementType>(null);
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -583,6 +586,34 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                             </div>
                         </header>
 
+                        {/* ── SUB-NAV TABS ── */}
+                        <div style={{ display: 'flex', gap: '2rem', marginBottom: '2.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
+                            <button 
+                                onClick={() => { setViewMode('overview'); setViewStatement(null); }}
+                                style={{ 
+                                    background: 'none', border: 'none', 
+                                    color: viewMode === 'overview' ? 'white' : 'var(--text-muted)',
+                                    fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer',
+                                    position: 'relative', padding: '0.5rem 0'
+                                }}
+                            >
+                                {t('overviewTab') || 'Overview'}
+                                {viewMode === 'overview' && <motion.div layoutId="tab-active" style={{ position: 'absolute', bottom: '-1rem', left: 0, right: 0, height: '3px', background: 'var(--primary)' }} />}
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('vault-view')}
+                                style={{ 
+                                    background: 'none', border: 'none', 
+                                    color: viewMode === 'vault-view' ? 'white' : 'var(--text-muted)',
+                                    fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer',
+                                    position: 'relative', padding: '0.5rem 0'
+                                }}
+                            >
+                                {t('secureVault') || 'Document Vault'}
+                                {viewMode === 'vault-view' && <motion.div layoutId="tab-active" style={{ position: 'absolute', bottom: '-1rem', left: 0, right: 0, height: '3px', background: 'var(--primary)' }} />}
+                            </button>
+                        </div>
+
                         <AnimatePresence>
                             {showAuditModal && (
                                 <motion.div
@@ -871,7 +902,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                                                 cursor: 'pointer',
                                                                 transition: 'all 0.3s ease'
                                                             }}
-                                                            onClick={() => setViewStatement(report.id as StatementType)}
+                                                            onClick={() => { setViewStatement(report.id as StatementType); setViewMode('statement-view'); }}
                                                         >
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                                                                 <div style={{
@@ -1021,6 +1052,13 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                                 >
                                                     {t('manageRecipients')}
                                                 </button>
+                                                <button 
+                                                    className="btn glass" 
+                                                    style={{ width: '100%', fontSize: '0.875rem', height: '48px', fontWeight: 700 }}
+                                                    onClick={() => setViewMode('vault-view')}
+                                                >
+                                                    Access Secure Vault
+                                                </button>
 
                                                 {/* 🏷️ DELIVERY AUDIT LOG */}
                                                 <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px dashed var(--border)' }}>
@@ -1047,6 +1085,84 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                         </div>
                                     </div>
                                 </motion.div>
+                            ) : viewMode === 'vault-view' ? (
+                                <motion.div
+                                    key="vault-view"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    className="card glass"
+                                    style={{ minHeight: '600px', padding: '2.5rem' }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <button className="btn glass" style={{ padding: '10px' }} onClick={() => setViewMode('overview')}>
+                                                <ArrowLeft size={20} />
+                                            </button>
+                                            <div>
+                                                <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>{t('secureVault') || 'Document Vault'}</h2>
+                                                <p style={{ color: 'var(--text-muted)' }}>Search and manage historical certifications and invoices.</p>
+                                            </div>
+                                        </div>
+                                        <div style={{ position: 'relative' }}>
+                                            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                            <input 
+                                                className="glass-input" 
+                                                placeholder="Search documents by ID or Date..." 
+                                                style={{ width: '300px', padding: '12px 12px 12px 40px', borderRadius: '12px' }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                                        {[
+                                            { name: 'Audit: March 2026', type: 'certificate', date: 'Mar 31, 2026', size: '1.2 MB', hash: 'SH-8812' },
+                                            { name: 'Reports: Feb 2026 Close', type: 'report', date: 'Feb 1, 2026', size: '2.4 MB', hash: 'SH-9F41' },
+                                            { name: 'Invoice: J. Doe - Stewardship', type: 'invoice', date: 'Mar 15, 2026', size: '0.4 MB', hash: 'SH-1102' },
+                                            { name: 'Audit: Yearly 2025', type: 'audit', date: 'Dec 31, 2025', size: '5.1 MB', hash: 'SH-Y2025' }
+                                        ].map(doc => (
+                                            <motion.div 
+                                                key={doc.hash}
+                                                whileHover={{ y: -5 }}
+                                                className="glass-card"
+                                                style={{ padding: '1.5rem', border: '1px solid var(--border)', cursor: 'pointer' }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                                                    <div style={{ 
+                                                        width: '44px', height: '44px', borderRadius: '12px', 
+                                                        background: 'hsla(var(--p)/0.1)', display: 'flex', 
+                                                        alignItems: 'center', justifyContent: 'center' 
+                                                    }}>
+                                                        <FileText size={22} color="var(--primary-light)" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>{doc.name}</h4>
+                                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{doc.type}</span>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid hsla(var(--text-main)/0.05)' }}>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{doc.date}</div>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button 
+                                                            className="btn-ghost" 
+                                                            style={{ padding: '6px' }}
+                                                            title="Download Archival Copy"
+                                                        >
+                                                            <DownloadCloud size={16} />
+                                                        </button>
+                                                        <button 
+                                                            className="btn-ghost" 
+                                                            style={{ padding: '6px' }}
+                                                            title="View Certified Signature"
+                                                        >
+                                                            <Shield size={16} color="#10b981" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                </motion.div>
                             ) : (
                     <motion.div
                         key="statement-view"
@@ -1057,7 +1173,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                         style={{ minHeight: '600px', padding: '2.5rem' }}
                     >
                         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-                            <button className="btn glass" style={{ padding: '10px' }} onClick={() => setViewStatement(null)}>
+                            <button className="btn glass" style={{ padding: '10px' }} onClick={() => { setViewStatement(null); setViewMode('overview'); }}>
                                 <ArrowLeft size={20} />
                             </button>
                             <div style={{ display: 'flex', gap: '1rem' }}>

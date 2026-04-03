@@ -169,6 +169,7 @@ DO $$ BEGIN ALTER TABLE public.departments ADD COLUMN members INT DEFAULT 0;    
 
 -- MEMBERS Table
 DO $$ BEGIN ALTER TABLE public.members     ADD COLUMN role TEXT;       EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE public.members     ADD COLUMN distribution_method TEXT DEFAULT 'manual'; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 
 -- STAFF Table
 DO $$ BEGIN ALTER TABLE public.staff       ADD COLUMN type TEXT;       EXCEPTION WHEN duplicate_column THEN NULL; END $$;
@@ -417,6 +418,31 @@ END $$;
 DO $$
 BEGIN
     CREATE POLICY "Authenticated Upload Receipts" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'receipts' AND auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- ============================================================
+-- STEP 12: Secure Document Vault
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.documents (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    church_id   UUID REFERENCES public.churches(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    type        TEXT NOT NULL, -- 'certificate', 'invoice', 'report', 'audit'
+    url         TEXT,
+    member_id   UUID REFERENCES public.members(id) ON DELETE SET NULL,
+    file_size   INT,
+    hash        TEXT,
+    metadata    JSONB DEFAULT '{}'::jsonb
+);
+
+ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
+
+DO $$ 
+BEGIN
+    CREATE POLICY "Church Docs Access" ON public.documents
+        FOR ALL USING ( (SELECT public.get_my_church_id()) IS NULL OR church_id = public.get_my_church_id() );
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
