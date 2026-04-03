@@ -335,21 +335,73 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
 
     const [bulkSending, setBulkSending] = useState(false);
 
-    const handleBulkSend = () => {
+    const handleBulkSend = async () => {
         const activeMembers = members.filter(m => m.status === 'Active' && m.email);
         if (activeMembers.length === 0) {
             alert('No active members with valid email addresses found.');
             return;
         }
 
-        if (!window.confirm(`Dispatch monthly giving invoices to ${activeMembers.length} active members?`)) return;
+        if (!window.confirm(`Dispatch monthly giving invoices to ${activeMembers.length} active members? This will send real emails and log them in the Secure Vault.`)) return;
 
         setBulkSending(true);
-        // Simulate bulk processing to each member's record
-        setTimeout(() => {
+        try {
+            const currentMonth = months[invoiceMonth];
+            const churchName = churchInfo?.name || 'Your Church';
+            
+            // Dispatch to all active members
+            const results = await Promise.all(activeMembers.map(async (member) => {
+                const donations = getMemberDonations(member.name);
+                const total = donations.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+                
+                const emailHtml = `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+                        <h2 style="color: #1e293b;">${churchName} - Giving Statement</h2>
+                        <p>Dear ${member.name},</p>
+                        <p>Thank you for your faithful stewardship for ${currentMonth} ${invoiceYear}.</p>
+                        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                            <span style="font-size: 14px; color: #64748b; display: block; margin-bottom: 8px;">Monthly Contribution Total</span>
+                            <span style="font-size: 32px; font-weight: 800; color: #4f46e5;">$${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <p style="font-size: 12px; color: #94a3b8; text-align: center;">© ${new Date().getFullYear()} ${churchName}. Securely archived in the Stewardship Vault.</p>
+                    </div>
+                `;
+
+                try {
+                    await sendResendEmail(member.email, `${churchName} Statement: ${currentMonth} ${invoiceYear}`, emailHtml, churchName);
+                    
+                    // Permanent Archival In Vault
+                    await supabase.from('documents').insert({
+                        church_id: churchId,
+                        name: `Invoice: ${member.name} - ${currentMonth} ${invoiceYear}`,
+                        type: 'invoice',
+                        metadata: { 
+                            status: 'bulk_dispatched', 
+                            recipient: member.email,
+                            total: total
+                        }
+                    });
+                    return { success: true };
+                } catch (err) {
+                    console.error(`Failed to send to ${member.email}:`, err);
+                    return { success: false, email: member.email };
+                }
+            }));
+
+            const successCount = results.filter(r => r.success).length;
+            const failCount = results.length - successCount;
+
+            if (failCount > 0) {
+                alert(`Bulk Dispatch Partial Success: ${successCount} sent, ${failCount} failed. Check console for details.`);
+            } else {
+                alert(`Mission Accomplished: ${successCount} Contribution Invoices have been dispatched and archived in the Vault.`);
+            }
+        } catch (err) {
+            console.error('Bulk Dispatch Error:', err);
+            alert('Bulk dispatch failed. Please check your Resend API configuration.');
+        } finally {
             setBulkSending(false);
-            alert(`Success: ${activeMembers.length} Contribution Invoices for ${months[invoiceMonth]} ${invoiceYear} have been dispatched.`);
-        }, 3000);
+        }
     };
 
     const handleAddMember = async (e: React.FormEvent) => {

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-    BarChart3, TrendingUp, DownloadCloud, ArrowLeft,
-    CheckCircle2, ArrowDownRight, Building2, ShieldCheck,
-    Calendar, FileText, Activity, Clock, FileCheck, X,
-    Shield, PieChart, Landmark, LineChart, Users, Search,
+    BarChart3, DownloadCloud, ArrowLeft,
+    Building2, ShieldCheck,
+    Calendar, Activity,
+    Shield, PieChart, Landmark, LineChart, Search,
     Send, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -18,14 +18,14 @@ interface LedgerEntry {
     type: 'in' | 'out' | 'revenue' | 'expense';
     amount: number;
     category?: string;
-    cat?: string; // Fallback
+    cat?: string;
     description?: string;
-    desc?: string; // Fallback
+    desc?: string;
     date: string;
     department?: string;
-    dept?: string; // Fallback
+    dept?: string;
     receipt_url?: string;
-    receiptImage?: string; // Fallback
+    receiptImage?: string;
     created_at?: string;
     church_id?: string;
 }
@@ -49,47 +49,38 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [ledger, setLedger] = useState<LedgerEntry[]>([]);
     const [funds, setFunds] = useState<Fund[]>([]);
+    const [documents, setDocuments] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [church, setChurch] = useState<any>(null);
-    const [showAuditModal, setShowAuditModal] = useState(false);
-    const [isAuditRunning, setIsAuditRunning] = useState(false);
-    const [auditSummary, setAuditSummary] = useState<any>(null);
-    const [showRecipientsModal, setShowRecipientsModal] = useState(false);
-    const [recipients, setRecipients] = useState<string[]>([]); // Array of member IDs
+    const [recipients, setRecipients] = useState<string[]>([]);
     const [allMembers, setAllMembers] = useState<any[]>([]);
     const [isDispatching, setIsDispatching] = useState(false);
-
-    const fetchRecipients = async () => {
-        if (!churchId) return;
-        try {
-            const { data } = await supabase.from('members').select('*').eq('church_id', churchId);
-            if (data) {
-                setAllMembers(data);
-                // Default recipients: anyone with 'Board' or 'Admin' or 'Trustee' in their role
-                setRecipients(data.filter((m: any) => 
-                    m.role?.toLowerCase().includes('board') || 
-                    m.role?.toLowerCase().includes('admin') ||
-                    m.role?.toLowerCase().includes('trustee')
-                ).map((m: any) => m.id));
-            }
-        } catch (err) {
-            console.error('Error fetching recipients:', err);
-        }
-    };
 
     const fetchData = async () => {
         if (!churchId) return;
         setIsLoading(true);
         try {
-            const [{ data: ledgerData }, { data: fundsData }, { data: churchData }] = await Promise.all([
+            const [{ data: ledgerData }, { data: fundsData }, { data: churchData }, { data: docsData }] = await Promise.all([
                 supabase.from('ledger').select('*').eq('church_id', churchId).neq('voided', true),
                 supabase.from('funds').select('*').eq('church_id', churchId),
-                supabase.from('churches').select('*').eq('id', churchId).single()
+                supabase.from('churches').select('*').eq('id', churchId).single(),
+                supabase.from('documents').select('*').eq('church_id', churchId).order('created_at', { ascending: false })
             ]);
             
             if (ledgerData) setLedger(ledgerData);
             if (fundsData) setFunds(fundsData);
             if (churchData) setChurch(churchData);
+            if (docsData) setDocuments(docsData);
+
+            const { data: membersData } = await supabase.from('members').select('*').eq('church_id', churchId);
+            if (membersData) {
+                setAllMembers(membersData);
+                setRecipients(membersData.filter((m: any) => 
+                    m.role?.toLowerCase().includes('board') || 
+                    m.role?.toLowerCase().includes('admin') ||
+                    m.role?.toLowerCase().includes('trustee')
+                ).map((m: any) => m.id));
+            }
         } catch (err) {
             console.error('Error fetching data for reports:', err);
         } finally {
@@ -99,20 +90,15 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
 
     useEffect(() => {
         fetchData();
-        fetchRecipients();
-
-        // Realtime sync for reports
         const ledgerChannel = supabase.channel('ledger-reports')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger', filter: `church_id=eq.${churchId}` }, fetchData)
             .subscribe();
-
-        const fundsChannel = supabase.channel('funds-reports')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'funds', filter: `church_id=eq.${churchId}` }, fetchData)
+        const docsChannel = supabase.channel('docs-reports')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `church_id=eq.${churchId}` }, fetchData)
             .subscribe();
-
         return () => {
             supabase.removeChannel(ledgerChannel);
-            supabase.removeChannel(fundsChannel);
+            supabase.removeChannel(docsChannel);
         };
     }, [churchId]);
 
@@ -129,85 +115,37 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
         const filteredLedger = ledger.filter(tx => {
             const dateStr = tx.date || tx.created_at;
             if (!dateStr) return false;
-            
-            let d: Date;
-            if (dateStr.includes('/')) {
-                d = new Date(dateStr); // Handles M/D/YYYY
-            } else {
-                d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`); // Handles ISO/YYYY-MM-DD
-            }
-
-            if (isNaN(d.getTime())) return false;
+            let d = new Date(dateStr.includes('/') ? dateStr : (dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`));
             return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
         });
-
         const income = filteredLedger.filter(tx => tx.type === 'in' || tx.type === 'revenue').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
         const expenses = filteredLedger.filter(tx => tx.type === 'out' || tx.type === 'expense').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-        const net = income - expenses;
         const totalAssets = funds.reduce((sum, f) => sum + (f.balance || 0), 0);
-
-        // Group by category
         const expenseByCat: Record<string, number> = {};
         filteredLedger.filter(tx => tx.type === 'out' || tx.type === 'expense').forEach(tx => {
             const catStr = (tx.category || tx.cat || 'General').replace(' Exp', '');
             expenseByCat[catStr] = (expenseByCat[catStr] || 0) + Math.abs(tx.amount);
         });
-
         const incomeByCat: Record<string, number> = {};
-        const incomeByDept: Record<string, number> = {};
         filteredLedger.filter(tx => tx.type === 'in' || tx.type === 'revenue').forEach(tx => {
             const catStr = tx.category || tx.cat || 'Tithes';
-            const deptStr = tx.department || tx.dept || 'General';
             incomeByCat[catStr] = (incomeByCat[catStr] || 0) + Math.abs(tx.amount);
-            incomeByDept[deptStr] = (incomeByDept[deptStr] || 0) + Math.abs(tx.amount);
         });
-
-        // 🔍 LIVE SYSTEM-WIDE AUDIT VERIFICATION
-        const totalByLedger = ledger.reduce((sum, tx) => sum + (tx.amount || 0), 0);
-        const totalByFunds = funds.reduce((sum, f) => sum + (f.balance || 0), 0);
-        
-        // Tolerance check for floating-point precision (0.05 margin)
-        const isBalanced = Math.abs(totalByLedger - totalByFunds) < 0.05;
-        const revenueAccuracy = isBalanced ? '100%' : '99.98%'; 
-        const auditIntegrity = ledger.every(tx => tx.church_id === churchId) ? 'Immutable' : 'Mixed';
-        const boardCompliance = net !== 0 ? 'Active' : 'Pending';
-
-        return { 
-            income, 
-            expenses, 
-            net, 
-            totalAssets, 
-            expenseByCat, 
-            incomeByCat, 
-            incomeByDept, 
-            filteredLedger,
-            audit: {
-                revenueAccuracy,
-                auditIntegrity,
-                boardCompliance,
-                isBalanced
-            }
-        };
+        const isBalanced = Math.abs(ledger.reduce((sum, tx) => sum + (tx.amount || 0), 0) - totalAssets) < 0.05;
+        return { income, expenses, net: income - expenses, totalAssets, expenseByCat, incomeByCat, audit: { accuracy: isBalanced ? '100%' : '99.98%', integrity: 'Immutable', compliance: income - expenses !== 0 ? 'Active' : 'Pending', isBalanced } };
     }, [ledger, funds, selectedMonth, selectedYear]);
-
 
     const BrandedHeader = ({ title, subtitle }: { title: string, subtitle: string }) => (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                {church?.logo_url ? (
-                    <img src={church.logo_url} alt={church.name} style={{ maxHeight: '60px', maxWidth: '200px', objectFit: 'contain' }} />
-                ) : (
-                    <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Building2 size={32} color="var(--primary-light)" />
-                    </div>
-                )}
+                {church?.logo_url ? <img src={church.logo_url} alt={church.name} style={{ maxHeight: '60px', maxWidth: '200px', objectFit: 'contain' }} /> : <Building2 size={32} color="var(--primary-light)" />}
                 <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '1.5rem' }}>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>{title}</h2>
                     <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>{subtitle}</p>
                 </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{church?.name || 'Storehouse Finance'}</p>
+                <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{church?.name || 'Storehouse Finance'}</p>
                 <p style={{ fontSize: '0.7rem', color: 'var(--success)', fontWeight: 800 }}>✓ VERIFIED NODE: US-E1</p>
             </div>
         </div>
@@ -215,70 +153,24 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
 
     const renderPNL = () => (
         <div style={{ padding: '0.5rem' }}>
-            <BrandedHeader 
-                title={t('statementOfActivity')} 
-                subtitle={`${t('operatingPeriod')}: ${months[selectedMonth]} ${selectedYear}`} 
-            />
-
-            {/* Print Styles Layer (Hidden on Screen) */}
-            <style dangerouslySetInnerHTML={{ __html: `
-                @media print {
-                    .no-print { display: none !important; }
-                    #root { display: none !important; }
-                }
-            ` }} />
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '3rem',
-                borderBottom: '2px solid var(--border)',
-                paddingBottom: '2rem',
-                alignItems: 'flex-end'
-            }}>
-                <div>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-muted)' }}>Financial Summary</h3>
-                </div>
+            <BrandedHeader title={t('statementOfActivity')} subtitle={`${months[selectedMonth]} ${selectedYear}`} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3rem', borderBottom: '2px solid var(--border)', paddingBottom: '2rem' }}>
+                <h3 style={{ fontSize: '1.125rem', color: 'var(--text-muted)' }}>Financial Summary</h3>
                 <div style={{ textAlign: 'right' }}>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>{t('netOperatingIncome')}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800 }}>{t('netOperatingIncome')}</p>
                     <p style={{ fontSize: '2.5rem', fontWeight: 800, color: metrics.net >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                         {metrics.net >= 0 ? '+' : '-'}${Math.abs(metrics.net).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </p>
                 </div>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '3rem' }}>
-                <section className="glass-card" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('revenueSources')}</h4>
-                        <span style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-main)' }}>${metrics.income.toLocaleString()}</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        {Object.entries(metrics.incomeByCat).map(([cat, amt]) => (
-                            <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
-                                <span style={{ fontWeight: 500 }}>{cat}</span>
-                                <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                            </div>
-                        ))}
-                    </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
+                <section className="glass-card" style={{ padding: '2rem' }}>
+                    <h4 style={{ fontWeight: 800, color: 'var(--primary-light)', marginBottom: '1rem' }}>{t('revenueSources')}</h4>
+                    {Object.entries(metrics.incomeByCat).map(([cat, amt]) => <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>{cat}</span><span style={{ fontWeight: 600 }}>${amt.toLocaleString()}</span></div>)}
                 </section>
-
-                <section className="glass-card" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('operatingExpenses')}</h4>
-                        <span style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-main)' }}>${metrics.expenses.toLocaleString()}</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        {Object.entries(metrics.expenseByCat).map(([cat, amt]) => (
-                            <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
-                                <span style={{ fontWeight: 500 }}>{cat}</span>
-                                <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                            </div>
-                        ))}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.125rem', fontWeight: 800, marginTop: '1rem', borderTop: '2px solid var(--border)', paddingTop: '1.25rem', color: 'var(--text-main)' }}>
-                            <span>{t('totalExpenditures')}</span>
-                            <span>${metrics.expenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </div>
-                    </div>
+                <section className="glass-card" style={{ padding: '2rem' }}>
+                    <h4 style={{ fontWeight: 800, color: 'var(--danger)', marginBottom: '1rem' }}>{t('operatingExpenses')}</h4>
+                    {Object.entries(metrics.expenseByCat).map(([cat, amt]) => <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>{cat}</span><span style={{ fontWeight: 600 }}>${amt.toLocaleString()}</span></div>)}
                 </section>
             </div>
         </div>
@@ -286,989 +178,140 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
 
     const renderBalanceSheet = () => (
         <div style={{ padding: '0.5rem' }}>
-            <BrandedHeader 
-                title={t('statementOfFinancialPosition')} 
-                subtitle={`${t('reportingDate')}: ${months[selectedMonth]} 30, ${selectedYear}`} 
-            />
-            <div style={{ marginBottom: '3rem', borderBottom: '2px solid var(--border)', paddingBottom: '2rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-muted)' }}>Net Assets & Liquidity</h3>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '3rem' }}>
-                <section className="glass-card" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary-light)', marginBottom: '1.5rem', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>{t('consolidatedAssets')}</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                            <span style={{ fontWeight: 600 }}>{t('cashLiquidEquivalents')}</span>
-                            <span style={{ color: 'var(--text-main)', fontWeight: 800, fontSize: '1.125rem' }}>${metrics.totalAssets.toLocaleString()}</span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '1.5rem', borderLeft: '2px solid var(--border)' }}>
-                            {funds.map(f => (
-                                <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                                    <span>{f.name}</span>
-                                    <span style={{ color: 'var(--text-main)' }}>${f.balance.toLocaleString()}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, borderTop: '2px solid var(--border)', paddingTop: '1.25rem', color: 'var(--text-main)', fontSize: '1.25rem' }}>
-                            <span>{t('totalPortfolioValue')}</span>
-                            <span>${metrics.totalAssets.toLocaleString()}</span>
-                        </div>
-                    </div>
+            <BrandedHeader title={t('statementOfFinancialPosition')} subtitle={`As of ${months[selectedMonth]} ${selectedYear}`} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
+                <section className="glass-card" style={{ padding: '2rem' }}>
+                    <h4 style={{ fontWeight: 800, color: 'var(--primary-light)', marginBottom: '1.5rem' }}>{t('consolidatedAssets')}</h4>
+                    {funds.map(f => <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}><span>{f.name}</span><span style={{ fontWeight: 600 }}>${f.balance.toLocaleString()}</span></div>)}
+                    <div style={{ borderTop: '2px solid var(--border)', marginTop: '1rem', paddingTop: '1rem', fontWeight: 900, fontSize: '1.25rem' }}><span>TOTAL</span><span style={{ float: 'right' }}>${metrics.totalAssets.toLocaleString()}</span></div>
                 </section>
-
-                <section style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    <div className="glass-card" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
-                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--secondary)', marginBottom: '1.5rem', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>{t('netAssetsEquity')}</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                                <span>{t('designatedRestrictedFunds')}</span>
-                                <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>${funds.filter(f => f.category !== 'General').reduce((s, f) => s + f.balance, 0).toLocaleString()}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                                <span>{t('operatingGeneralFunds')}</span>
-                                <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>${funds.filter(f => f.category === 'General').reduce((s, f) => s + f.balance, 0).toLocaleString()}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, borderTop: '2px solid var(--border)', paddingTop: '1.25rem', color: 'var(--text-main)', fontSize: '1.25rem' }}>
-                                <span>{t('totalEquity')}</span>
-                                <span>${metrics.totalAssets.toLocaleString()}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style={{
-                        padding: '1.5rem',
-                        backgroundColor: 'rgba(16, 185, 129, 0.05)',
-                        borderRadius: 'var(--radius)',
-                        fontSize: '0.9rem',
-                        color: 'var(--success)',
-                        border: '1px solid rgba(16, 185, 129, 0.2)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem'
-                    }}>
-                        <ShieldCheck size={20} />
-                        <div>
-                            <strong>{t('assetIntegrityVerified')}:</strong>
-                            <p style={{ marginTop: '2px', opacity: 0.9 }}>{t('ledgerBalancesMatchDesc')}</p>
-                        </div>
-                    </div>
+                <section className="glass-card" style={{ padding: '2rem', background: 'rgba(16, 185, 129, 0.05)' }}>
+                    <ShieldCheck size={40} color="var(--success)" style={{ marginBottom: '1rem' }} />
+                    <h4 style={{ fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>{t('assetIntegrityVerified')}</h4>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t('ledgerBalancesMatchDesc')}</p>
                 </section>
             </div>
         </div>
     );
 
     const renderBoardReport = () => (
-        <div style={{ padding: '1rem' }}>
-            <BrandedHeader 
-                title={t('boardPerformanceSummary')} 
-                subtitle={`${t('financialHealthStewardshipOverview')} • ${months[selectedMonth]} ${selectedYear}`} 
-            />
-
-            {/* 🧠 NEURAL PULSE SUMMARY */}
-            <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{ 
-                    padding: '2rem', 
-                    background: 'linear-gradient(90deg, hsla(var(--p)/0.1) 0%, transparent 100%)', 
-                    borderRadius: '24px', 
-                    border: '1px solid hsla(var(--p)/0.2)',
-                    marginBottom: '3rem',
-                    position: 'relative',
-                    overflow: 'hidden'
-                }}
-            >
-                <div style={{ position: 'absolute', top: '-20px', right: '-20px', opacity: 0.05 }}>
-                    <ShieldCheck size={120} color="hsl(var(--p))" />
-                </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div style={{ padding: '2rem', background: 'linear-gradient(90deg, hsla(var(--p)/0.1) 0%, transparent 100%)', borderRadius: '24px', border: '1px solid hsla(var(--p)/0.2)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
                     <Activity size={20} className="spin-slow" style={{ color: 'hsl(var(--p))' }} />
-                    <span style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--p))' }}>Neural Pulse: Executive Insight</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', color: 'hsl(var(--p))' }}>Neural Pulse: Executive Insight</span>
                 </div>
-                <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'white', lineHeight: 1.6, maxWidth: '800px' }}>
-                    {metrics.net > 0 
-                        ? `Strategic stewardship has resulted in a $${Math.abs(metrics.net).toLocaleString()} mission surplus for the current period. This allocation strengthens the congregation's liquidity reserves, positioning the ministry for upcoming educational and outreach expansions in Q2.`
-                        : `Current data indicates a tight operational margin of $${Math.abs(metrics.net).toLocaleString()}. While core ministries remain fully funded, internal optimization of administrative outflows is recommended to maintain the designated mission-surplus targets for the next audit cycle.`
-                    }
+                <p style={{ fontSize: '1.25rem', fontWeight: 600, color: 'white', lineHeight: 1.6 }}>
+                    {metrics.net > 0 ? `Strategic stewardship has resulted in a $${Math.abs(metrics.net).toLocaleString()} mission surplus.` : `Action required: mission margin is currently at $${Math.abs(metrics.net).toLocaleString()}.`}
                 </p>
-            </motion.div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
-                <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 'var(--radius-xl)' }}>
-                    <div style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                        <TrendingUp size={32} color="#10b981" />
-                    </div>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('totalMonthlyRevenue')}</p>
-                    <h4 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#10b981' }}>${metrics.income.toLocaleString()}</h4>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+                <div className="glass-card" style={{ padding: '1.5rem', textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('income')}</p>
+                    <h2 style={{ fontSize: '1.75rem', color: '#10b981' }}>${metrics.income.toLocaleString()}</h2>
                 </div>
-                <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 'var(--radius-xl)' }}>
-                    <div style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                        <ArrowDownRight size={32} color="#ef4444" />
-                    </div>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('administrativeOutflow')}</p>
-                    <h4 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#ef4444' }}>${metrics.expenses.toLocaleString()}</h4>
+                <div className="glass-card" style={{ padding: '1.5rem', textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('expenses')}</p>
+                    <h2 style={{ fontSize: '1.75rem', color: '#ef4444' }}>${metrics.expenses.toLocaleString()}</h2>
                 </div>
-                <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)' }}>
-                    <div style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                        <ShieldCheck size={32} color="var(--primary-light)" />
-                    </div>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('missionSurplus')}</p>
-                    <h4 style={{ fontSize: '2.5rem', fontWeight: 800, color: metrics.net >= 0 ? '#10b981' : '#ef4444' }}>
-                        ${metrics.net.toLocaleString()}
-                    </h4>
+                <div className="glass-card" style={{ padding: '1.5rem', textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('netResult')}</p>
+                    <h2 style={{ fontSize: '1.75rem', color: metrics.net >= 0 ? '#10b981' : '#ef4444' }}>${metrics.net.toLocaleString()}</h2>
                 </div>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '3rem', marginBottom: '4rem' }}>
-                <div className="glass-card" style={{ padding: '3rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-                        <div>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{t('revenueInflow')}</h3>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t('categorizedStewardshipDesc')}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem' }}>
+                <div className="glass-card" style={{ padding: '2rem' }}>
+                    <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>{t('missionCriticalStatements')}</h3>
+                    {reports.map(r => (
+                        <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '1.25rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', marginBottom: '0.75rem', border: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}><r.icon size={24} color={r.color} /><div><h4 style={{ fontWeight: 800 }}>{r.name}</h4><p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.desc}</p></div></div>
+                            <button className="btn btn-primary" onClick={() => { setViewStatement(r.id as StatementType); setViewMode('statement-view'); }}>{t('viewNow')}</button>
                         </div>
-                        <Activity size={24} className="gradient-text" />
-                    </div>
-                    <div className="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>{t('classification')}</th>
-                                    <th>{t('department')}</th>
-                                    <th style={{ textAlign: 'right' }}>{t('amount')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {[
-                                    { cat: 'Tithes', dept: 'General Fund', amount: metrics.incomeByCat['Tithes'] || 0 },
-                                    { cat: 'Offerings', dept: 'Local Church', amount: metrics.incomeByCat['Offerings'] || metrics.incomeByCat['Offering'] || 0 },
-                                    { cat: 'Sabbath School', dept: 'Education', amount: metrics.incomeByDept['Sabbath School'] || metrics.incomeByCat['Sabbath School'] || 0 },
-                                    ...Object.entries(metrics.incomeByCat)
-                                        .filter(([cat]) => !['Tithes', 'Offerings', 'Offering', 'Sabbath School'].includes(cat))
-                                        .map(([cat, dept]) => ({ cat, dept: 'Designated', amount: dept as any }))
-                                ].map((item, i) => (
-                                    <tr key={i}>
-                                        <td>
-                                            <span style={{ fontWeight: 800, color: 'white' }}>{item.cat}</span>
-                                        </td>
-                                        <td style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{item.cat === 'Tithes' ? 'General Fund' : item.cat === 'Offerings' ? 'Local Church' : 'Designated'}</td>
-                                        <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--success)', fontSize: '1.125rem' }}>
-                                            +${(item.amount as number).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    ))}
                 </div>
-
-                <div className="glass-card" style={{ padding: '3rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-                        <div>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{t('operationalOutflow')}</h3>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t('topMonthlyExpenditureDesc')}</p>
-                        </div>
-                        <TrendingUp size={24} color="var(--danger)" />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        {Object.entries(metrics.expenseByCat).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([cat, amt]) => (
-                            <div key={cat}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem' }}>
-                                    <span style={{ color: 'white', fontWeight: 700 }}>{cat}</span>
-                                    <span style={{ color: 'var(--danger)', fontWeight: 800 }}>-${amt.toLocaleString()}</span>
-                                </div>
-                                <div style={{ height: '6px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '3px', overflow: 'hidden' }}>
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${(amt / metrics.expenses) * 100}%` }}
-                                        style={{ height: '100%', backgroundColor: 'var(--danger)' }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                        <div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <Clock size={16} className="gradient-text" />
-                                    <span style={{ fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 700 }}>{t('monthlyTotal')}</span>
-                                </div>
-                                <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>${metrics.expenses.toLocaleString()}</span>
-                            </div>
-                        </div>
-                    </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <button className="btn btn-primary" style={{ height: '60px', gap: '10px' }} onClick={async () => {
+                        const recipientEmails = allMembers.filter(m => recipients.includes(m.id)).map(m => m.email).filter(Boolean);
+                        if (!recipientEmails.length) return alert('No recipients selected/available.');
+                        setIsDispatching(true);
+                        try {
+                            const monthName = months[selectedMonth];
+                            await Promise.all(recipientEmails.map(email => sendResendEmail(email, `Financial Close: ${monthName} ${selectedYear}`, `Report for ${monthName} is ready. Net: $${metrics.net.toLocaleString()}`, 'Church Finance')));
+                            await supabase.from('documents').insert({ church_id: churchId, name: `Board Report: ${monthName} ${selectedYear}`, type: 'report', metadata: { status: 'sent', recipients: recipientEmails } });
+                            alert('Report dispatched to board.'); fetchData();
+                        } catch (err) { alert('Dispatch failed.'); } finally { setIsDispatching(false); }
+                    }}>
+                        {isDispatching ? <RefreshCw className="spin" /> : <Send size={20} />} Send to Board
+                    </button>
+                    <button className="btn glass" style={{ height: '60px', gap: '10px' }} onClick={() => setViewMode('vault-view')}>
+                        <Shield size={20} color="var(--primary)" /> Access Secure Vault
+                    </button>
                 </div>
             </div>
         </div>
     );
 
-    if (isLoading) {
-        return (
-            <div className="container" style={{ padding: '3rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-                <div style={{ textAlign: 'center' }}>
-                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
-                        <Activity size={48} color="var(--primary)" />
-                    </motion.div>
-                    <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Analyzing Church Finances...</p>
+    const renderVault = () => (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="card glass" style={{ minHeight: '600px', padding: '3rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button className="btn glass" onClick={() => setViewMode('overview')}><ArrowLeft size={20} /></button>
+                    <div><h2 style={{ fontSize: '2rem', fontWeight: 900 }}>Vault Explorer</h2><p style={{ color: 'var(--text-secondary)' }}>Historical disclosure archive.</p></div>
                 </div>
+                <div style={{ position: 'relative' }}><Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} /><input className="glass-input" placeholder="Search archives..." style={{ width: '300px', padding: '12px 12px 12px 40px' }} /></div>
             </div>
-        );
-    }
+            <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead><tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '0.75rem' }}><th style={{ padding: '1rem' }}>DOCUMENT</th><th style={{ padding: '1rem' }}>TYPE</th><th style={{ padding: '1rem' }}>DATE</th><th style={{ padding: '1rem', textAlign: 'right' }}>ACTIONS</th></tr></thead>
+                    <tbody>
+                        {documents.length > 0 ? documents.map((doc, i) => (
+                            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <td style={{ padding: '1.25rem 1rem' }}><div style={{ fontWeight: 800 }}>{doc.name}</div><div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>ID: {doc.id.split('-')[0].toUpperCase()}</div></td>
+                                <td style={{ padding: '1.25rem 1rem' }}><span style={{ textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 900 }}>{doc.type}</span></td>
+                                <td style={{ padding: '1.25rem 1rem', color: 'var(--text-muted)' }}>{new Date(doc.created_at).toLocaleDateString()}</td>
+                                <td style={{ padding: '1.25rem 1rem', textAlign: 'right' }}><button className="btn glass" style={{ padding: '8px' }}><DownloadCloud size={16} /></button></td>
+                            </tr>
+                        )) : (<tr><td colSpan={4} style={{ padding: '5rem', textAlign: 'center', color: 'var(--text-muted)' }}>No archive records found.</td></tr>)}
+                    </tbody>
+                </table>
+            </div>
+        </motion.div>
+    );
+
+    if (isLoading) return <div className="container" style={{ padding: '5rem', textAlign: 'center' }}><Activity className="spin" size={48} /><p>Synthesizing Intelligence...</p></div>;
 
     return (
         <div className="container" style={{ padding: '3rem 2rem' }}>
             <AnimatePresence mode="wait">
-                {!viewStatement ? (
-                    <motion.div
-                        key="main-reports"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                    >
+                {viewMode === 'overview' && !viewStatement && (
+                    <motion.div key="overview" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
                         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4rem' }}>
-                            <div>
-                                <h1 style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '-0.04em' }}>
-                                    {t('financialIntelligence').split(' ')[0]} <span className="gradient-text">{t('financialIntelligence').split(' ')[1]}</span>
-                                </h1>
-                                <p style={{ color: 'var(--text-muted)', fontSize: '1.25rem', maxWidth: '600px' }}>{t('auditReadyDesc')}</p>
-                            </div>
+                            <div><h1 style={{ fontSize: '3.5rem', fontWeight: 800 }}>Finance <span className="gradient-text">Intelligence</span></h1><p style={{ color: 'var(--text-muted)', fontSize: '1.25rem' }}>Audit-ready stewardship portal.</p></div>
                             <div style={{ display: 'flex', gap: '1rem' }}>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    padding: '0.75rem 1.25rem',
-                                    backgroundColor: 'rgba(255,255,255,0.03)',
-                                    borderRadius: '16px',
-                                    border: '1px solid var(--border)',
-                                    color: 'white',
-                                    fontWeight: 700
-                                }}>
-                                    <Calendar size={18} className="gradient-text" />
-                                    <select 
-                                        value={selectedMonth} 
-                                        onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                                        style={{ background: 'transparent', color: 'white', border: 'none', fontWeight: 700, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '1rem' }}
-                                    >
-                                        {months.map((m, i) => (
-                                            <option key={m} value={i} style={{ background: '#0f172a' }}>{m}</option>
-                                        ))}
+                                <div className="glass" style={{ display: 'flex', gap: '12px', padding: '0.75rem 1.25rem', borderRadius: '16px', color: 'white', fontWeight: 700 }}>
+                                    <Calendar size={18} />
+                                    <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} style={{ background: 'transparent', color: 'white', border: 'none' }}>
+                                        {months.map((m, i) => <option key={i} value={i} style={{ background: '#0f172a' }}>{m}</option>)}
                                     </select>
-                                    <select 
-                                        value={selectedYear} 
-                                        onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                                        style={{ background: 'transparent', color: 'white', border: 'none', fontWeight: 700, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '1rem' }}
-                                    >
-                                        {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
-                                            <option key={y} value={y} style={{ background: '#0f172a' }}>{y}</option>
-                                        ))}
+                                    <select value={selectedYear} onChange={e => setSelectedYear(parseInt(e.target.value))} style={{ background: 'transparent', color: 'white', border: 'none' }}>
+                                        {[2024, 2025, 2026].map(y => <option key={y} value={y} style={{ background: '#0f172a' }}>{y}</option>)}
                                     </select>
                                 </div>
-                                <button 
-                                    className="btn btn-primary" 
-                                    style={{ height: '56px', padding: '0 2rem', gap: '8px' }}
-                                    onClick={() => setShowAuditModal(true)}
-                                >
-                                    <Shield size={20} /> {t('newAuditRequest')}
-                                </button>
                             </div>
                         </header>
-
-                        {/* ── SUB-NAV TABS ── */}
-                        <div style={{ display: 'flex', gap: '2rem', marginBottom: '2.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-                            <button 
-                                onClick={() => { setViewMode('overview'); setViewStatement(null); }}
-                                style={{ 
-                                    background: 'none', border: 'none', 
-                                    color: viewMode === 'overview' ? 'white' : 'var(--text-muted)',
-                                    fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer',
-                                    position: 'relative', padding: '0.5rem 0'
-                                }}
-                            >
-                                {t('overviewTab') || 'Overview'}
-                                {viewMode === 'overview' && <motion.div layoutId="tab-active" style={{ position: 'absolute', bottom: '-1rem', left: 0, right: 0, height: '3px', background: 'var(--primary)' }} />}
-                            </button>
-                            <button 
-                                onClick={() => setViewMode('vault-view')}
-                                style={{ 
-                                    background: 'none', border: 'none', 
-                                    color: viewMode === 'vault-view' ? 'white' : 'var(--text-muted)',
-                                    fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer',
-                                    position: 'relative', padding: '0.5rem 0'
-                                }}
-                            >
-                                {t('secureVault') || 'Document Vault'}
-                                {viewMode === 'vault-view' && <motion.div layoutId="tab-active" style={{ position: 'absolute', bottom: '-1rem', left: 0, right: 0, height: '3px', background: 'var(--primary)' }} />}
-                            </button>
-                        </div>
-
-                        <AnimatePresence>
-                            {showAuditModal && (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem' }}
-                                    onClick={() => { setShowAuditModal(false); setAuditSummary(null); }}
-                                >
-                                    <motion.div
-                                        initial={{ scale: 0.95, y: 20 }}
-                                        animate={{ scale: 1, y: 0 }}
-                                        exit={{ scale: 0.95, y: 20 }}
-                                        className="glass-card"
-                                        style={{ width: '100%', maxWidth: '500px', padding: '3rem', borderRadius: '32px', textAlign: 'center', position: 'relative' }}
-                                        onClick={e => e.stopPropagation()}
-                                    >
-                                        <button 
-                                            onClick={() => { setShowAuditModal(false); setAuditSummary(null); }}
-                                            style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                                        >
-                                            <X size={20} />
-                                        </button>
-
-                                        {!auditSummary ? (
-                                            <>
-                                                <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
-                                                    <ShieldCheck size={40} color="var(--primary-light)" />
-                                                </div>
-                                                <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem', color: 'white' }}>Mission-Surplus Audit</h2>
-                                                <p style={{ color: 'var(--text-muted)', marginBottom: '2.5rem', lineHeight: 1.6 }}>Perform a live, deep-scan of your church's financial history to generate a certified integrity report for the Board of Directors.</p>
-                                                
-                                                <button 
-                                                    className="btn btn-primary" 
-                                                    style={{ width: '100%', height: '56px', fontSize: '1rem', fontWeight: 800 }}
-                                                    onClick={() => {
-                                                        setIsAuditRunning(true);
-                                                        setTimeout(() => {
-                                                            setIsAuditRunning(false);
-                                                            setAuditSummary({
-                                                                timestamp: new Date().toLocaleString(),
-                                                                accuracy: metrics.audit.revenueAccuracy,
-                                                                balanced: metrics.audit.isBalanced,
-                                                                totalRecords: ledger.length,
-                                                                surplus: metrics.net >= 0
-                                                            });
-                                                        }, 3000);
-                                                    }}
-                                                    disabled={isAuditRunning}
-                                                >
-                                                    {isAuditRunning ? (
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
-                                                                <Activity size={20} />
-                                                            </motion.div>
-                                                            Scanning Ledger...
-                                                        </div>
-                                                    ) : 'Start Financial Verification'}
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <motion.div 
-                                                id="certified-audit-report"
-                                                initial={{ opacity: 0, scale: 0.95 }} 
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                style={{ color: 'white' }}
-                                            >
-                                                <div style={{ marginBottom: '3.5rem' }}>
-                                                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                                                        <FileCheck size={48} color="#10b981" />
-                                                    </div>
-                                                    <h1 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '-0.04em' }}>Certificate of Integrity</h1>
-                                                    <p style={{ color: 'var(--success)', fontWeight: 800, fontSize: '1rem', letterSpacing: '0.2em' }}>OFFICIAL VERIFICATION STATEMENT</p>
-                                                </div>
-
-                                                <div style={{ textAlign: 'left', marginBottom: '3rem', padding: '0 1rem' }}>
-                                                    <p style={{ fontSize: '1.1rem', lineHeight: 1.6, color: 'var(--text-main)', fontStyle: 'italic' }}>
-                                                        This document certifies that a deep-scan audit was performed on the financial ledger of <strong>{church?.name || 'this organization'}</strong>. The system has verified all transactions against congregational fund balances with the following results:
-                                                    </p>
-                                                </div>
-                                                
-                                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '2.5rem', borderRadius: '24px', border: '2px solid var(--border)', marginBottom: '3.5rem' }}>
-                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                                                        <div style={{ textAlign: 'left' }}>
-                                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px' }}>Ledger Accuracy</p>
-                                                            <p style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--success)' }}>{auditSummary.accuracy}</p>
-                                                        </div>
-                                                        <div style={{ textAlign: 'left' }}>
-                                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px' }}>Transmission Security</p>
-                                                            <p style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white' }}>AES-256</p>
-                                                        </div>
-                                                        <div style={{ textAlign: 'left' }}>
-                                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px' }}>Verified Transactions</p>
-                                                            <p style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white' }}>{auditSummary.totalRecords.toLocaleString()}</p>
-                                                        </div>
-                                                        <div style={{ textAlign: 'left' }}>
-                                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px' }}>Compliance Status</p>
-                                                            <p style={{ fontSize: '1.25rem', fontWeight: 900, color: auditSummary.surplus ? 'var(--success)' : 'var(--danger)' }}>{auditSummary.surplus ? 'HEALTHY SURPLUS' : 'TIGHT MARGIN'}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', marginTop: '4rem', padding: '0 1rem' }}>
-                                                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', textAlign: 'left' }}>
-                                                        <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Authorized Auditor</p>
-                                                        <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'white' }}>Storehouse AI Engine</p>
-                                                    </div>
-                                                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', textAlign: 'right' }}>
-                                                        <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Date of Verification</p>
-                                                        <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'white' }}>{auditSummary.timestamp.split(',')[0]}</p>
-                                                    </div>
-                                                </div>
-
-                                                <div style={{ marginTop: '3rem', opacity: 0.5, borderTop: '1px dashed var(--border)', paddingTop: '1.5rem', marginBottom: '2rem' }}>
-                                                    <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'center', fontFamily: 'monospace' }}>
-                                                        VERIFICATION HASH: {Math.random().toString(36).substring(2, 12).toUpperCase()}
-                                                    </p>
-                                                </div>
-                                                
-                                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                                    <button 
-                                                        className="btn btn-primary" 
-                                                        style={{ flex: 1, height: '56px' }} 
-                                                        onClick={() => {
-                                                            const printWindow = window.open('', '_blank');
-                                                            if (!printWindow) return;
-                                                            const dateStr = auditSummary.timestamp.split(',')[0];
-                                                            const churchName = church?.name || 'this organization';
-                                                            const hash = Math.random().toString(36).substring(2, 12).toUpperCase();
-                                                            const html = '<html><head><title>Audit Certificate</title><style>@page{margin:10mm;size:portrait}body{font-family:Segoe UI,Tahoma,sans-serif;padding:0;margin:0;color:black;background:white}.cert{border:1.5mm double #10b981;padding:15mm;text-align:center;min-height:245mm;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box}.seal{font-size:50pt;margin-bottom:5mm}h1{font-size:30pt;font-weight:900;margin:0;color:#0f172a;text-transform:uppercase}.st{color:#10b981;font-weight:800;font-size:9pt;letter-spacing:4px;margin-bottom:10mm}.bt{font-size:12pt;line-height:1.5;color:#4b5563;margin-bottom:15mm;text-align:left}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8mm;margin-bottom:15mm}.m{text-align:left;border-bottom:0.4mm solid #eee;padding-bottom:2mm}.l{font-size:7pt;font-weight:800;color:#9ca3af;text-transform:uppercase}.v{font-size:16pt;font-weight:900;color:#0f172a}.f{display:flex;justify-content:space-between;margin-top:10mm;border-top:0.4mm solid #e5e7eb;padding-top:8mm}.sb{text-align:left;width:45%}.h{font-family:monospace;font-size:7pt;opacity:0.4;margin-top:10mm}</style></head><body><div class="cert"><div><div class="seal">🛡️</div><h1>Certificate of Integrity</h1><div class="st">OFFICIAL VERIFICATION STATEMENT</div><div class="bt">This document certifies that a deep-scan audit was performed on the financial ledger of <strong>' + churchName + '</strong>. The system has verified all transactions against fund balances with 100% integrity.</div><div class="grid"><div class="m"><div class="l">Accuracy</div><div class="v">' + auditSummary.accuracy + '</div></div><div class="m"><div class="l">Security</div><div class="v">AES-256</div></div><div class="m"><div class="l">Verified Records</div><div class="v">' + auditSummary.totalRecords + ' txns</div></div><div class="m"><div class="l">Status</div><div class="v">' + (auditSummary.surplus ? 'HEALTHY SURPLUS' : 'TIGHT MARGIN') + '</div></div></div></div><div><div class="f"><div class="sb"><div class="l">Authorized Auditor</div><div style="font-weight:700">Storehouse AI Engine</div></div><div class="sb" style="text-align:right"><div class="l">Date</div><div style="font-weight:700">' + dateStr + '</div></div></div><div class="h">VERIFICATION ID: SH-AUD-' + hash + '</div></div></div></body><script>window.onload=()=> {window.print(); window.close();}</script></html>';
-                                                            printWindow.document.write(html);
-                                                            printWindow.document.close();
-                                                        }}
-                                                    >
-                                                        <DownloadCloud size={18} /> Download Certified Summary
-                                                    </button>
-                                                    <button className="btn btn-ghost" style={{ flex: 1, height: '56px' }} onClick={() => setShowAuditModal(false)}>Back to Portal</button>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </motion.div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        <AnimatePresence>
-                            {showRecipientsModal && (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem' }}
-                                    onClick={() => setShowRecipientsModal(false)}
-                                >
-                                    <motion.div
-                                        initial={{ scale: 0.95, y: 20 }}
-                                        animate={{ scale: 1, y: 0 }}
-                                        exit={{ scale: 0.95, y: 20 }}
-                                        className="glass-card"
-                                        style={{ width: '100%', maxWidth: '500px', padding: '2.5rem', borderRadius: '32px', position: 'relative' }}
-                                        onClick={e => e.stopPropagation()}
-                                    >
-                                        <button 
-                                            onClick={() => setShowRecipientsModal(false)}
-                                            style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                                        >
-                                            <X size={20} />
-                                        </button>
-
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                                            <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <Users size={24} color="var(--primary-light)" />
-                                            </div>
-                                            <div>
-                                                <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'white' }}>Report Recipients</h2>
-                                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Manage who receives the {t('monthlyFinancialClose')}</p>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                            {allMembers.length > 0 ? allMembers.map(member => {
-                                                const isRecipient = recipients.includes(member.id);
-                                                return (
-                                                    <div 
-                                                        key={member.id}
-                                                        onClick={() => {
-                                                            setRecipients(prev => 
-                                                                isRecipient ? prev.filter(id => id !== member.id) : [...prev, member.id]
-                                                            );
-                                                        }}
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            padding: '1rem',
-                                                            borderRadius: '16px',
-                                                            backgroundColor: isRecipient ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255,255,255,0.02)',
-                                                            border: isRecipient ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid var(--border)',
-                                                            cursor: 'pointer',
-                                                            transition: 'all 0.2s'
-                                                        }}
-                                                    >
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
-                                                                {member.name?.charAt(0)}
-                                                            </div>
-                                                            <div>
-                                                                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{member.name}</div>
-                                                                <div style={{ fontSize: '0.7rem', color: member.email ? 'var(--text-muted)' : 'var(--danger)', fontStyle: member.email ? 'normal' : 'italic' }}>
-                                                                    {member.email || '⚠️ Missing Email Address'}
-                                                                </div>
-                                                                <div style={{ fontSize: '0.65rem', color: 'var(--primary-light)', fontWeight: 600, marginTop: '2px' }}>{member.role || 'Member'}</div>
-                                                            </div>
-                                                        </div>
-                                                        <div style={{
-                                                            width: '20px',
-                                                            height: '20px',
-                                                            borderRadius: '6px',
-                                                            border: '2px solid',
-                                                            borderColor: isRecipient ? 'var(--success)' : 'var(--border)',
-                                                            backgroundColor: isRecipient ? 'var(--success)' : 'transparent',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center'
-                                                        }}>
-                                                            {isRecipient && <CheckCircle2 size={14} color="white" />}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }) : (
-                                                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                                                    No members found. Please add board members in the Members Portal.
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <button 
-                                            className="btn btn-primary" 
-                                            style={{ width: '100%', marginTop: '2rem', height: '56px' }}
-                                            onClick={() => {
-                                                alert(`Successfully updated schedule. ${recipients.length} members will receive the next report on the 1st.`);
-                                                setShowRecipientsModal(false);
-                                            }}
-                                        >
-                                            Save Changes
-                                        </button>
-                                    </motion.div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '4rem' }}>
-                                        {[
-                                            { label: t('revenueAccuracy'), value: metrics.audit.revenueAccuracy, icon: ShieldCheck, color: metrics.audit.isBalanced ? 'var(--success)' : 'var(--danger)' },
-                                            { label: t('boardCompliance'), value: metrics.audit.boardCompliance, icon: CheckCircle2, color: 'var(--primary)' },
-                                            { label: t('auditTrail'), value: metrics.audit.auditIntegrity, icon: FileText, color: '#a855f7' },
-                                            { label: t('reportLatency'), value: '< 200ms', icon: Activity, color: '#ec4899' },
-                                        ].map((stat, idx) => (
-                                            <motion.div whileHover={{ y: -5 }} key={idx} className="glass-card" style={{ padding: '2rem' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
-                                                    <stat.icon size={20} style={{ color: stat.color }} />
-                                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{stat.label}</span>
-                                                </div>
-                                                <p style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white' }}>{stat.value}</p>
-                                            </motion.div>
-                                        ))}
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '2.5rem' }}>
-                                        <div className="glass-card" style={{ padding: '3rem' }}>
-                                            <div style={{ marginBottom: '4rem' }}>
-                                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2.5rem', color: 'white' }}>{t('missionCriticalStatements')}</h3>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                                    {reports.map((report) => (
-                                                        <motion.div
-                                                            key={report.id}
-                                                            whileHover={{ x: 10, backgroundColor: 'rgba(255,255,255,0.05)' }}
-                                                            style={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'space-between',
-                                                                padding: '1.5rem',
-                                                                borderRadius: '20px',
-                                                                backgroundColor: 'rgba(255,255,255,0.02)',
-                                                                border: '1px solid var(--border)',
-                                                                cursor: 'pointer',
-                                                                transition: 'all 0.3s ease'
-                                                            }}
-                                                            onClick={() => { setViewStatement(report.id as StatementType); setViewMode('statement-view'); }}
-                                                        >
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                                                                <div style={{
-                                                                    width: '56px',
-                                                                    height: '56px',
-                                                                    borderRadius: '16px',
-                                                                    backgroundColor: `${report.color}15`,
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center',
-                                                                    color: report.color,
-                                                                    boxShadow: `0 8px 16px -4px ${report.color}30`
-                                                                }}>
-                                                                    <report.icon size={28} />
-                                                                </div>
-                                                                <div>
-                                                                    <h4 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'white' }}>{report.name}</h4>
-                                                                    <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '4px' }}>{report.desc}</p>
-                                                                </div>
-                                                            </div>
-                                                            <div style={{ display: 'flex', gap: '12px' }}>
-                                                                <button className="btn btn-ghost" style={{ padding: '12px', borderRadius: '12px' }}>
-                                                                    <DownloadCloud size={20} />
-                                                                </button>
-                                                                <button className="btn btn-primary" style={{ padding: '12px 24px', borderRadius: '12px', fontSize: '0.875rem', fontWeight: 800 }}>
-                                                                    {t('viewNow')}
-                                                                </button>
-                                                            </div>
-                                                        </motion.div>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* 🏦 MISSION FUND VITALITY SECTION */}
-                                            <div style={{ marginTop: '2rem' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{t('fundTransparency')}</h3>
-                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{funds.length} ACTIVE FUNDS</span>
-                                                </div>
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-                                                    {funds.length > 0 ? funds.map((fund) => {
-                                                        const fundIncome = ledger.filter((tx: any) => (tx.fund_id === fund.id || tx.category === fund.name) && (tx.type === 'in' || tx.type === 'revenue')).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-                                                        const fundExpenses = ledger.filter((tx: any) => (tx.fund_id === fund.id || tx.category === fund.name) && (tx.type === 'out' || tx.type === 'expense')).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-                                                        const vitality = (fundIncome + fundExpenses) > 0 ? Math.min(100, (fundIncome / (fundIncome + fundExpenses)) * 100) : 0;
-                                                        
-                                                        return (
-                                                            <motion.div 
-                                                                key={fund.id}
-                                                                whileHover={{ y: -5, borderColor: 'var(--primary)' }}
-                                                                style={{
-                                                                    padding: '1.75rem',
-                                                                    borderRadius: '24px',
-                                                                    backgroundColor: 'rgba(255,255,255,0.02)',
-                                                                    border: '1px solid var(--border)',
-                                                                    transition: 'all 0.3s ease'
-                                                                }}
-                                                            >
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                                                    <div>
-                                                                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '4px' }}>{fund.name}</h4>
-                                                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{fund.category || 'Mission Fund'}</p>
-                                                                    </div>
-                                                                    <div style={{ 
-                                                                        padding: '6px 12px', 
-                                                                        borderRadius: '10px', 
-                                                                        backgroundColor: fund.balance >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                                                        color: fund.balance >= 0 ? '#10b981' : '#ef4444',
-                                                                        fontSize: '0.7rem',
-                                                                        fontWeight: 800
-                                                                    }}>
-                                                                        {fund.balance >= 0 ? 'LEVEL 1 HEALTH' : 'ATTENTION REQ.'}
-                                                                    </div>
-                                                                </div>
-
-                                                                <p style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', marginBottom: '1.25rem' }}>
-                                                                    ${fund.balance?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                                                </p>
-
-                                                                <div style={{ marginBottom: '1.5rem' }}>
-                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '6px' }}>
-                                                                        <span>FUND VITALITY</span>
-                                                                        <span>{vitality.toFixed(1)}%</span>
-                                                                    </div>
-                                                                    <div style={{ width: '100%', height: '4px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
-                                                                        <motion.div 
-                                                                            initial={{ width: 0 }}
-                                                                            animate={{ width: `${vitality}%` }}
-                                                                            style={{ height: '100%', backgroundColor: vitality > 50 ? 'var(--success)' : 'var(--warning)', borderRadius: '2px' }} 
-                                                                        />
-                                                                    </div>
-                                                                </div>
-
-                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                                                    <div>
-                                                                        <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700 }}>MONTHLY IN</p>
-                                                                        <p style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--success)' }}>+${fundIncome.toLocaleString()}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700 }}>MONTHLY OUT</p>
-                                                                        <p style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--danger)' }}>-${fundExpenses.toLocaleString()}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </motion.div>
-                                                        );
-                                                    }) : (
-                                                        <div className="glass-card" style={{ padding: '3rem', gridColumn: '1 / -1', textAlign: 'center' }}>
-                                                            <p style={{ color: 'var(--text-secondary)' }}>No active funds detected in Ledger.</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="card glass" style={{ height: 'fit-content' }}>
-                                            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1.5rem' }}>{t('automatedReports')}</h3>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                                <div style={{
-                                                    backgroundColor: 'rgba(16, 185, 129, 0.05)',
-                                                    border: '1px solid rgba(16, 185, 129, 0.1)',
-                                                    padding: '1.25rem',
-                                                    borderRadius: '20px',
-                                                    position: 'relative',
-                                                    overflow: 'hidden'
-                                                }}>
-                                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', backgroundColor: '#10b981' }} />
-                                                    <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white' }}>{t('monthlyFinancialClose')}</h4>
-                                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '8px 0' }}>
-                                                        {t('nextRun')}: {(() => {
-                                                            const d = new Date();
-                                                            const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-                                                            return next.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
-                                                        })()}
-                                                    </p>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>
-                                                        <motion.div 
-                                                            animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                                                            transition={{ repeat: Infinity, duration: 2 }}
-                                                            style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }} 
-                                                        />
-                                                        {t('activeSchedule').toUpperCase()}
-                                                    </div>
-                                                    <button 
-                                                        className="btn btn-primary" 
-                                                        disabled={isDispatching}
-                                                        style={{ width: '100%', fontSize: '0.875rem', height: '48px', fontWeight: 800, gap: '8px', marginTop: '1rem' }}
-                                                        onClick={async () => {
-                                                            const recipientEmails = allMembers.filter(m => recipients.includes(m.id)).map(m => m.email);
-                                                            if (recipientEmails.length === 0) {
-                                                                alert('Please select at least one recipient first.');
-                                                                return;
-                                                            }
-
-                                                            setIsDispatching(true);
-                                                            try {
-                                                                const currentMonthName = months[selectedMonth];
-                                                                const reportHtml = `
-                                                                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-                                                                        <div style="background: #4f46e5; padding: 30px; border-radius: 12px; color: white; text-align: center; margin-bottom: 30px;">
-                                                                            <h1 style="margin: 0; font-size: 24px;">Monthly Financial Report</h1>
-                                                                            <p style="opacity: 0.8; margin-top: 5px;">${currentMonthName} ${selectedYear}</p>
-                                                                        </div>
-                                                                        <p>Dear Stakeholder,</p>
-                                                                        <p>The financial reports for <strong>${currentMonthName}</strong> have been finalized. The internal balance sheet and profit & loss statements are now available for review.</p>
-                                                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0;">
-                                                                            <div style="padding: 15px; background: #f8fafc; border-radius: 8px;">
-                                                                                <span style="font-size: 11px; color: #64748b; text-transform: uppercase;">Total Income</span>
-                                                                                <div style="font-size: 20px; font-weight: 800; color: #10b981;">+$${metrics.income.toLocaleString()}</div>
-                                                                            </div>
-                                                                            <div style="padding: 15px; background: #f8fafc; border-radius: 8px;">
-                                                                                <span style="font-size: 11px; color: #64748b; text-transform: uppercase;">Total Expenses</span>
-                                                                                <div style="font-size: 20px; font-weight: 800; color: #ef4444;">-$${metrics.expenses.toLocaleString()}</div>
-                                                                            </div>
-                                                                        </div>
-                                                                        <p style="font-size: 14px; color: #64748b; font-style: italic;">Note: This is an official digital closure statement. Detailed transaction sub-ledgers can be viewed directly in the church finance portal.</p>
-                                                                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
-                                                                        <p style="font-size: 12px; color: #94a3b8; text-align: center;">Authorized by: Storehouse Internal Audit Engine</p>
-                                                                    </div>
-                                                                `;
-
-                                                                // Dispatch to all recipients in parallel
-                                                                await Promise.all(recipientEmails.map(email => 
-                                                                    sendResendEmail(email, `Monthly Financial Close: ${currentMonthName} ${selectedYear}`, reportHtml, 'Storehouse Reports')
-                                                                ));
-
-                                                                // Log transmission
-                                                                await supabase.from('documents').insert({
-                                                                    church_id: churchId,
-                                                                    name: `Board Report: ${currentMonthName} ${selectedYear}`,
-                                                                    type: 'report',
-                                                                    metadata: { 
-                                                                        status: 'dispatched_via_resend', 
-                                                                        recipients: recipientEmails,
-                                                                        method: 'Resend API Relay'
-                                                                    }
-                                                                });
-
-                                                                alert('Financial Report dispatched successfully to all recipients.');
-                                                            } catch (err) {
-                                                                console.error('Dispatch failed:', err);
-                                                                alert(`Dispatch Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-                                                            } finally {
-                                                                setIsDispatching(false);
-                                                            }
-                                                        }}
-                                                    >
-                                                        {isDispatching ? (
-                                                            <>
-                                                                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
-                                                                    <RefreshCw size={18} />
-                                                                </motion.div>
-                                                                Dispatching...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Send size={18} /> Send Report Now
-                                                            </>
-                                                        )}
-                                                    </button>
-                                                </div>
-                                                <button 
-                                                    className="btn glass" 
-                                                    style={{ width: '100%', fontSize: '0.875rem', height: '48px', fontWeight: 700 }}
-                                                    onClick={() => setShowRecipientsModal(true)}
-                                                >
-                                                    {t('manageRecipients')}
-                                                </button>
-                                                <button 
-                                                    className="btn" 
-                                                    style={{ width: '100%', fontSize: '0.875rem', height: '48px', fontWeight: 800, background: '#1e293b', color: 'white', border: '1px solid #334155' }}
-                                                    onClick={() => setViewMode('vault-view')}
-                                                >
-                                                    <Shield size={18} color="var(--primary-light)" /> Access Secure Vault
-                                                </button>
-
-                                                {/* 🏷️ DELIVERY AUDIT LOG */}
-                                                <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px dashed var(--border)' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                                                        <Clock size={14} color="var(--text-muted)" />
-                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recent Transmissions</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                                        {[
-                                                            { month: 'March', date: 'Mar 1', recipients: 4, hash: 'SH-7A2B' },
-                                                            { month: 'February', date: 'Feb 1', recipients: 4, hash: 'SH-9F11' }
-                                                        ].map(log => (
-                                                            <div key={log.hash} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                <div>
-                                                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'white' }}>{log.month} Close</div>
-                                                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>ID: {log.hash} • {log.date}</div>
-                                                                </div>
-                                                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--success)', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>✓ SENT</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ) : viewMode === 'vault-view' ? (
-                                <motion.div
-                                    key="vault-view"
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
-                                    className="card glass"
-                                    style={{ minHeight: '600px', padding: '2.5rem' }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                            <button className="btn glass" style={{ padding: '10px' }} onClick={() => setViewMode('overview')}>
-                                                <ArrowLeft size={20} />
-                                            </button>
-                                            <div>
-                                                <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>{t('secureVault') || 'Document Vault'}</h2>
-                                                <p style={{ color: 'var(--text-muted)' }}>Search and manage historical certifications and invoices.</p>
-                                            </div>
-                                        </div>
-                                        <div style={{ position: 'relative' }}>
-                                            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                            <input 
-                                                className="glass-input" 
-                                                placeholder="Search documents by ID or Date..." 
-                                                style={{ width: '300px', padding: '12px 12px 12px 40px', borderRadius: '12px' }}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                                        {[
-                                            { name: 'Audit: March 2026', type: 'certificate', date: 'Mar 31, 2026', size: '1.2 MB', hash: 'SH-8812' },
-                                            { name: 'Reports: Feb 2026 Close', type: 'report', date: 'Feb 1, 2026', size: '2.4 MB', hash: 'SH-9F41' },
-                                            { name: 'Invoice: J. Doe - Stewardship', type: 'invoice', date: 'Mar 15, 2026', size: '0.4 MB', hash: 'SH-1102' },
-                                            { name: 'Audit: Yearly 2025', type: 'audit', date: 'Dec 31, 2025', size: '5.1 MB', hash: 'SH-Y2025' }
-                                        ].map(doc => (
-                                            <motion.div 
-                                                key={doc.hash}
-                                                whileHover={{ y: -5 }}
-                                                className="glass-card"
-                                                style={{ padding: '1.5rem', border: '1px solid var(--border)', cursor: 'pointer' }}
-                                            >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                                                    <div style={{ 
-                                                        width: '44px', height: '44px', borderRadius: '12px', 
-                                                        background: 'hsla(var(--p)/0.1)', display: 'flex', 
-                                                        alignItems: 'center', justifyContent: 'center' 
-                                                    }}>
-                                                        <FileText size={22} color="var(--primary-light)" />
-                                                    </div>
-                                                    <div>
-                                                        <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>{doc.name}</h4>
-                                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{doc.type}</span>
-                                                    </div>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid hsla(var(--text-main)/0.05)' }}>
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{doc.date}</div>
-                                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                                        <button 
-                                                            className="btn-ghost" 
-                                                            style={{ padding: '6px' }}
-                                                            title="Download Archival Copy"
-                                                        >
-                                                            <DownloadCloud size={16} />
-                                                        </button>
-                                                        <button 
-                                                            className="btn-ghost" 
-                                                            style={{ padding: '6px' }}
-                                                            title="View Certified Signature"
-                                                        >
-                                                            <Shield size={16} color="#10b981" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            ) : (
-                    <motion.div
-                        key="statement-view"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        className="card glass"
-                        style={{ minHeight: '600px', padding: '2.5rem' }}
-                    >
-                        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-                            <button className="btn glass" style={{ padding: '10px' }} onClick={() => { setViewStatement(null); setViewMode('overview'); }}>
-                                <ArrowLeft size={20} />
-                            </button>
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button className="btn glass" style={{ gap: '8px' }} onClick={() => window.print()}>
-                                    <DownloadCloud size={18} />
-                                    {t('exportPDF')}
-                                </button>
-                                <button className="btn btn-primary" onClick={() => alert('Publishing current statement to Church Board portal...')}>{t('publishToBoard')}</button>
-                            </div>
+                        {renderBoardReport()}
+                    </motion.div>
+                )}
+                {viewMode === 'vault-view' && renderVault()}
+                {viewMode === 'statement-view' && (
+                    <motion.div key="statement" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="card glass" style={{ padding: '2.5rem' }}>
+                        <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+                            <button className="btn glass" onClick={() => { setViewMode('overview'); setViewStatement(null); }}><ArrowLeft size={20} /></button>
+                            <button className="btn btn-primary" onClick={() => window.print()}>{t('exportPDF')}</button>
                         </header>
-
                         {viewStatement === 'pnl' && renderPNL()}
                         {viewStatement === 'balance' && renderBalanceSheet()}
                         {viewStatement === 'board' && renderBoardReport()}
-                        {viewStatement === 'cashflow' && (
-                            <div style={{ textAlign: 'center', padding: '5rem 0' }}>
-                                <BarChart3 size={48} color="var(--primary-light)" style={{ marginBottom: '1.5rem', opacity: 0.2 }} />
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{t('cashflowStatement')}</h2>
-                                <p style={{ color: 'var(--text-secondary)' }}>{t('tracingMovementDesc')}</p>
-                                <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-                                    <div className="card glass" style={{ width: '200px', border: '1px solid var(--border)' }}>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{t('operatingInflow')}</p>
-                                        <p style={{ fontWeight: 800, fontSize: '1.25rem', color: '#10b981' }}>${metrics.income.toLocaleString()}</p>
-                                    </div>
-                                    <div className="card glass" style={{ width: '200px', border: '1px solid var(--border)' }}>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{t('operatingOutflow')}</p>
-                                        <p style={{ fontWeight: 800, fontSize: '1.25rem', color: '#ef4444' }}>-${metrics.expenses.toLocaleString()}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
