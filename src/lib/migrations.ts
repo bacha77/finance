@@ -6,7 +6,7 @@
  */
 import { supabase } from './supabase';
 
-const MIGRATION_KEY = 'sf_migrations_v7';
+const MIGRATION_KEY = 'sf_migrations_v8';
 
 const MIGRATIONS: { name: string; sql: string }[] = [
     {
@@ -211,6 +211,14 @@ const MIGRATIONS: { name: string; sql: string }[] = [
             ALTER TABLE public.ledger ADD COLUMN IF NOT EXISTS voided BOOLEAN DEFAULT false;
             ALTER TABLE public.ledger ADD COLUMN IF NOT EXISTS voided_at TIMESTAMPTZ;
             ALTER TABLE public.ledger ADD COLUMN IF NOT EXISTS voided_by TEXT;
+        `,
+    },
+    {
+        name: 'funds_extra_cols',
+        sql: `
+            ALTER TABLE public.funds ADD COLUMN IF NOT EXISTS color TEXT DEFAULT '#6366f1';
+            ALTER TABLE public.funds ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'Unrestricted';
+            ALTER TABLE public.funds ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Active';
         `,
     }
 ];
