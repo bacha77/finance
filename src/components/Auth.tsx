@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import LegalModal from './LegalModals';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Mail, Lock, LogIn, UserPlus, Eye, EyeOff, ChevronRight,
     ChevronLeft, Church, Phone, User, Globe, CheckCircle2,
-    RefreshCw, AlertCircle, Shield, DollarSign
+    RefreshCw, AlertCircle, Shield, DollarSign, Github, ShieldCheck
 } from 'lucide-react';
 
 // ── Password strength ────────────────────────────────────────────────────────
@@ -175,8 +176,8 @@ interface AuthProps {
 const Auth: React.FC<AuthProps> = ({ onBypass }) => {
     const { language, setLanguage, t } = useLanguage();
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const [mode, setMode] = useState<'login' | 'signup' | 'verified'>('login');
-    const [step, setStep] = useState(0); // sign-up step: 0=account, 1=church info
+    const [mode, setMode] = useState<'login' | 'signup' | 'verified' | 'reset'>('login');
+    const [step, setStep] = useState(0); 
 
     // Account fields
     const [email, setEmail] = useState('');
@@ -184,6 +185,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPw, setShowPw] = useState(false);
     const [showConfirmPw, setShowConfirmPw] = useState(false);
+    const [legalModal, setLegalModal] = useState<{ open: boolean, type: 'terms' | 'privacy' }>({ open: false, type: 'terms' });
 
     // Church info fields
     const [churchName, setChurchName] = useState('');
@@ -227,6 +229,22 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
             }
         } catch (err: any) {
             setError(err.message || 'Sign in failed. Please try again.');
+        } finally { setLoading(false); }
+    };
+
+    // ── Forgot Password ──────────────────────────────────────────────────────
+    const handleResetPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true); setError(null);
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.href.split('#')[0].split('?')[0],
+            });
+            if (error) throw error;
+            setSignedUpEmail(email);
+            setMode('verified'); 
+        } catch (err: any) {
+            setError(err.message || 'Reset failed. Please try again.');
         } finally { setLoading(false); }
     };
 
@@ -291,9 +309,9 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
 
     // ── Layout shell ─────────────────────────────────────────────────────────
     return (
-        <div style={{
-            minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: '#020617', padding: '1.5rem', position: 'relative', overflowY: 'auto',
+        <div className="flex-center" style={{
+            minHeight: '100vh', display: 'flex',
+            background: '#020617', padding: '1rem', position: 'relative',
             fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
         }}>
             {/* Background glows */}
@@ -306,6 +324,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, ease: 'easeOut' }}
+                className="modal-content"
                 style={{
                     width: '100%', maxWidth: mode === 'signup' && step === 1 ? '480px' : '420px',
                     position: 'relative', zIndex: 1,
@@ -314,6 +333,8 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                     padding: '2rem',
                     boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
                     transition: 'max-width 0.3s ease',
+                    maxHeight: 'calc(100vh - 2rem)',
+                    overflowY: 'auto',
                 }}
             >
                 {/* Logo */}
@@ -345,7 +366,8 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                     </div>
                     <p style={{ color: '#475569', fontSize: '0.82rem' }}>
                         {mode === 'login' ? t('welcomeBack') :
-                         mode === 'verified' ? t('almostThere') :
+                         mode === 'verified' ? (t('almostThere') || 'Almost there!') :
+                         mode === 'reset' ? (t('resetPassword') || 'Reset Password') :
                          step === 0 ? t('createAccount') : t('tellUsAboutChurch')}
                     </p>
                 </div>
@@ -371,24 +393,37 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                     {/* ── LOGIN ── */}
                     {mode === 'login' && (
                         <motion.div key="login" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }}>
-                            {/* Google */}
-                            <button type="button" onClick={handleGoogleSignIn} disabled={googleLoading || loading}
-                                style={{
-                                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    gap: '0.75rem', padding: '0.8rem', borderRadius: '12px',
-                                    background: 'white', border: 'none', cursor: 'pointer',
-                                    fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 700, color: '#1a1a1a',
-                                    marginBottom: '1.25rem', opacity: googleLoading ? 0.7 : 1,
-                                    boxShadow: '0 2px 12px rgba(0,0,0,0.3)', transition: 'opacity 0.2s',
-                                }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24">
-                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                                </svg>
-                                {googleLoading ? t('processing') : t('continueWithGoogle')}
-                            </button>
+                            {/* Social Logins */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                                <button type="button" onClick={handleGoogleSignIn} disabled={googleLoading || loading}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        gap: '0.6rem', padding: '0.75rem', borderRadius: '12px',
+                                        background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer',
+                                        fontFamily: 'inherit', fontSize: '0.825rem', fontWeight: 700, color: '#1a1a1a',
+                                        opacity: googleLoading ? 0.7 : 1, transition: 'all 0.2s',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                    }}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24">
+                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                    </svg>
+                                    Google
+                                </button>
+                                <button type="button" onClick={() => supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: window.location.origin } })}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        gap: '0.6rem', padding: '0.75rem', borderRadius: '12px',
+                                        background: '#24292f', border: 'none', cursor: 'pointer',
+                                        fontFamily: 'inherit', fontSize: '0.825rem', fontWeight: 700, color: 'white',
+                                        transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                    }}>
+                                    <Github size={16} />
+                                    GitHub
+                                </button>
+                            </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
                                 <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
@@ -416,6 +451,13 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                     </motion.div>
                                 )}
 
+                                <div style={{ textAlign: 'right', marginTop: '-0.5rem' }}>
+                                    <button type="button" onClick={() => { setMode('reset'); setError(null); }}
+                                        style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+                                        {t('forgotPassword') || 'Forgot password?'}
+                                    </button>
+                                </div>
+
                                 <button type="submit" disabled={loading || googleLoading}
                                     style={{
                                         width: '100%', padding: '0.85rem', borderRadius: '10px', border: 'none',
@@ -429,10 +471,19 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                 </button>
                             </form>
 
-                            <button type="button" onClick={() => { setMode('signup'); reset(); setError(null); }}
-                                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.82rem', cursor: 'pointer', marginTop: '1.25rem', fontWeight: 600, width: '100%', textAlign: 'center', fontFamily: 'inherit' }}>
-                                {t('dontHaveAccount')} <span style={{ color: '#60a5fa' }}>{t('createOneFree')}</span>
-                            </button>
+                             <button type="button" onClick={() => { setMode('signup'); reset(); setError(null); }}
+                                 style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.82rem', cursor: 'pointer', marginTop: '1.25rem', fontWeight: 600, width: '100%', textAlign: 'center', fontFamily: 'inherit' }}>
+                                 {t('dontHaveAccount')} <span style={{ color: '#60a5fa' }}>{t('createOneFree')}</span>
+                             </button>
+
+                             <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center', gap: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.25rem' }}>
+                                 <button type="button" onClick={() => setLegalModal({ open: true, type: 'terms' })} style={{ background: 'none', border: 'none', color: '#475569', fontSize: '0.68rem', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                     {t('termsOfService')}
+                                 </button>
+                                 <button type="button" onClick={() => setLegalModal({ open: true, type: 'privacy' })} style={{ background: 'none', border: 'none', color: '#475569', fontSize: '0.68rem', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                     {t('privacyPolicy')}
+                                 </button>
+                             </div>
 
                             {isLocal && (
                                 <button
@@ -453,29 +504,78 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                         </motion.div>
                     )}
 
+                    {/* ── RESET PASSWORD ── */}
+                    {mode === 'reset' && (
+                        <motion.div key="reset" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.02 }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '0.5rem', color: 'white' }}>{t('troubleSigningIn') || 'Trouble signing in?'}</h2>
+                            <p style={{ fontSize: '0.825rem', color: '#64748b', marginBottom: '2rem' }}>{t('resetInstructions') || 'Enter your email and we will send you a link to reset your password.'}</p>
+
+                            <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <Field label={t('emailAddress')} placeholder="pastor@mychurch.org" type="email"
+                                    value={email} onChange={setEmail} icon={Mail} required />
+
+                                {error && (
+                                    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                                        style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '0.75rem', borderRadius: '10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                        <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0, marginTop: '1px' }} />
+                                        <span style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 600 }}>{error}</span>
+                                    </motion.div>
+                                )}
+
+                                <button type="submit" disabled={loading}
+                                    style={{
+                                        width: '100%', padding: '0.85rem', borderRadius: '10px', border: 'none',
+                                        background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: 'white',
+                                        fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', fontFamily: 'inherit',
+                                        opacity: loading ? 0.7 : 1, marginTop: '0.25rem',
+                                    }}>
+                                    {loading ? (t('sending') || 'Sending...') : (t('sendResetLink') || 'Send Reset Link')}
+                                </button>
+                            </form>
+
+                            <button type="button" onClick={() => { setMode('login'); reset(); setError(null); }}
+                                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.82rem', cursor: 'pointer', marginTop: '1.5rem', fontWeight: 600, width: '100%', textAlign: 'center', fontFamily: 'inherit' }}>
+                                ← {t('backToSignIn') || 'Back to Sign In'}
+                            </button>
+                        </motion.div>
+                    )}
+
                     {/* ── SIGN UP STEP 0: Account credentials ── */}
                     {mode === 'signup' && step === 0 && (
                         <motion.div key="signup-0" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}>
                             <StepDots total={2} current={0} />
 
-                            {/* Google */}
-                            <button type="button" onClick={handleGoogleSignIn} disabled={googleLoading || loading}
-                                style={{
-                                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    gap: '0.75rem', padding: '0.8rem', borderRadius: '12px',
-                                    background: 'white', border: 'none', cursor: 'pointer',
-                                    fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 700, color: '#1a1a1a',
-                                    marginBottom: '1.25rem', opacity: googleLoading ? 0.7 : 1,
-                                    boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
-                                }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24">
-                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                                </svg>
-                                {googleLoading ? t('processing') : t('signUp') + ' with Google'}
-                            </button>
+                            {/* Social Logins */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                                <button type="button" onClick={handleGoogleSignIn} disabled={googleLoading || loading}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        gap: '0.6rem', padding: '0.75rem', borderRadius: '12px',
+                                        background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer',
+                                        fontFamily: 'inherit', fontSize: '0.825rem', fontWeight: 700, color: '#1a1a1a',
+                                        opacity: googleLoading ? 0.7 : 1, transition: 'all 0.2s',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                    }}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24">
+                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                    </svg>
+                                    Google
+                                </button>
+                                <button type="button" onClick={() => supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: window.location.origin } })}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        gap: '0.6rem', padding: '0.75rem', borderRadius: '12px',
+                                        background: '#24292f', border: 'none', cursor: 'pointer',
+                                        fontFamily: 'inherit', fontSize: '0.825rem', fontWeight: 700, color: 'white',
+                                        transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                    }}>
+                                    <Github size={16} />
+                                    GitHub
+                                </button>
+                            </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
                                 <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
@@ -633,13 +733,38 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                     padding: '0.85rem', borderRadius: '10px',
                                     background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)',
                                     fontSize: '0.75rem', color: '#64748b', lineHeight: 1.5,
+                                    textAlign: 'center'
                                 }}>
-                                    <div dangerouslySetInnerHTML={{ __html: 
-                                        t('termsAgreement')
-                                            .replace('{terms}', `<a href="#" style="color: #60a5fa; text-decoration: none;">${t('termsOfService')}</a>`)
-                                            .replace('{privacy}', `<a href="#" style="color: #60a5fa; text-decoration: none;">${t('privacyPolicy')}</a>`)
-                                    }} />
-                                    <div style={{ marginTop: '0.5rem', fontWeight: 600 }}>
+                                    <div>
+                                        {t('termsAgreement').split('{terms}').map((part, i) => (
+                                            <React.Fragment key={i}>
+                                                {i > 0 && (
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setLegalModal({ open: true, type: 'terms' })} 
+                                                        style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontWeight: 700, padding: 0, fontSize: 'inherit', fontFamily: 'inherit' }}
+                                                    >
+                                                        {t('termsOfService')}
+                                                    </button>
+                                                )}
+                                                {part.split('{privacy}').map((subpart, j) => (
+                                                    <React.Fragment key={j}>
+                                                        {j > 0 && (
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => setLegalModal({ open: true, type: 'privacy' })} 
+                                                                style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontWeight: 700, padding: 0, fontSize: 'inherit', fontFamily: 'inherit' }}
+                                                            >
+                                                                {t('privacyPolicy')}
+                                                            </button>
+                                                        )}
+                                                        {subpart}
+                                                    </React.Fragment>
+                                                ))}
+                                            </React.Fragment>
+                                        ))}
+                                    </div>
+                                    <div style={{ marginTop: '0.5rem', fontWeight: 600, fontSize: '0.7rem' }}>
                                         {t('confirmationEmailSent').replace('{email}', email)}
                                     </div>
                                 </div>
@@ -679,6 +804,23 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                     )}
 
                 </AnimatePresence>
+
+                <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center', gap: '2rem', opacity: 0.4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <ShieldCheck size={16} color="#60a5fa" />
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SSL Secured</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Lock size={16} color="#c084fc" />
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ecclesiastical Shield</span>
+                    </div>
+                </div>
+
+                <LegalModal 
+                    isOpen={legalModal.open} 
+                    type={legalModal.type} 
+                    onClose={() => setLegalModal({ ...legalModal, open: false })} 
+                />
             </motion.div>
         </div>
     );

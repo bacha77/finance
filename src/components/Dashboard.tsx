@@ -20,8 +20,8 @@ interface DashboardProps {
     churchId: string;
 }
 
-const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
-const fmtShort = (v: number) => v >= 1000 ? `$${(v / 1000).toFixed(1)}K` : fmt(v);
+const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+const fmtShort = (v: number) => fmt(v); // Remove K-rounding to maintain precision sync
 
 // ── Mini Sparkline (CSS bar chart) ────────────────────────────────────────
 const Sparkline: React.FC<{ values: number[]; color: string }> = ({ values, color }) => {
@@ -161,7 +161,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
             setSyncing(true);
             try {
                 const [{ data: ledger }, { data: funds }, { data: members }, { data: church, error: churchError }] = await Promise.all([
-                    supabase.from('ledger').select('*').eq('church_id', churchId).order('created_at', { ascending: false }),
+                    supabase.from('ledger').select('*').eq('church_id', churchId).neq('voided', true).order('created_at', { ascending: false }),
                     supabase.from('funds').select('*').eq('church_id', churchId),
                     supabase.from('members').select('id').eq('church_id', churchId),
                     supabase.from('churches').select('name, logo_url').eq('id', churchId).single(),
@@ -174,9 +174,22 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                     setChurchData(church);
                 }
 
+                const now = new Date();
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+
                 const totalBalance = funds?.reduce((s: number, f: any) => s + (f.balance || 0), 0) || 0;
-                const totalTithes = ledger?.filter((t: any) => t.type === 'in' || t.type === 'revenue').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
-                const totalExpenses = ledger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
+                
+                const monthlyLedger = ledger?.filter((t: any) => {
+                    const dateStr = t.date || t.created_at;
+                    if (!dateStr) return false;
+                    // Use T12:00:00 to avoid timezone shifts for YYYY-MM-DD strings
+                    const d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`);
+                    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+                });
+
+                const totalTithes = monthlyLedger?.filter((t: any) => t.type === 'in' || t.type === 'revenue').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
+                const totalExpenses = monthlyLedger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
                 
                 setStats({
                     balance: totalBalance,
@@ -236,8 +249,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         };
         fetchData();
         const channels = [
-            supabase.channel('db-ledger').on('postgres_changes', { event: '*', schema: 'public', table: 'ledger' }, fetchData),
-            supabase.channel('db-funds').on('postgres_changes', { event: '*', schema: 'public', table: 'funds' }, fetchData),
+            supabase.channel('db-ledger').on('postgres_changes', { event: '*', schema: 'public', table: 'ledger', filter: `church_id=eq.${churchId}` }, fetchData),
+            supabase.channel('db-funds').on('postgres_changes', { event: '*', schema: 'public', table: 'funds', filter: `church_id=eq.${churchId}` }, fetchData),
         ];
         channels.forEach(c => c.subscribe());
         return () => { channels.forEach(c => supabase.removeChannel(c)); };
@@ -250,7 +263,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
     const statCards: StatCardProps[] = [
         {
             label: t('totalBalance'),
-            value: fmtShort(stats.balance),
+            value: fmt(stats.balance),
             change: '+5.4%',
             up: true,
             icon: Wallet,
@@ -261,7 +274,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         },
         {
             label: `${t('tithes')} (MTD)`,
-            value: fmtShort(stats.tithes),
+            value: fmt(stats.tithes),
             change: '+12.5%',
             up: true,
             icon: DollarSign,
@@ -284,7 +297,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         },
         {
             label: t('expenses'),
-            value: fmtShort(stats.expenses),
+            value: fmt(stats.expenses),
             change: '-2.1%',
             up: false,
             icon: CreditCard,
@@ -331,7 +344,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
     };
 
     return (
-        <div style={{ padding: '2rem 2.5rem', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ padding: window.innerWidth < 768 ? '1.5rem 1rem' : '2rem 2.5rem', maxWidth: '1400px', margin: '0 auto' }}>
 
             {/* ── Header ─────────────────────────────────────────────── */}
             <motion.div

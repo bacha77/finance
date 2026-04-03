@@ -3,6 +3,7 @@ import { PayPalScriptProvider, PayPalButtons, usePayPalScriptReducer } from '@pa
 import { supabase } from '../lib/supabase';
 import { PLANS } from '../lib/trialConfig';
 import { PAYPAL_CLIENT_ID, getNextBillingDate } from '../lib/subscriptionConfig';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { SubscriptionStatus } from '../lib/subscriptionConfig';
 import { Shield, Check, Star, Zap, Crown, CreditCard, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -112,6 +113,7 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
   subStatus,
   onPaymentSuccess,
 }) => {
+  const { t } = useLanguage();
   const [selectedPlanId, setSelectedPlanId] = useState<string>('growth');
   const [payError, setPayError] = useState<string | null>(null);
   const [paySuccess, setPaySuccess] = useState(false);
@@ -143,10 +145,10 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
             <Check size={40} color="#10b981" />
           </div>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white', marginBottom: '0.5rem' }}>
-            Payment Successful! 🎉
+            {t('paymentSuccessful')}
           </h2>
           <p style={{ color: 'var(--text-secondary)' }}>
-            Welcome to the {selectedPlan.name} plan. Loading your workspace...
+            {t('welcomeToPlan').replace('{plan}', selectedPlan.name)}
           </p>
         </motion.div>
       </div>
@@ -186,16 +188,16 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
             }}>
               <Lock size={14} color="#ef4444" />
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                {isTrialExpired ? 'Free Trial Ended' : 'Subscription Expired'}
+                {isTrialExpired ? t('trialEnded') : t('subscriptionExpiredWall')}
               </span>
             </div>
             <h1 style={{ fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 900, color: 'white', marginBottom: '0.75rem' }}>
               {isTrialExpired
-                ? 'Your 30-Day Free Trial Has Ended'
-                : 'Your Subscription Has Expired'}
+                ? t('trialEnded')
+                : t('subscriptionExpiredWall')}
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '500px', margin: '0 auto' }}>
-              {churchName} — choose a plan below to restore access. All your data is safe and waiting.
+              {t('choosePlanBelow')}
             </p>
           </div>
 
@@ -240,7 +242,7 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
                       padding: '3px 12px', borderRadius: '0 0 10px 10px',
                       textTransform: 'uppercase', letterSpacing: '0.08em',
                     }}>
-                      ⭐ Most Popular
+                      {t('mostPopular')}
                     </div>
                   )}
 
@@ -305,10 +307,12 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
               <CreditCard size={20} color="var(--primary-light)" />
               <div>
                 <div style={{ fontWeight: 800, color: 'white', fontSize: '1rem' }}>
-                  Pay with PayPal, Credit Card, or Debit Card
+                  {t('payWithPaypalCard')}
                 </div>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                  Secure checkout · {selectedPlan.name} Plan · ${selectedPlan.price!.toFixed(2)}/month · Billed every 30 days
+                  {t('secureCheckoutPlan')
+                    .replace('{plan}', selectedPlan.name)
+                    .replace('${price}', selectedPlan.price!.toFixed(2))} · {t('billedEvery30Days')}
                 </div>
               </div>
             </div>
@@ -345,9 +349,9 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
               gap: '1.5rem', marginTop: '1.25rem', flexWrap: 'wrap',
             }}>
               {[
-                { icon: '🔒', text: '256-bit SSL Encrypted' },
-                { icon: '🛡️', text: 'Secured by PayPal' },
-                { icon: '↩️', text: 'Cancel anytime' },
+                { icon: '🔒', text: t('sslEncrypted') },
+                { icon: '🛡️', text: t('securedByPaypal') },
+                { icon: '↩️', text: t('cancelAnytime') },
               ].map((b) => (
                 <span key={b.text} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                   <span>{b.icon}</span>{b.text}
@@ -360,7 +364,7 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
           <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
             <Shield size={14} style={{ display: 'inline', marginRight: '6px', color: 'var(--text-muted)' }} />
             <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-              Your data is safe. All {churchName} records are preserved and will be available immediately after payment.
+              {t('dataSafePreserved').replace('{churchName}', churchName)}
             </span>
           </div>
         </motion.div>

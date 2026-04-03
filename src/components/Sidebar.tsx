@@ -12,7 +12,8 @@ import {
   PieChart,
   Zap,
   X,
-  ShieldCheck
+  ShieldCheck,
+  HelpCircle
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
@@ -120,10 +121,11 @@ interface SidebarProps {
   setOpen: (open: boolean) => void;
   isMobile: boolean;
   church?: any;
+  onOpenSupport?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-  activeTab, setActiveTab, onLogout, open, setOpen, isMobile, church
+  activeTab, setActiveTab, onLogout, open, setOpen, isMobile, church, onOpenSupport
 }) => {
   const { language, setLanguage, t } = useLanguage();
 
@@ -164,7 +166,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     }}>
       {/* ── LOGO & HEADER ── */}
       <div style={{ padding: '0 0.75rem', marginBottom: '2.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+        <div 
+          onClick={() => { setActiveTab('dashboard'); if (isMobile) setOpen(false); }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', cursor: 'pointer' }}
+        >
           {church?.logo_url ? (
             <img
               src={church.logo_url}
@@ -179,7 +184,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             />
           )}
           {isMobile && (
-            <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: 'hsl(var(--text-muted))', cursor: 'pointer' }}>
+            <button onClick={(e) => { e.stopPropagation(); setOpen(false); }} style={{ background: 'none', border: 'none', color: 'hsl(var(--text-muted))', cursor: 'pointer' }}>
               <X size={20} />
             </button>
           )}
@@ -254,22 +259,33 @@ const Sidebar: React.FC<SidebarProps> = ({
           <span style={{ fontWeight: activeTab === 'settings' ? 800 : 600 }}>{t('settings')}</span>
         </button>
 
+        <button 
+          onClick={onOpenSupport}
+          className="btn-ghost"
+          style={{ 
+            width: '100%', justifyContent: 'flex-start', border: 'none', 
+            background: 'transparent',
+            color: 'inherit'
+          }}
+        >
+          <HelpCircle size={18} />
+          <span style={{ fontWeight: 600 }}>Help & Support</span>
+        </button>
+
         {/* Language & Action row */}
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <div style={{ 
-            flex: 1, height: '36px', background: 'hsla(var(--text-main)/0.03)', 
-            borderRadius: '10px', padding: '3px', display: 'flex', gap: '4px',
-            border: '1px solid hsla(var(--text-main)/0.05)'
-          }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, background: 'hsla(var(--text-main)/0.03)', borderRadius: '12px', padding: '4px', display: 'flex', gap: '4px', border: '1px solid hsla(var(--text-main)/0.05)' }}>
             {(['en', 'es'] as const).map((lang) => (
               <button
                 key={lang}
                 onClick={() => setLanguage(lang)}
+                className="flex-center"
                 style={{
-                  flex: 1, borderRadius: '8px', border: 'none', cursor: 'pointer',
+                  flex: 1, height: '32px', borderRadius: '10px', border: 'none', cursor: 'pointer',
                   background: language === lang ? 'hsl(var(--p))' : 'transparent',
                   color: language === lang ? 'white' : 'hsl(var(--text-muted))',
-                  fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', transition: 'all 0.2s'
+                  fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', transition: 'all 0.2s',
+                  fontFamily: 'inherit'
                 }}
               >
                 {lang}

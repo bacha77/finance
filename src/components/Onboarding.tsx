@@ -2,10 +2,11 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { 
-    Building2, MapPin, ChevronRight, Loader, 
-    Mail, Phone, User, 
+    Building2, MapPin, Loader2, 
+    Mail, Phone, User, LogOut,
     Search, ShieldCheck,
-    DollarSign, Globe
+    DollarSign, Globe, CheckCircle2,
+    Sparkles, Database, ArrowRight
 } from 'lucide-react';
 
 interface OnboardingProps {
@@ -13,17 +14,63 @@ interface OnboardingProps {
     userEmail: string;
     initialName?: string;
     onComplete: () => void;
+    onLogout: () => void;
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// CONSTANTS & HELPERS (Outside to prevent re-renders)
+// ──────────────────────────────────────────────────────────────────────────
+
 const CHURCH_SIZES = [
-    { label: 'Small (< 100 members)', value: 'small' },
-    { label: 'Medium (100–500 members)', value: 'medium' },
-    { label: 'Large (500–2000 members)', value: 'large' },
-    { label: 'Mega (2000+ members)', value: 'mega' },
+    { label: 'Small (0-100)', value: 'small', desc: 'Growing community foundations' },
+    { label: 'Medium (100-500)', value: 'medium', desc: 'Expanding ministry operations' },
+    { label: 'Large (500-2000)', value: 'large', desc: 'Established multi-ministry' },
+    { label: 'Mega (2000+)', value: 'mega', desc: 'Institutional level enterprise' },
 ];
 
-const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName = '', onComplete }) => {
+const ONBOARDING_STEPS = [
+    { id: 1, title: 'Personal Identity', icon: User },
+    { id: 2, title: 'Church Mission', icon: Building2 },
+    { id: 3, title: 'Location Sync', icon: MapPin },
+    { id: 4, title: 'Financial Oversight', icon: ShieldCheck },
+];
+
+// ── Shared Input Component (DEFINED OUTSIDE) ──
+const OnboardingInput = ({ label, value, onChange, placeholder, type = "text", icon: Icon, required, readOnly }: any) => (
+    <div style={{ marginBottom: '1.25rem' }}>
+        <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: 'hsl(var(--text-muted))', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
+            {label} {required && <span style={{ color: '#ef4444' }}>*</span>}
+        </label>
+        <div style={{ position: 'relative' }}>
+            {Icon && <Icon size={16} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'hsl(var(--text-muted))' }} />}
+            <input
+                type={type}
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                placeholder={placeholder}
+                readOnly={readOnly}
+                className="glass-input"
+                autoFocus={false}
+                style={{ 
+                    width: '100%', padding: '0.875rem 1rem', paddingLeft: Icon ? '3.25rem' : '1.25rem',
+                    borderRadius: '14px', background: 'hsla(var(--text-main)/0.03)',
+                    border: '1px solid hsla(var(--text-main)/0.1)', color: 'white',
+                    fontSize: '0.95rem', transition: 'all 0.2s',
+                    opacity: readOnly ? 0.6 : 1
+                }}
+            />
+        </div>
+    </div>
+);
+
+// ──────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ──────────────────────────────────────────────────────────────────────────
+
+const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName = '', onComplete, onLogout }) => {
     const [step, setStep] = useState(1);
+    
+    // Form State
     const [churchName, setChurchName] = useState('');
     const [churchAddress, setChurchAddress] = useState('');
     const [churchCity, setChurchCity] = useState('');
@@ -32,15 +79,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
     const [churchCountry, setChurchCountry] = useState('United States');
     const [denomination, setDenomination] = useState('');
     const [churchSize, setChurchSize] = useState('');
-    
     const [adminName, setAdminName] = useState(initialName);
     const [adminPhone, setAdminPhone] = useState('');
-    
-    const [showTreasurer, setShowTreasurer] = useState(false);
     const [treasurerName, setTreasurerName] = useState('');
     const [treasurerEmail, setTreasurerEmail] = useState('');
     const [treasurerPhone, setTreasurerPhone] = useState('');
     
+    // UI State
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
@@ -57,9 +102,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
             setShowSuggestions(false);
             return;
         }
-
         if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-        
         searchTimerRef.current = setTimeout(async () => {
             setIsSearching(true);
             try {
@@ -78,20 +121,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
     const selectAddress = (item: any) => {
         const addr = item.address;
         const street = `${addr.house_number || ''} ${addr.road || ''}`.trim() || item.display_name.split(',')[0];
-        
         setChurchAddress(street);
         setChurchCity(addr.city || addr.town || addr.village || addr.suburb || '');
         setChurchState(addr.state || '');
         setChurchZip(addr.postcode || '');
         setChurchCountry(addr.country || 'United States');
-        
         setAddressSuggestions([]);
         setShowSuggestions(false);
     };
 
     const handleComplete = async () => {
         if (!churchName || !adminName || !churchSize || !churchCity) {
-            setError('Please complete all required fields (*)');
+            setError('Please fill in all required fields to continue.');
             return;
         }
         setIsLoading(true);
@@ -134,6 +175,20 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
 
             if (churchError) throw churchError;
 
+            // Initialize Church Assets
+            await supabase.from('funds').insert({
+                name: 'General Fund',
+                description: 'Primary operating fund for tithes and offerings',
+                balance: 0,
+                church_id: church.id,
+                is_unrestricted: true
+            });
+
+            await supabase.from('departments').insert({
+                name: 'General',
+                church_id: church.id
+            });
+
             // 2. Create the profile
             const { error: profileError } = await supabase
                 .from('profiles')
@@ -147,7 +202,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
                 });
 
             if (profileError) throw profileError;
-
             onComplete();
         } catch (err: any) {
             setError(err.message || 'Setup failed. Please try again.');
@@ -156,225 +210,251 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
         }
     };
 
-    const Field: React.FC<{ label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; icon?: any; required?: boolean; readOnly?: boolean }> = ({ label, value, onChange, placeholder, type = "text", icon: Icon, required, readOnly }) => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {label} {required && <span style={{ color: '#ef4444' }}>*</span>}
-            </label>
-            <div style={{ position: 'relative' }}>
-                {Icon && <Icon size={14} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />}
-                <input
-                    type={type}
-                    value={value}
-                    onChange={e => onChange(e.target.value)}
-                    placeholder={placeholder}
-                    readOnly={readOnly}
-                    className="glass-input"
-                    style={{ 
-                        width: '100%', 
-                        paddingLeft: Icon ? '2.75rem' : '1rem',
-                        opacity: readOnly ? 0.6 : 1,
-                        cursor: readOnly ? 'not-allowed' : 'text'
-                    }}
-                />
-            </div>
-        </div>
-    );
-
     return (
-        <div style={{
-            minHeight: '100vh', display: 'flex', alignItems: 'flex-start',
-            justifyContent: 'center', background: 'var(--bg-dark)', padding: '4rem 1.5rem',
-            fontFamily: "'Inter', sans-serif", overflowY: 'auto'
+        <div className="onboarding-container" style={{
+            minHeight: '100vh', display: 'flex', background: 'hsl(var(--bg-main))',
+            color: 'white', overflow: 'auto', flexDirection: window.innerWidth < 1024 ? 'column' : 'row'
         }}>
-            {/* Background effects */}
-            <div style={{
-                position: 'fixed', inset: 0, pointerEvents: 'none',
-                background: 'radial-gradient(circle at 50% -20%, rgba(99, 102, 241, 0.15) 0%, transparent 80%)',
-            }} />
+            {/* ── LEFT SIDE: BRANDING/PROGRESS ── */}
+            <div style={{ 
+                width: window.innerWidth < 1024 ? '100%' : '400px', flexShrink: 0, background: 'hsl(var(--bg-card))',
+                borderRight: window.innerWidth < 1024 ? 'none' : '1px solid hsla(var(--text-main)/0.05)',
+                borderBottom: window.innerWidth < 1024 ? '1px solid hsla(var(--text-main)/0.05)' : 'none',
+                display: 'flex', flexDirection: 'column', padding: window.innerWidth < 1024 ? '2rem' : '3rem',
+                position: 'relative'
+            }}>
+                <div style={{ position: 'absolute', inset: 0, opacity: 0.1, pointerEvents: 'none' }}>
+                    <div style={{ position: 'absolute', top: '10%', left: '10%', width: '300px', height: '300px', background: 'hsl(var(--p))', filter: 'blur(100px)', borderRadius: '50%' }} />
+                </div>
 
-            <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                style={{ 
-                    width: '100%', maxWidth: '640px', background: 'var(--bg-card)', 
-                    borderRadius: '32px', border: '1px solid var(--border)', 
-                    boxShadow: '0 40px 100px -20px rgba(0,0,0,0.6)',
-                    overflow: 'hidden', position: 'relative', zIndex: 1 
-                }}
-            >
-                {/* Header */}
-                <div style={{ 
-                    padding: '2.5rem 3.5rem 1.5rem', borderBottom: '1px solid var(--border)',
-                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.02), transparent)' 
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                        <div style={{ 
-                            width: '48px', height: '48px', borderRadius: '12px', 
-                            background: 'var(--primary)', display: 'flex', alignItems: 'center', 
-                            justifyContent: 'center', boxShadow: '0 0 20px var(--primary-glow)' 
-                        }}>
-                            <Building2 size={24} color="white" />
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4rem' }}>
+                        <div style={{ width: '40px', height: '40px', background: 'hsl(var(--p))', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Sparkles size={20} color="white" />
                         </div>
-                        <div>
-                            <h1 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'white' }}>Professional Church Onboarding</h1>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Workspace Infrastructure Setup</div>
-                        </div>
+                        <span style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em' }}>Sanctuary Finance</span>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        {[1, 2, 3, 4].map(i => (
-                            <div key={i} style={{ 
-                                flex: 1, height: '4px', borderRadius: '2px', 
-                                background: step >= i ? 'var(--primary)' : 'var(--border)',
-                                transition: 'background 0.3s ease'
-                            }} />
-                        ))}
+                    <h1 style={{ fontSize: '2.5rem', fontWeight: 900, lineHeight: 1.1, marginBottom: '1.5rem' }}>
+                        Foundation for <span style={{ color: 'hsl(var(--p))' }}>Growth.</span>
+                    </h1>
+                    <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '4rem' }}>
+                        Complete your workspace configuration to unlock institutional-grade church management tools.
+                    </p>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                        {ONBOARDING_STEPS.map((s) => {
+                            const isActive = step === s.id;
+                            const isPast = step > s.id;
+                            return (
+                                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', opacity: isActive || isPast ? 1 : 0.3, transition: 'all 0.4s' }}>
+                                    <div style={{ 
+                                        width: '32px', height: '32px', borderRadius: '50%',
+                                        background: isPast ? 'hsl(var(--success))' : isActive ? 'hsl(var(--p))' : 'transparent',
+                                        border: isPast || isActive ? 'none' : '2px solid hsla(var(--text-main)/0.2)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        flexShrink: 0
+                                    }}>
+                                        {isPast ? <CheckCircle2 size={16} color="white" /> : <s.icon size={14} color={isActive ? 'white' : 'white'} />}
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: isActive ? 800 : 500, color: isActive ? 'white' : 'hsl(var(--text-muted))' }}>
+                                        {s.title}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
-                <div style={{ padding: '2.5rem 3.5rem' }}>
+                <div style={{ marginTop: 'auto', display: 'flex', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>
+                        <Database size={14} /> Shard Provisioned
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>
+                        <ShieldCheck size={14} /> SEC Compliant
+                    </div>
+                </div>
+
+                <button 
+                    onClick={onLogout}
+                    style={{
+                        marginTop: '2rem', display: 'flex', alignItems: 'center', gap: '8px', 
+                        background: 'none', border: 'none', color: 'hsla(var(--text-main)/0.4)',
+                        fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+                        padding: '10px', borderRadius: '8px', transition: 'all 0.2s'
+                    }}
+                    onMouseOver={e => e.currentTarget.style.color = 'white'}
+                    onMouseOut={e => e.currentTarget.style.color = 'hsla(var(--text-main)/0.4)'}
+                >
+                    <LogOut size={14} /> Sign out and return to login
+                </button>
+            </div>
+
+            {/* ── RIGHT SIDE: DYNAMIC FORM ── */}
+            <div style={{ flex: 1, padding: window.innerWidth < 1024 ? '2rem 1rem' : '4rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <motion.div 
+                    layout={true}
+                    style={{ width: '100%', maxWidth: '560px' }}
+                >
                     <AnimatePresence mode="wait">
-                        
-                        {/* ── STEP 1: IDENTITY ── */}
                         {step === 1 && (
-                            <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                <div style={{ marginBottom: '2rem' }}>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', marginBottom: '0.5rem' }}>Church Information</h2>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>The name of your church exactly as it should appear on reports.</p>
+                            <motion.div
+                                key="s1" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+                            >
+                                <div style={{ marginBottom: '2.5rem' }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--p))', textTransform: 'uppercase', marginBottom: '8px' }}>Personal Profile</div>
+                                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900 }}>Who are you within the ministry?</h2>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                    <Field label="Church Name" value={churchName} onChange={setChurchName} placeholder="e.g. Grace Fellowship" icon={Building2} required />
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                                            <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Denomination</label>
-                                            <select value={denomination} onChange={e => setDenomination(e.target.value)} className="glass-input" style={{ width: '100%', colorScheme: 'dark' }}>
-                                                <option value="">Select Option</option>
-                                                {['Baptist', 'Methodist', 'Pentecostal', 'Non-denominational', 'Adventist', 'Other'].map(d => <option key={d} value={d}>{d}</option>)}
-                                            </select>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                                            <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Church Size *</label>
-                                            <select value={churchSize} onChange={e => setChurchSize(e.target.value)} className="glass-input" style={{ width: '100%', colorScheme: 'dark' }}>
-                                                <option value="">Select Size</option>
-                                                {CHURCH_SIZES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button onClick={() => setStep(2)} disabled={!churchName || !churchSize} className="btn btn-primary" style={{ width: '100%', marginTop: '3rem', height: '3.25rem', justifyContent: 'center', opacity: (!churchName || !churchSize) ? 0.5 : 1 }}>
-                                    Next: Address <ChevronRight size={18} />
+                                <OnboardingInput label="Full Name" value={adminName} onChange={setAdminName} icon={User} required placeholder="Your professional name" />
+                                <OnboardingInput label="Official Email" value={userEmail} onChange={() => {}} readOnly icon={Mail} />
+                                <OnboardingInput label="Phone Number" value={adminPhone} onChange={setAdminPhone} icon={Phone} placeholder="+1 (555) 000-0000" />
+                                
+                                <button onClick={() => setStep(2)} disabled={!adminName} className="btn btn-primary" style={{ width: '100%', marginTop: '2rem', height: '3.5rem', borderRadius: '16px', fontSize: '1rem' }}>
+                                    Continue to Church Mission <ArrowRight size={18} style={{ marginLeft: '8px' }} />
                                 </button>
                             </motion.div>
                         )}
 
-                        {/* ── STEP 2: ADDRESS ── */}
                         {step === 2 && (
-                            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                <div style={{ marginBottom: '2rem' }}>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', marginBottom: '0.5rem' }}>Church Location</h2>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Autocomplete will find your city, state and zip.</p>
+                            <motion.div
+                                key="s2" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+                            >
+                                <div style={{ marginBottom: '2.5rem' }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--p))', textTransform: 'uppercase', marginBottom: '8px' }}>Ministry Identity</div>
+                                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900 }}>Tell us about the church.</h2>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                    <div style={{ position: 'relative' }}>
-                                        <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Street Address *</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <Search size={14} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                            <input type="text" value={churchAddress} onChange={e => searchAddress(e.target.value)} placeholder="Type street address..." className="glass-input" style={{ width: '100%', paddingLeft: '2.75rem' }} />
-                                            {isSearching && <Loader size={14} className="spin" style={{ position: 'absolute', right: '1rem', top: '50%', marginTop: '-7px', color: 'var(--primary)' }} />}
-                                        </div>
-                                        <AnimatePresence>
-                                            {showSuggestions && addressSuggestions.length > 0 && (
-                                                <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', marginTop: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
-                                                    {addressSuggestions.map((item, i) => (
-                                                        <button key={i} onClick={() => selectAddress(item)} style={{ width: '100%', padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', gap: '10px' }}>
-                                                            <MapPin size={14} style={{ flexShrink: 0, marginTop: '2px' }} />
-                                                            {item.display_name}
-                                                        </button>
-                                                    ))}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
-                                        <Field label="City *" value={churchCity} onChange={setChurchCity} placeholder="Dallas" required />
-                                        <Field label="State *" value={churchState} onChange={setChurchState} placeholder="TX" required />
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <Field label="Zip / Postal" value={churchZip} onChange={setChurchZip} placeholder="75201" />
-                                        <Field label="Country" value={churchCountry} onChange={setChurchCountry} icon={Globe} />
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem' }}>
-                                    <button onClick={() => setStep(1)} className="btn btn-ghost" style={{ flex: 1 }}>Back</button>
-                                    <button onClick={() => setStep(3)} disabled={!churchCity} className="btn btn-primary" style={{ flex: 2 }}>Next: Your Profile</button>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {/* ── STEP 3: ADMIN ── */}
-                        {step === 3 && (
-                            <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                                <div style={{ marginBottom: '2rem' }}>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', marginBottom: '0.5rem' }}>Administrator Account</h2>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>This information is for the primary workspace manager.</p>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                    <Field label="Full Name *" value={adminName} onChange={setAdminName} icon={User} required />
-                                    <Field label="Email Address" value={userEmail} onChange={() => {}} readOnly icon={Mail} />
-                                    <Field label="Contact Phone" value={adminPhone} onChange={setAdminPhone} placeholder="+1 (555) 000-0000" icon={Phone} />
-                                </div>
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem' }}>
-                                    <button onClick={() => setStep(2)} className="btn btn-ghost" style={{ flex: 1 }}>Back</button>
-                                    <button onClick={() => setStep(4)} disabled={!adminName} className="btn btn-primary" style={{ flex: 2 }}>Next: Financial Contact</button>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {/* ── STEP 4: TREASURER ── */}
-                        {step === 4 && (
-                            <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                                <div style={{ marginBottom: '2rem' }}>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', marginBottom: '0.5rem' }}>Financial Officer</h2>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Optionally add your Church Treasurer for tax compliance access.</p>
-                                </div>
+                                <OnboardingInput label="Church / Organization Name" value={churchName} onChange={setChurchName} icon={Building2} required placeholder="e.g. Grace Fellowship" />
                                 
-                                {!showTreasurer ? (
-                                    <div onClick={() => setShowTreasurer(true)} style={{ padding: '2rem', border: '1px dashed var(--border)', borderRadius: '20px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e=>e.currentTarget.style.borderColor='var(--primary)'} onMouseOut={e=>e.currentTarget.style.borderColor='var(--border)'}>
-                                        <DollarSign size={24} color="var(--primary-light)" style={{ marginBottom: '1rem' }} />
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>Add Church Treasurer Details</div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>This can also be added later in settings.</div>
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: 'hsl(var(--text-muted))', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
+                                        Church Size / Attendance
+                                    </label>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                        {CHURCH_SIZES.map(size => (
+                                            <button 
+                                                key={size.value}
+                                                onClick={() => setChurchSize(size.value)}
+                                                style={{ 
+                                                    padding: '1.25rem', borderRadius: '16px', textAlign: 'left',
+                                                    background: churchSize === size.value ? 'hsl(var(--p))' : 'hsla(var(--text-main)/0.03)',
+                                                    border: '1px solid', borderColor: churchSize === size.value ? 'hsl(var(--p))' : 'hsla(var(--text-main)/0.1)',
+                                                    color: 'white', cursor: 'pointer', transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>{size.label}</div>
+                                                <div style={{ fontSize: '0.65rem', opacity: 0.7, marginTop: '2px' }}>{size.desc}</div>
+                                            </button>
+                                        ))}
                                     </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative' }}>
-                                        <button onClick={() => setShowTreasurer(false)} style={{ position: 'absolute', top: '-2.5rem', right: 0, background: 'none', border: 'none', color: '#ef4444', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}>REMOVE</button>
-                                        <Field label="Treasurer Name" value={treasurerName} onChange={setTreasurerName} icon={User} />
-                                        <Field label="Treasurer Email" value={treasurerEmail} onChange={setTreasurerEmail} icon={Mail} />
-                                        <Field label="Treasurer Phone" value={treasurerPhone} onChange={setTreasurerPhone} icon={Phone} />
-                                    </div>
-                                )}
-
-                                <div style={{ marginTop: '2rem', padding: '1rem', background: 'rgba(124,58,237,0.06)', borderRadius: '12px', display: 'flex', gap: '10px' }}>
-                                    <ShieldCheck size={18} color="var(--primary-light)" style={{ flexShrink: 0 }} />
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>By launching, you agree to the Church Data Protection Agreement. A secure database shard has been provisioned.</div>
                                 </div>
 
-                                {error && (
-                                    <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', color: '#ef4444', fontSize: '0.8rem', textAlign: 'center' }}>{error}</div>
-                                )}
+                                <OnboardingInput label="Denomination (Optional)" value={denomination} onChange={setDenomination} icon={Globe} placeholder="e.g. Pentecostal" />
 
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '2.5rem' }}>
-                                    <button onClick={() => setStep(3)} className="btn btn-ghost" style={{ flex: 1 }}>Back</button>
-                                    <button onClick={handleComplete} disabled={isLoading} className="btn btn-primary" style={{ flex: 2, justifyContent: 'center' }}>
-                                        {isLoading ? <Loader size={18} className="spin" /> : <>Launch Workspace 🚀</>}
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem' }}>
+                                    <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: 'hsl(var(--text-muted))', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer' }}>
+                                        Back
+                                    </button>
+                                    <button onClick={() => setStep(3)} disabled={!churchName || !churchSize} className="btn btn-primary" style={{ flex: 1, height: '3.5rem', borderRadius: '16px' }}>
+                                        Continue to Location <ArrowRight size={18} />
                                     </button>
                                 </div>
                             </motion.div>
                         )}
 
+                        {step === 3 && (
+                            <motion.div
+                                key="s3" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+                            >
+                                <div style={{ marginBottom: '2.5rem' }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--p))', textTransform: 'uppercase', marginBottom: '8px' }}>Physical Workspace</div>
+                                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900 }}>Where is the ministry located?</h2>
+                                </div>
+                                
+                                <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
+                                    <OnboardingInput label="Official Address" value={churchAddress} onChange={searchAddress} icon={Search} required placeholder="Search by street or city..." />
+                                    {isSearching && <Loader2 size={16} className="spin" style={{ position: 'absolute', right: '1.25rem', top: '2.5rem', color: 'hsl(var(--p))' }} />}
+                                    
+                                    <AnimatePresence>
+                                        {showSuggestions && addressSuggestions.length > 0 && (
+                                            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: 'hsl(var(--bg-card))', border: '1px solid hsla(var(--text-main)/0.1)', borderRadius: '16px', marginTop: '8px', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
+                                                {addressSuggestions.map((item, i) => (
+                                                    <button key={i} onClick={() => selectAddress(item)} style={{ width: '100%', padding: '1rem', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid hsla(var(--text-main)/0.05)', color: 'white', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', gap: '12px', transition: 'background 0.2s' }}>
+                                                        <MapPin size={16} style={{ flexShrink: 0, color: 'hsl(var(--p))' }} />
+                                                        {item.display_name}
+                                                    </button>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <OnboardingInput label="City" value={churchCity} onChange={setChurchCity} required />
+                                    <OnboardingInput label="State / Province" value={churchState} onChange={setChurchState} required />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <OnboardingInput label="Postal Code" value={churchZip} onChange={setChurchZip} />
+                                    <OnboardingInput label="Country" value={churchCountry} onChange={setChurchCountry} />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem' }}>
+                                    <button onClick={() => setStep(2)} style={{ background: 'none', border: 'none', color: 'hsl(var(--text-muted))', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer' }}>
+                                        Back
+                                    </button>
+                                    <button onClick={() => setStep(4)} disabled={!churchCity || !churchAddress} className="btn btn-primary" style={{ flex: 1, height: '3.5rem', borderRadius: '16px' }}>
+                                        Finalize Setup <ArrowRight size={18} />
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {step === 4 && (
+                            <motion.div
+                                key="s4" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+                            >
+                                <div style={{ marginBottom: '2.5rem' }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--p))', textTransform: 'uppercase', marginBottom: '8px' }}>Security & Audit</div>
+                                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900 }}>Who handles the treasury?</h2>
+                                    <p style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', marginTop: '8px' }}>Optional: Assigning a treasurer now simplifies financial audit trails later.</p>
+                                </div>
+
+                                <OnboardingInput label="Treasurer Name" value={treasurerName} onChange={setTreasurerName} icon={DollarSign} placeholder="Assign treasury contact..." />
+                                <OnboardingInput label="Treasurer Email" value={treasurerEmail} onChange={setTreasurerEmail} icon={Mail} />
+                                <OnboardingInput label="Treasurer Phone" value={treasurerPhone} onChange={setTreasurerPhone} icon={Phone} />
+                                
+                                <div style={{ background: 'hsla(var(--p)/0.05)', border: '1px solid hsla(var(--p)/0.2)', padding: '1.25rem', borderRadius: '16px', marginTop: '2.5rem' }}>
+                                    <div style={{ display: 'flex', gap: '12px' }}>
+                                        <ShieldCheck size={20} color="hsl(var(--p))" style={{ flexShrink: 0 }} />
+                                        <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', lineHeight: 1.6 }}>
+                                            <strong>Deployment Ready:</strong> Click below to initialize your church shard. You'll start with a 30-day Enterprise Trial.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {error && (
+                                    <div style={{ marginTop: '1.5rem', color: '#ef4444', fontSize: '0.85rem', textAlign: 'center', background: 'rgba(239,68,68,0.1)', padding: '0.75rem', borderRadius: '8px' }}>
+                                        {error}
+                                    </div>
+                                )}
+
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem' }}>
+                                    <button onClick={() => setStep(3)} style={{ background: 'none', border: 'none', color: 'hsl(var(--text-muted))', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer' }}>
+                                        Back
+                                    </button>
+                                    <button 
+                                        onClick={handleComplete} 
+                                        disabled={isLoading}
+                                        className="btn btn-primary" 
+                                        style={{ flex: 1, height: '3.5rem', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                        {isLoading ? <Loader2 size={24} className="spin" /> : 'Launch Church Workspace 🚀'}
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
                     </AnimatePresence>
-                </div>
-            </motion.div>
+                </motion.div>
+            </div>
         </div>
     );
 };

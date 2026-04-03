@@ -107,7 +107,9 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId }) => {
     };
 
     const handleTotalBudgetChange = (value: string) => {
-        const total = parseFloat(value) || 0;
+        let total = parseFloat(value) || 0;
+        if (total < 0) total = 0; // Negative values blocked
+
         const newAllocations = currentBudget.allocations.map((a: BudgetAllocation) => ({
             ...a,
             amount: (total * a.percentage) / 100
@@ -140,7 +142,10 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId }) => {
     };
 
     const handlePercentageChange = (deptId: string, value: string) => {
-        const percent = parseFloat(value) || 0;
+        let percent = parseFloat(value) || 0;
+        if (percent < 0) percent = 0;
+        if (percent > 100) percent = 100;
+
         const newAllocations = currentBudget.allocations.map((a: BudgetAllocation) => {
             if (a.deptId === deptId) {
                 return {
@@ -370,6 +375,8 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId }) => {
                             <DollarSign size={20} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary-light)' }} />
                             <input
                                 type="number"
+                                min="0"
+                                step="100"
                                 value={currentBudget.totalBudget}
                                 onChange={(e) => handleTotalBudgetChange(e.target.value)}
                                 style={{
@@ -412,6 +419,9 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId }) => {
                                                         <Percent size={14} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                                                         <input
                                                             type="number"
+                                                            min="0"
+                                                            max="100"
+                                                            step="0.01"
                                                             value={alloc.percentage}
                                                             onChange={(e) => handlePercentageChange(alloc.deptId, e.target.value)}
                                                             style={{

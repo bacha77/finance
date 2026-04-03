@@ -24,14 +24,16 @@ const SmartGiving: React.FC = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [recentContributions, setRecentContributions] = useState<any[]>([]);
     const [churchId, setChurchId] = useState<string | null>(null);
+    const [memberName, setMemberName] = useState<string | null>(null);
 
     React.useEffect(() => {
         const loadInitialData = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                const { data: profile } = await supabase.from('profiles').select('church_id').eq('id', user.id).single();
+                const { data: profile } = await supabase.from('profiles').select('church_id, full_name').eq('id', user.id).single();
                 if (profile?.church_id) {
                     setChurchId(profile.church_id);
+                    setMemberName(profile.full_name);
                     const { data: funds } = await supabase.from('funds').select('id, name').eq('church_id', profile.church_id);
                     if (funds && funds.length > 0) {
                         setAvailableFunds(funds);
@@ -75,9 +77,11 @@ const SmartGiving: React.FC = () => {
                 amount: amt,
                 type: 'in',
                 method: paymentMethod.toUpperCase(),
+                member: memberName, // Associate with current profile name
                 church_id: churchId,
                 created_at: new Date().toISOString()
             };
+
 
             const { error: txError } = await supabase.from('ledger').insert([newTx]);
             if (txError) throw txError;

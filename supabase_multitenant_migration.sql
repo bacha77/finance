@@ -218,12 +218,21 @@ SECURITY DEFINER
 AS $$
 DECLARE
     cid UUID;
+    user_email TEXT;
 BEGIN
-    -- 1. Try to find the church_id in the profiles table for this user
+    -- 1. Get the current user's email from the JWT
+    user_email := auth.jwt()->>'email';
+
+    -- 2. SUPER ADMIN BYPASS: If the user is the master admin, return NULL
+    --    This tells the RLS policies to allow access to ALL rows (if handled in policy)
+    IF user_email = 'admin@storehouse.org' THEN
+        RETURN NULL;
+    END IF;
+
+    -- 3. Try to find the church_id in the profiles table for this user
     SELECT church_id INTO cid FROM public.profiles WHERE id = auth.uid() LIMIT 1;
     
-    -- 2. If not found, and we are either unauthenticated (development) or the dev UID,
-    --    default to the "Dev Church Workspace" ID to allow testing.
+    -- 4. Dev bypass
     IF cid IS NULL AND (auth.uid() IS NULL OR auth.uid() = '00000000-0000-0000-0000-000000000000'::UUID) THEN
         cid := '11111111-1111-1111-1111-111111111111'::UUID;
     END IF;
@@ -293,32 +302,32 @@ CREATE POLICY "Users can update their own profile"
 -- LEDGER
 CREATE POLICY "Church members see their ledger only"
     ON public.ledger FOR ALL
-    USING (church_id = public.get_my_church_id());
+    USING ( (SELECT public.get_my_church_id()) IS NULL OR church_id = public.get_my_church_id() );
 
 -- FUNDS
 CREATE POLICY "Church members see their funds only"
     ON public.funds FOR ALL
-    USING (church_id = public.get_my_church_id());
+    USING ( (SELECT public.get_my_church_id()) IS NULL OR church_id = public.get_my_church_id() );
 
 -- MEMBERS
 CREATE POLICY "Church members see their congregation only"
     ON public.members FOR ALL
-    USING (church_id = public.get_my_church_id());
+    USING ( (SELECT public.get_my_church_id()) IS NULL OR church_id = public.get_my_church_id() );
 
 -- DEPARTMENTS
 CREATE POLICY "Church members see their departments only"
     ON public.departments FOR ALL
-    USING (church_id = public.get_my_church_id());
+    USING ( (SELECT public.get_my_church_id()) IS NULL OR church_id = public.get_my_church_id() );
 
 -- BUDGETS
 CREATE POLICY "Church members see their budgets only"
     ON public.budgets FOR ALL
-    USING (church_id = public.get_my_church_id());
+    USING ( (SELECT public.get_my_church_id()) IS NULL OR church_id = public.get_my_church_id() );
 
 -- STAFF
 CREATE POLICY "Church members see their staff only"
     ON public.staff FOR ALL
-    USING (church_id = public.get_my_church_id());
+    USING ( (SELECT public.get_my_church_id()) IS NULL OR church_id = public.get_my_church_id() );
 
 -- ============================================================
 -- STEP 9: Data Integrity Initialization
@@ -410,3 +419,13 @@ BEGIN
     CREATE POLICY "Authenticated Upload Receipts" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'receipts' AND auth.role() = 'authenticated');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+-- ============================================================
+-- STEP 11: Exec SQL Helper (for migrations.ts)
+-- ============================================================
+CREATE OR REPLACE FUNCTION exec_sql(sql text)
+RETURNS void AS $$
+BEGIN
+  EXECUTE sql;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

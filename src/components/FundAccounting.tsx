@@ -63,7 +63,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
     const [funds, setFunds] = useState<Fund[]>([]);
     const [ledger, setLedger] = useState<Transaction[]>([]);
 
-    // Supabase Sync
+    // Supabase Sync & Realtime
     useEffect(() => {
         const fetchData = async () => {
             if (!churchId) return;
@@ -85,6 +85,12 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                     .eq('church_id', churchId);
 
                 setFunds(fundData || []);
+
+                // Auto-select General Fund for new transactions if available
+                const gf = fundData?.find(f => f.name.toLowerCase().includes('general'));
+                if (gf && allocations[0].fundId === '') {
+                    setAllocations([{ deptId: '1', fundId: gf.id, amount: '' }]);
+                }
             } catch (err) {
                 console.error('Error syncing with Supabase:', err);
             } finally {
@@ -93,6 +99,20 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
         };
 
         fetchData();
+
+        // Subscribe to changes
+        const ledgerChannel = supabase.channel('ledger-updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger', filter: `church_id=eq.${churchId}` }, fetchData)
+            .subscribe();
+
+        const fundsChannel = supabase.channel('fund-updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'funds', filter: `church_id=eq.${churchId}` }, fetchData)
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(ledgerChannel);
+            supabase.removeChannel(fundsChannel);
+        };
     }, [churchId]);
 
     useEffect(() => {
@@ -108,7 +128,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
     const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
     const [paymentMethod, setPaymentMethod] = useState('Cash');
     const [txNotes, setTxNotes] = useState('');
-    const [allocations, setAllocations] = useState([{ deptId: '1', fundId: 'gf', amount: '' }]);
+    const [allocations, setAllocations] = useState([{ deptId: '', fundId: '', amount: '' }]);
 
 
 
@@ -150,17 +170,24 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
         if (allocations.length === 0 || !churchId) return;
 
         const newTxs: Transaction[] = [];
-        const updatedFunds = [...funds];
+        let updatedFunds = [...funds];
 
-        allocations.forEach(alloc => {
+        for (const alloc of allocations) {
             const amount = parseFloat(alloc.amount);
-            if (isNaN(amount)) return;
+            if (isNaN(amount) || amount <= 0) {
+                alert(t('invalidAmount') || 'Please enter a valid positive amount for all allocations.');
+                return;
+            }
 
             const selectedFund = updatedFunds.find(f => f.id === alloc.fundId);
+            if (!selectedFund) {
+                alert(t('selectFund') || 'Please select a valid fund for all allocations.');
+                return;
+            }
             const selectedDept = availableDepts.find(d => d.id === alloc.deptId);
 
             newTxs.push({
-                date: new Date(txDate).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                date: txDate, // Store as ISO for reliable syncing
                 description: txNotes ? `${t('donations')}: ${txNotes}` : `${t('donations')} ${t('to')} ${selectedDept?.name}`,
                 category: t('revenue'),
                 fund: selectedFund?.name || t('generalFundTithes'),
@@ -180,11 +207,10 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                 }]
             });
 
-            const fundIdx = updatedFunds.findIndex(f => f.id === alloc.fundId);
-            if (fundIdx !== -1) {
-                updatedFunds[fundIdx].balance += amount;
-            }
-        });
+            updatedFunds = updatedFunds.map(f => 
+                f.id === alloc.fundId ? { ...f, balance: f.balance + amount } : f
+            );
+        }
 
         try {
             // Save to Supabase Ledger
@@ -192,12 +218,15 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                 .from('ledger')
                 .insert(newTxs.map(tx => ({
                     ...tx,
+                    member: tx.member?.trim() || null, // Sanitize member name
+                    audit_trail: tx.audit_trail, // Supabase handles serialization for JSONB columns automatically.
                     created_at: new Date().toISOString()
                 })));
 
             if (ledgerError) throw ledgerError;
 
             // Update Funds in Supabase
+            let anyFundError = false;
             for (const fund of updatedFunds) {
                 if (fund.id && fund.id.length > 5) { // Skip local temp IDs
                     const { error: fundError } = await supabase
@@ -205,8 +234,15 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                         .update({ balance: fund.balance })
                         .eq('id', fund.id)
                         .eq('church_id', churchId);
-                    if (fundError) console.error('Error updating fund balance:', fundError);
+                    if (fundError) {
+                        console.error('Error updating fund balance:', fundError);
+                        anyFundError = true;
+                    }
                 }
+            }
+
+            if (anyFundError) {
+                alert(t('balanceSyncWarning') || 'Transaction saved, but some fund balances failed to sync. Please refresh.');
             }
 
             // Refresh local state from DB to keep UI in sync
@@ -214,21 +250,26 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                 .from('ledger')
                 .select('*')
                 .eq('church_id', churchId)
+                .neq('voided', true)
                 .order('created_at', { ascending: false });
             
             if (freshLedger) setLedger(freshLedger);
-            setFunds(updatedFunds);
-        } catch (err) {
+            setFunds([...updatedFunds]); // Ensure state update
+
+            setShowNewTxModal(false);
+            setTxMember('');
+            setTxNotes('');
+            setPaymentMethod('Cash');
+            const defaultFundId = funds[0]?.id || '';
+            setAllocations([{ deptId: '1', fundId: defaultFundId, amount: '' }]);
+
+        } catch (err: any) {
             console.error('Error saving transaction to Supabase:', err);
-            setLedger([...newTxs, ...ledger]);
-            setFunds(updatedFunds);
+            alert(`${t('saveError') || 'Failed to save transaction'}: ${err.message || 'Unknown error'}`);
+            // Don't clear form on error so user can retry
+            return;
         }
 
-        setShowNewTxModal(false);
-        setTxMember('');
-        setTxNotes('');
-        setPaymentMethod('Cash');
-        setAllocations([{ deptId: '1', fundId: 'gf', amount: '' }]);
     };
 
     return (
@@ -415,7 +456,9 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                     <tbody>
                                         {ledger.map((tx, idx) => (
                                             <tr key={idx}>
-                                                <td style={{ fontWeight: 600 }}>{tx.date}</td>
+                                                <td style={{ fontWeight: 600 }}>
+                                                    {new Date((tx.date || tx.created_at) || new Date()).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
+                                                </td>
                                                 <td>
                                                     <div>
                                                         <div style={{ color: 'white', fontWeight: 700, fontSize: '0.95rem' }}>{tx.description}</div>
@@ -488,13 +531,21 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                             animate={{ scale: 1, y: 0, opacity: 1 }}
                             exit={{ scale: 0.95, y: 10, opacity: 0 }}
                             className="glass-card"
-                            style={{ width: '100%', maxWidth: '480px', borderRadius: '28px', padding: '3rem', boxShadow: 'var(--shadow-lg)' }}
+                            style={{ 
+                                width: '100%', 
+                                maxWidth: '520px', 
+                                maxHeight: '90vh',
+                                overflowY: 'auto',
+                                borderRadius: '28px', 
+                                padding: window.innerWidth < 768 ? '1.5rem' : '3rem', 
+                                boxShadow: 'var(--shadow-lg)' 
+                            }}
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                                 <div>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>{t('recordDeposit')}</h2>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{t('fundStewardshipDesc')}</p>
+                                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '0.4rem', color: 'white', letterSpacing: '-0.03em' }}>{t('recordDeposit')}</h2>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 500 }}>{t('fundStewardshipDesc')}</p>
                                 </div>
                                 <button onClick={() => setShowNewTxModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
                             </div>
@@ -507,10 +558,11 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                             required
                                             value={txMember}
                                             onChange={(e) => setTxMember(e.target.value)}
-                                            style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'white', border: '1px solid #cbd5e1', color: '#1e293b', fontSize: '0.95rem' }}
+                                            className="glass-input"
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'hsla(var(--bg-card)/0.4)', border: '1px solid var(--border)', color: 'white', fontSize: '0.95rem' }}
                                         >
-                                            <option value="">{t('typeToSearch')}</option>
-                                            {members.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
+                                            <option value="" style={{ background: '#0f172a' }}>{t('typeToSearch')}</option>
+                                            {members.map((m, i) => <option key={i} value={m.name} style={{ background: '#0f172a' }}>{m.name}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -520,7 +572,8 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                             required
                                             value={txDate}
                                             onChange={(e) => setTxDate(e.target.value)}
-                                            style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'white', border: '1px solid #cbd5e1', color: '#1e293b', fontSize: '0.95rem' }}
+                                            className="glass-input"
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'hsla(var(--bg-card)/0.4)', border: '1px solid var(--border)', color: 'white', fontSize: '0.95rem', colorScheme: 'dark' }}
                                         />
                                     </div>
                                 </div>
@@ -530,12 +583,13 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                     <select
                                         value={paymentMethod}
                                         onChange={(e) => setPaymentMethod(e.target.value)}
-                                        style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'white', border: '1px solid #cbd5e1', color: '#1e293b', fontSize: '0.95rem' }}
+                                        className="glass-input"
+                                        style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'hsla(var(--bg-card)/0.4)', border: '1px solid var(--border)', color: 'white', fontSize: '0.95rem' }}
                                     >
-                                        <option value="Cash">{t('cash')}</option>
-                                        <option value="Check">{t('check')}</option>
-                                        <option value="Online">{t('online')}</option>
-                                        <option value="Mobile">{t('mobileApp')}</option>
+                                        <option value="Cash" style={{ background: '#0f172a' }}>{t('cash')}</option>
+                                        <option value="Check" style={{ background: '#0f172a' }}>{t('check')}</option>
+                                        <option value="Online" style={{ background: '#0f172a' }}>{t('online')}</option>
+                                        <option value="Mobile" style={{ background: '#0f172a' }}>{t('mobileApp')}</option>
                                     </select>
                                 </div>
 
@@ -544,31 +598,48 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                         <label style={{ fontSize: '1rem', fontWeight: 600, color: 'white' }}>{t('departmentAllocations')} *</label>
                                         <button
                                             type="button"
-                                            onClick={() => setAllocations([...allocations, { deptId: '1', fundId: 'gf', amount: '' }])}
-                                            className="btn"
-                                            style={{ padding: '8px 16px', fontSize: '0.85rem', background: 'white', color: '#1e293b', border: '1px solid #cbd5e1', gap: '8px', display: 'flex', alignItems: 'center' }}
+                                            onClick={() => setAllocations([...allocations, { deptId: '1', fundId: funds[0]?.id || '', amount: '' }])}
+                                            className="btn btn-primary"
+                                            style={{ padding: '8px 16px', fontSize: '0.8rem', gap: '8px' }}
                                         >
                                             <Plus size={16} /> {t('department')}
                                         </button>
                                     </div>
 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                         {allocations.map((alloc, idx) => (
-                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 40px', gap: '1rem', alignItems: 'center' }}>
+                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px 32px', gap: '0.5rem', alignItems: 'center' }}>
                                                 <select
                                                     value={alloc.deptId}
                                                     onChange={(e) => handleAllocationChange(idx, 'deptId', e.target.value)}
-                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'white', border: '1px solid #cbd5e1', color: '#1e293b', fontSize: '0.9rem' }}
+                                                    className="glass-input"
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '10px', background: 'hsla(var(--bg-card)/0.4)', border: '1px solid var(--border)', color: 'white', fontSize: '0.85rem' }}
                                                 >
-                                                    <option value="">Select</option>
-                                                    {availableDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                    <option value="" style={{ background: '#0f172a' }}>{t('department')}</option>
+                                                    {availableDepts.map(d => <option key={d.id} value={d.id} style={{ background: '#0f172a' }}>{d.name}</option>)}
                                                 </select>
+
+                                                <select
+                                                    value={alloc.fundId}
+                                                    required
+                                                    onChange={(e) => handleAllocationChange(idx, 'fundId', e.target.value)}
+                                                    className="glass-input"
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '10px', background: 'hsla(var(--bg-card)/0.4)', border: '1px solid var(--border)', color: 'white', fontSize: '0.85rem' }}
+                                                >
+                                                    <option value="" style={{ background: '#0f172a' }}>{t('fund')}</option>
+                                                    {funds.map(f => <option key={f.id} value={f.id} style={{ background: '#0f172a' }}>{f.name}</option>)}
+                                                </select>
+
                                                 <input
                                                     type="number"
                                                     placeholder="0.00"
+                                                    required
+                                                    min="0.01"
+                                                    step="0.01"
                                                     value={alloc.amount}
                                                     onChange={(e) => handleAllocationChange(idx, 'amount', e.target.value)}
-                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#1e293b', fontSize: '0.9rem' }}
+                                                    className="glass-input"
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '10px', background: 'hsla(var(--bg-card)/0.4)', border: '1px solid var(--border)', color: 'white', fontSize: '0.85rem' }}
                                                 />
                                                 <button
                                                     type="button"
@@ -588,7 +659,8 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                         value={txNotes}
                                         onChange={(e) => setTxNotes(e.target.value)}
                                         placeholder={t('optionalNotesLabel')}
-                                        style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'white', border: '1px solid #cbd5e1', color: '#1e293b', fontSize: '0.9rem', minHeight: '80px', resize: 'vertical' }}
+                                        className="glass-input"
+                                        style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'hsla(var(--bg-card)/0.4)', border: '1px solid var(--border)', color: 'white', fontSize: '0.9rem', minHeight: '80px', resize: 'vertical' }}
                                     />
                                 </div>
 
@@ -614,7 +686,14 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
                             className="glass-card"
-                            style={{ width: '100%', maxWidth: '500px', padding: '2.5rem', borderRadius: '24px' }}
+                            style={{ 
+                                width: '100%', 
+                                maxWidth: '540px', 
+                                maxHeight: '90vh',
+                                overflowY: 'auto',
+                                padding: window.innerWidth < 768 ? '1.5rem' : '2.5rem', 
+                                borderRadius: '32px' 
+                            }}
                             onClick={e => e.stopPropagation()}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>

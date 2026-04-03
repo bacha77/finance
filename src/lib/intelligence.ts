@@ -20,7 +20,8 @@ export const predictNextMonth = (ledger: Transaction[]) => {
     const monthlyData: Record<string, { in: number; out: number }> = {};
     
     ledger.forEach(tx => {
-        const date = new Date(tx.date);
+        const date = new Date(tx.date || (tx as any).created_at);
+        if (isNaN(date.getTime())) return;
         const key = `${date.getFullYear()}-${date.getMonth()}`;
         if (!monthlyData[key]) monthlyData[key] = { in: 0, out: 0 };
         
@@ -53,7 +54,7 @@ export const predictNextMonth = (ledger: Transaction[]) => {
 /**
  * Detects financial anomalies (e.g., unusually high expenses).
  */
-export const detectAnomalies = (ledger: Transaction[]) => {
+export const detectAnomalies = (ledger: Transaction[], language: string = 'en-US') => {
     if (ledger.length < 10) return [];
     
     const avgExpense = ledger
@@ -64,6 +65,7 @@ export const detectAnomalies = (ledger: Transaction[]) => {
         .filter(t => t.type === 'out' && t.amount > avgExpense * 2.5)
         .map(t => ({
             ...t,
-            reason: 'High spike detected ( > 2.5x average)'
+            reason: 'High spike detected ( > 2.5x average)',
+            formattedDate: new Date((t.date || (t as any).created_at) || new Date()).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: '2-digit', year: 'numeric' })
         }));
 };

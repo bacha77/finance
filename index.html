@@ -862,15 +862,16 @@
         }
 
         .lang-btn {
-            padding: 4px 10px;
+            padding: 2px 4px;
             border: none;
             background: none;
             color: var(--text-muted);
-            font-size: 0.75rem;
-            font-weight: 700;
+            font-size: 0.55rem;
+            font-weight: 800;
             cursor: pointer;
-            border-radius: 6px;
+            border-radius: 4px;
             transition: all 0.2s;
+            text-transform: uppercase;
         }
 
         .lang-btn.active {
@@ -1318,8 +1319,8 @@
             <ul class="footer-links">
                 <li><a href="#features">Features</a></li>
                 <li><a href="#pricing">Pricing</a></li>
-                <li><a href="#">Privacy Policy</a></li>
-                <li><a href="#">Terms of Service</a></li>
+                <li><a href="javascript:void(0)" onclick="showLegal('privacy')" data-en="Privacy Policy" data-es="Política de Privacidad">Privacy Policy</a></li>
+                <li><a href="javascript:void(0)" onclick="showLegal('terms')" data-en="Terms of Service" data-es="Términos de Servicio">Terms of Service</a></li>
                 <li><a href="mailto:hello@storehousefinance.com">Contact</a></li>
             </ul>
         </div>
@@ -1381,6 +1382,114 @@
         // Initialize from storage
         const savedLang = localStorage.getItem('language') || 'en';
         if (savedLang === 'es') setLang('es');
+
+        const legalData = {
+          en: {
+            termsTitle: "Professional Terms of Service",
+            privacyTitle: "Comprehensive Privacy & Security Policy",
+            close: "Close Agreement",
+            lastUpdated: "Last Formal Update",
+            t1: "1. Strategic Service Scope & Authorized Ecclesiastical Use", 
+            c1: "Storehouse Finance delivers a highly specialized, cloud-native financial stewardship environment engineered specifically for the distinct operational requirements of ecclesiastical organizations. By accessing this platform, you certify that you represent an authorized church body and will maintain the integrity of its financial records. Our services provide unified fund accounting, automated payroll distribution, and precision budgeting tools designed to support your organization’s mission with absolute transparency.",
+            t2: "2. Account Stewardship & Advanced Security Protocols", 
+            c2: "Primary church administrators and financial officers bear the sole responsibility for the vigilant protection of their access credentials. This includes the secure management of passwords and the active use of Multi-Factor Authentication (MFA) where available. You must immediately notify our technical response team of any suspected security irregularities. The user organization remains strictly accountable for all activities conducted within its encrypted workspace.",
+            t3: "3. Sovereign Data Stewardship & Irrevocable Ownership", 
+            c3: "Your ecclesiastical organization retains absolute, perpetual sovereignty over all financial data, member registries, and recorded transactions stored within our infrastructure. Storehouse Finance serves as a secure, technical steward, utilizing geographically redundant systems and real-time synchronization to ensure your records are always accessible. We solemnly commit to never utilizing your sensitive organizational data for any secondary purposes without explicit authorization.",
+            t4: "4. Global Regulatory Compliance & Temporal Financial Governance", 
+            c4: "The managing organization is solely responsible for ensuring that its use of Storehouse Finance aligns with all applicable local, regional, and national tax regulations, including 501(c)(3) status compliance in the United States or equivalent charitable governance frameworks globally. While we provide the technical infrastructure for accurate stewardship, the final responsibility for legal tax filing and ecclesiastical transparency lies with your church administration.",
+            p1: "1. Financial Data Integrity & Military-Grade 256-Bit Protection", 
+            pc1: "We utilize advanced bank-grade, 256-bit AES encryption for all data at rest and in transit. Your sanctuary’s tithes, restricted offerings, and confidential payroll records are shielded by multi-layered cryptographic defenses. We maintain a zero-tolerance policy regarding unauthorized data access, ensuring that the sacred trust between your congregation and its financial records remains impeccably protected from third-party interference.",
+            p2: "2. Personal Privacy & Confidential Ministerial Data Usage", 
+            pc2: "Member profiles, contact information, and specific donation histories are classified as highly sensitive ministerial records. This data is utilized exclusively for generating tax-compliant documentation and facilitating internal ministry engagement. We implement 'Secret-Access' logic, ensuring that sensitive donor information is only viewable by staff members who have been specifically cleared by your church’s primary administrator.",
+            p3: "3. redundant Infrastructure & Immutable Audit Tracking", 
+            pc3: "Your data is mirrored across multiple high-security data centers featuring 24/7 physical monitoring and predictive threat detection. We maintain comprehensive, unalterable system logs of every administrative action and access request to provide a transparent audit trail. Our infrastructure is engineered for 99.99% reliability, ensuring that your financial leadership has constant access to the critical insights required for mission success.",
+            p4: "4. Absolute Transparency & Immediate Data Portability", 
+            pc4: "We are committed to total transparency in our role as your technical steward. You have the inherent right to export your congregation’s complete history in industry-standard spreadsheet or PDF formats at any time. We believe that your church should never be locked into a platform; you maintain total control over your records, ensuring that your financial legacy is portable and permanent, regardless of future technology shifts."
+          },
+          es: {
+            termsTitle: "Términos Profesionales de Servicio",
+            privacyTitle: "Política Integral de Privacidad y Seguridad",
+            close: "Cerrar Contrato",
+            lastUpdated: "Última Actualización Formal",
+            t1: "1. Alcance Estratégico y Uso Eclesiástico Autorizado", 
+            c1: "Storehouse Finance ofrece un entorno de mayordomía financiera especializado, diseñado específicamente para los requisitos operativos de las organizaciones eclesiásticas. Al acceder a esta plataforma, usted certifica que representa a un cuerpo eclesiástico autorizado y que mantendrá la integridad de sus registros financieros. Nuestros servicios proporcionan contabilidad unificada, distribución automatizada de nómina y herramientas de presupuesto de precisión para apoyar su misión.",
+            t2: "2. Mayordomía de Cuentas y Protocolos de Seguridad Avanzada", 
+            c2: "Los administradores principales y los oficiales financieros de la iglesia tienen la responsabilidad única de la protección vigilante de sus credenciales de acceso. Esto incluye la gestión segura de contraseñas y el uso activo de la autenticación de múltiples factores. Debe notificar inmediatamente a nuestro equipo de respuesta técnica sobre cualquier irregularidad de seguridad sospechosa. La organización sigue siendo estrictamente responsable de todas las actividades.",
+            t3: "3. Mayordomía Soberana de Datos y Propiedad Irrevocable", 
+            c3: "Su organización eclesiástica conserva la soberanía absoluta y perpetua sobre todos los datos financieros y registros de miembros almacenados en nuestra infraestructura. Storehouse Finance actúa como un administrador técnico seguro, utilizando sistemas redundantes y sincronización en tiempo real para garantizar que sus registros estén siempre accesibles. Nos comprometemos solemnemente a nunca utilizar sus datos organizativos para fines secundarios.",
+            t4: "4. Cumplimiento Regulatorio Global y Gobernanza Financiera Temporal", 
+            c4: "La organización gestora es la única responsable de garantizar que el uso de Storehouse Finance se alinee con todas las regulaciones fiscales locales, regionales y nacionales aplicables, incluyendo el estatus 501(c)(3) en los Estados Unidos o marcos equivalentes. Aunque proporcionamos la infraestructura técnica, la responsabilidad final de la transparencia eclesiástica recae en la administración de su iglesia.",
+            p1: "1. Integridad de Datos y Protección de Grado Militar de 256 bits", 
+            pc1: "Utilizamos cifrado avanzado AES de 256 bits para todos los datos. Los diezmos, las ofrendas restringidas y los registros de nómina confidenciales de su santuario están protegidos por defensas criptográficas de múltiples capas. Mantenemos una política de tolerancia cero con respecto al acceso no autorizado a los datos, asegurando que la confianza sagrada entre su congregación y sus registros permanezca impecablemente protegida.",
+            p2: "2. Privacidad Personal y Uso de Datos Ministeriales Confidenciales", 
+            pc2: "Los perfiles de los miembros y los historiales de donaciones se clasifican como registros ministeriales altamente sensibles. Estos datos se utilizan exclusivamente para generar documentación que cumple con los impuestos y facilitar el compromiso ministerial interno. Implementamos una lógica de 'Acceso Secreto', asegurando que la información sensible de los donantes solo sea visible para el personal autorizado por el administrador.",
+            p3: "3. Infraestructura Redundante y Seguimiento de Auditoría Inmutable", 
+            pc3: "Sus datos se reflejan en múltiples centros de datos de alta seguridad con monitoreo físico las 24 horas y detección predictiva de amenazas. Mantenemos registros de sistema completos e inalterables de cada acción administrativa para proporcionar una pista de auditoría transparente. Nuestra infraestructura está diseñada para una confiabilidad del 99.99%, asegurando que su liderazgo financiero tenga acceso constante.",
+            p4: "4. Transparencia Absoluta y Portabilidad Inmediata de Datos", 
+            pc4: "Estamos comprometidos con la transparencia total en nuestra función como su administrador técnico. Usted tiene el derecho inherente de exportar el historial completo de su congregación en formatos de hoja de cálculo o PDF estándar en cualquier momento. Creemos que su iglesia nunca debería estar bloqueada en una plataforma; usted mantiene el control total sobre sus registros, asegurando que su legado financiero sea portátil y permanente."
+          }
+        };
+
+        function showLegal(type) {
+          const lang = localStorage.getItem('language') || 'en';
+          const data = legalData[lang] || legalData['en'];
+          const isTerms = type === 'terms';
+          
+          const title = isTerms ? data.termsTitle : data.privacyTitle;
+          const section1 = isTerms ? data.t1 : data.p1;
+          const content1 = isTerms ? data.c1 : data.pc1;
+          const section2 = isTerms ? data.t2 : data.p2;
+          const content2 = isTerms ? data.c2 : data.pc2;
+          const section3 = isTerms ? data.t3 : data.p3;
+          const content3 = isTerms ? data.c3 : data.pc3;
+          const section4 = isTerms ? data.t4 : data.p4;
+          const content4 = isTerms ? data.c4 : data.pc4;
+
+          const modal = document.createElement('div');
+          modal.style = "position:fixed; inset:0; z-index:10000; background:rgba(2,6,23,0.95); backdrop-filter:blur(16px); display:flex; align-items:center; justify-content:center; padding:1rem;";
+          modal.id = "legal-modal";
+          modal.innerHTML = `
+            <div style="width:95%; max-width:640px; max-height:85vh; background:#0f172a; border:1px solid rgba(255,255,255,0.1); border-radius:24px; box-shadow:0 30px 60px -12px rgba(0,0,0,0.7); overflow:hidden; display:flex; flex-direction:column; animation: modalFadeIn 0.3s ease-out;">
+              <style>
+                @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+                .legal-content::-webkit-scrollbar { width: 6px; }
+                .legal-content::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+                .legal-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+              </style>
+              <div style="padding:2rem; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+                <div>
+                  <h2 style="color:white; font-size:1.5rem; font-weight:900; letter-spacing:-0.02em; margin:0;">${title}</h2>
+                  <p style="color:#64748b; font-size:0.85rem; font-weight:500; margin-top:4px; margin-bottom:0;">${data.lastUpdated}: March 2026</p>
+                </div>
+                <button onclick="document.getElementById('legal-modal').remove()" style="width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.04); border:none; color:#94a3b8; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.2rem;">&times;</button>
+              </div>
+              <div class="legal-content" style="padding:2rem; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:2rem;">
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🛡️</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section1}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content1}</p></div>
+                </div>
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🔒</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section2}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content2}</p></div>
+                </div>
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">📜</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section3}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content3}</p></div>
+                </div>
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🏢</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section4}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content4}</p></div>
+                </div>
+              </div>
+              <div style="padding:1.5rem 2rem; border-top:1px solid rgba(255,255,255,0.05); text-align:right; flex-shrink:0; background: rgba(255,255,255,0.02);">
+                <button onclick="document.getElementById('legal-modal').remove()" style="padding:0.8rem 2.5rem; border-radius:14px; background:linear-gradient(135deg, #2563eb, #1d4ed8); color:white; border:none; font-weight:800; font-family:'Inter', sans-serif; cursor:pointer; font-size:0.9rem; letter-spacing:0.02em; box-shadow:0 8px 20px -4px rgba(37,99,235,0.4);">
+                  ${data.close}
+                </button>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(modal);
+        }
     </script>
 </body>
 

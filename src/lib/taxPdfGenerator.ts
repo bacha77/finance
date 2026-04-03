@@ -1,17 +1,10 @@
 import jsPDF from 'jspdf';
+import { calculatePayroll } from './payrollUtils';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 
-const calcTaxes = (gross: number, isEmployee: boolean) => {
-    if (!isEmployee) return { gross, ss: 0, medicare: 0, federal: 0, withholding: 0, net: gross };
-    const ss = gross * 0.062;
-    const medicare = gross * 0.0145;
-    const federal = gross * 0.12;
-    const withholding = ss + medicare + federal;
-    return { gross, ss, medicare, federal, withholding, net: gross - withholding };
-};
 
 const TAX_YEAR = '2025';
 
@@ -73,9 +66,9 @@ function footer(doc: jsPDF, note: string) {
 }
 
 // ── W-2 Generator ────────────────────────────────────────────────────────────
-export function generateW2(employee: { name: string; role: string; salary: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
+export function generateW2(employee: { name: string; role: string; salary: number; housingAllowance?: number; stateTaxRate?: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
     const { doc, churchName, ein } = baseDoc(church.name, church.ein);
-    const taxes = calcTaxes(employee.salary * 12, true); // Annualize monthly salary
+    const taxes = calculatePayroll(employee.salary * 12, (employee.housingAllowance || 0) * 12, true, employee.stateTaxRate || 0.05);
     const addr = church.address || '123 Church Street, City, ST 00000';
 
     pageHeader(doc, 'Form W-2', 'Wage and Tax Statement', TAX_YEAR, church.logo_url);
@@ -106,11 +99,11 @@ export function generateW2(employee: { name: string; role: string; salary: numbe
     y += 12;
 
     const boxes: [string, string][] = [
-        ['1  Wages, Tips, Other Comp', fmt(taxes.gross)],
-        ['2  Federal Income Tax Withheld', fmt(taxes.federal)],
+        ['1  Wages, Tips, Other Comp', fmt(taxes.taxableGross)],
+        ['2  Federal Income Tax Withheld', fmt(taxes.federalTax)],
         ['3  Social Security Wages', fmt(taxes.gross)],
-        ['4  Social Security Tax Withheld', fmt(taxes.ss)],
-        ['5  Medicare Wages and Tips', fmt(taxes.gross)],
+        ['4  Social Security Tax Withheld', fmt(taxes.socialSecurity)],
+        ['5  Medicare Wages and Tips', fmt(taxes.taxableGross)],
         ['6  Medicare Tax Withheld', fmt(taxes.medicare)],
         ['12 See Instructions for Box 12', ''],
         ['16 State Wages, Tips, etc.', fmt(taxes.gross)],
@@ -136,11 +129,13 @@ export function generateW2(employee: { name: string; role: string; salary: numbe
 
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(10, 36, 90);
     doc.text('ANNUAL COMPENSATION SUMMARY', 52, y + 17);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+    doc.text(`(Includes ${fmt(taxes.housingAllowance)} Ministerial Housing Allowance)`, 235, y + 17);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(40, 40, 40);
 
     const sumItems = [
         ['Gross Annual Wages:', fmt(taxes.gross)],
-        ['Total Withholding:', fmt(taxes.withholding)],
+        ['Total Withholding:', fmt(taxes.totalWithholding)],
         ['Net Pay (Estimated):', fmt(taxes.net)],
     ];
     sumItems.forEach(([label, val], i) => {
@@ -224,23 +219,29 @@ export function generate941(staff: any[], church: { name: string; ein: string; l
     y += 40;
 
     const employees = staff.filter((s: any) => s.type === 'Full-time' || s.type === 'Part-time');
-    const quarterlyGross = employees.reduce((sum: number, s: any) => sum + (s.salary * 3), 0);
-    const quarterlyFed = quarterlyGross * 0.12;
-    const quarterlySSEmp = quarterlyGross * 0.062;
-    const quarterlySSEmr = quarterlyGross * 0.062;
-    const quarterlyMedEmp = quarterlyGross * 0.0145;
-    const quarterlyMedEmr = quarterlyGross * 0.0145;
-    const totalLiability = quarterlyFed + quarterlySSEmp + quarterlySSEmr + quarterlyMedEmp + quarterlyMedEmr;
+    const quarterlyTotals = employees.reduce((acc, s) => {
+        const t = calculatePayroll(s.salary * 3, (s.housing_allowance || 0) * 3, true, s.state_tax_rate || 0.05);
+        return {
+            gross: acc.gross + t.gross,
+            taxable: acc.taxable + t.taxableGross,
+            fed: acc.fed + t.federalTax,
+            ss: acc.ss + t.socialSecurity,
+            med: acc.med + t.medicare,
+            liability: acc.liability + t.federalTax + (t.socialSecurity * 2) + (t.medicare * 2)
+        };
+    }, { gross: 0, taxable: 0, fed: 0, ss: 0, med: 0, liability: 0 });
+
+    const totalLiability = quarterlyTotals.liability;
 
     const lines: [string, string][] = [
         ['Line 1  — Number of employees who received wages', `${employees.length}`],
-        ['Line 2  — Wages, tips, and other compensation', fmt(quarterlyGross)],
-        ['Line 3  — Federal income tax withheld from wages', fmt(quarterlyFed)],
-        ['Line 5a — Taxable SS wages × 12.4%', fmt(quarterlySSEmp + quarterlySSEmr)],
-        ['Line 5c — Taxable Medicare wages × 2.9%', fmt(quarterlyMedEmp + quarterlyMedEmr)],
-        ['Line 6  — Total taxes before adjustments', fmt(quarterlyFed + quarterlySSEmp + quarterlySSEmr + quarterlyMedEmp + quarterlyMedEmr)],
+        ['Line 2  — Wages, tips, and other compensation', fmt(quarterlyTotals.gross)],
+        ['Line 3  — Federal income tax withheld from wages', fmt(quarterlyTotals.fed)],
+        ['Line 5a — Taxable SS wages × 12.4%', fmt(quarterlyTotals.ss * 2)],
+        ['Line 5c — Taxable Medicare wages × 2.9%', fmt(quarterlyTotals.med * 2)],
+        ['Line 6  — Total taxes before adjustments', fmt(quarterlyTotals.liability)],
         ['Line 12 — Total taxes after adjustments', fmt(totalLiability)],
-        ['Line 14 — Balance due', fmt(Math.max(0, totalLiability - quarterlyFed))],
+        ['Line 14 — Balance due', fmt(Math.max(0, totalLiability - quarterlyTotals.fed))],
     ];
 
     lines.forEach(([label, value]) => {
@@ -268,15 +269,16 @@ export function generateW3(staff: any[], church: { name: string; ein: string; lo
     const employees = staff.filter((s: any) => s.type === 'Full-time' || s.type === 'Part-time');
     const totals = employees.reduce(
         (acc: any, s: any) => {
-            const t = calcTaxes(s.salary * 12, true);
+            const t = calculatePayroll(s.salary * 12, (s.housing_allowance || 0) * 12, true, s.state_tax_rate || 0.05);
             return {
                 gross: acc.gross + t.gross,
-                ss: acc.ss + t.ss,
+                taxable: acc.taxable + t.taxableGross,
+                ss: acc.ss + t.socialSecurity,
                 medicare: acc.medicare + t.medicare,
-                federal: acc.federal + t.federal,
+                federal: acc.federal + t.federalTax,
             };
         },
-        { gross: 0, ss: 0, medicare: 0, federal: 0 }
+        { gross: 0, taxable: 0, ss: 0, medicare: 0, federal: 0 }
     );
 
     pageHeader(doc, 'Form W-3', 'Transmittal of Wage and Tax Statements', TAX_YEAR, church.logo_url);
@@ -296,11 +298,11 @@ export function generateW3(staff: any[], church: { name: string; ein: string; lo
     y += 12;
 
     const boxes941 = [
-        ['1  Wages, Tips, Other Compensation', fmt(totals.gross)],
+        ['1  Wages, Tips, Other Compensation', fmt(totals.taxable)],
         ['2  Federal Income Tax Withheld', fmt(totals.federal)],
-        ['3  Social Security Wages', fmt(totals.gross)],
+        ['3  Social Security Wages', fmt(totals.taxable)],
         ['4  Social Security Taxes Withheld', fmt(totals.ss)],
-        ['5  Medicare Wages', fmt(totals.gross)],
+        ['5  Medicare Wages', fmt(totals.taxable)],
         ['6  Medicare Tax Withheld', fmt(totals.medicare)],
     ];
 

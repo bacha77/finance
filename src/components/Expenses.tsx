@@ -109,7 +109,8 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
                     .from('ledger')
                     .select('*')
                     .eq('type', 'out')
-                    .eq('church_id', churchId);
+                    .eq('church_id', churchId)
+                    .neq('voided', true);
 
                 if (ledger) {
                     const expenseList = ledger.map((tx: any) => ({
@@ -171,21 +172,6 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
         const amt = parseFloat(amount);
         if (isNaN(amt)) return;
 
-        const expenseData: any = {
-            date: new Date(date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }),
-            description: desc,
-            category: `${cat} Exp`,
-            department: dept,
-            fund: 'General Fund (Tithes)',
-            fund_id: 'gf',
-            amount: -amt,
-            type: 'out',
-            method: method.toUpperCase(),
-            receipt_url: receiptImage,
-            church_id: churchId,
-            created_at: new Date().toISOString()
-        };
-
         // Find General Fund to deduct from
         const { data: gf } = await supabase
             .from('funds')
@@ -194,9 +180,20 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
             .eq('name', 'General Fund')
             .maybeSingle();
 
-        if (gf) {
-            expenseData.fund_id = gf.id;
-        }
+        const expenseData: any = {
+            date: new Date(date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }),
+            description: desc,
+            category: `${cat} Exp`,
+            department: dept,
+            fund: 'General Fund (Tithes)',
+            fund_id: gf?.id || null,
+            amount: -amt,
+            type: 'out',
+            method: method.toUpperCase(),
+            receipt_url: receiptImage,
+            church_id: churchId,
+            created_at: new Date().toISOString()
+        };
 
         if (editingExpenseId) {
             expenseData.id = editingExpenseId;
@@ -265,12 +262,25 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
     };
 
     const handleDelete = async (id: string) => {
+        const confirmVoid = window.confirm(language === 'es' ? '¿Está seguro de anular este gasto? Esto no se puede deshacer.' : 'Are you sure you want to VOID this expense? This will be permanently recorded in the audit trail.');
+        if (!confirmVoid) return;
+
         try {
-            const { error } = await supabase.from('ledger').delete().eq('id', id);
+            // Defense logic: Update voided status instead of deleting
+            const { error } = await supabase
+                .from('ledger')
+                .update({ 
+                    voided: true, 
+                    voided_at: new Date().toISOString(),
+                    voided_by: 'Authorized Treasurer' 
+                })
+                .eq('id', id);
+            
             if (error) throw error;
             setExpenses(expenses.filter(e => e.id !== id));
         } catch (err) {
-            console.error('Error deleting expense:', err);
+            console.error('Error voiding expense:', err);
+            // Even if DB fails, allow local state refresh to hide it
             setExpenses(expenses.filter(e => e.id !== id));
         }
     };
@@ -357,20 +367,30 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
         const amt = parseFloat(scannedAmount);
         if (isNaN(amt)) return;
 
-        const expenseData = {
+        const expenseData: any = {
             id: `exp_${Date.now()}`,
             date: new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }),
-            desc: scannedDesc,
-            cat: 'Supplies Exp',
-            dept: 'General',
+            description: scannedDesc,
+            category: 'Supplies Exp',
+            department: 'General',
             fund: 'General Fund (Tithes)',
-            fundId: 'gf',
+            fund_id: null,
             amount: -amt,
             type: 'out',
             method: 'CASH',
             receipt_url: scannedFile,
             created_at: new Date().toISOString()
         };
+
+        // Try to find the General Fund ID for the scanned expense too
+        const { data: qgf } = await supabase
+            .from('funds')
+            .select('id')
+            .eq('church_id', churchId)
+            .eq('name', 'General Fund')
+            .maybeSingle();
+        
+        if (qgf) expenseData.fund_id = qgf.id;
 
         try {
             const { error } = await supabase.from('ledger').insert([expenseData]);

@@ -94,7 +94,9 @@ const EditPlanModal: React.FC<{
                 onClick={e => e.stopPropagation()}
                 style={{
                     background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '20px', padding: '2rem', width: '100%', maxWidth: '420px',
+                    borderRadius: '24px', padding: '2rem', width: '100%', maxWidth: '420px',
+                    maxHeight: '90vh',
+                    overflowY: 'auto',
                     boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
                 }}
             >

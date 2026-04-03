@@ -13,7 +13,14 @@ import {
   Save,
   ChevronLeft,
   Upload,
-  Loader2
+  Loader2,
+  User,
+  Mail,
+  Camera,
+  Clock,
+  Trash2,
+  AlertTriangle,
+  RotateCcw
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,11 +32,22 @@ import { useLanguage } from '../contexts/LanguageContext';
 interface SettingsProps {
   churchData?: any;
   onUpdateChurch?: (data: any) => Promise<void>;
+  initialSection?: 'grid' | 'user_profile' | 'identity' | 'financial' | 'billing' | 'security' | 'appearance' | 'notifications' | 'pricing';
+  profile?: any;
 }
 
-const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
+const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initialSection = 'grid', profile }) => {
   const { t } = useLanguage();
-  const [activeSection, setActiveSection] = useState<'grid' | 'identity' | 'financial' | 'billing' | 'security' | 'appearance' | 'notifications' | 'pricing'>('grid');
+  const [activeSection, setActiveSection] = useState<any>(initialSection);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  React.useEffect(() => {
+    if (initialSection) setActiveSection(initialSection);
+  }, [initialSection]);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
 
   React.useEffect(() => {
@@ -111,14 +129,108 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
     }
   };
 
+  const handleCancelSubscription = async () => {
+    setShowCancelModal(true);
+  };
+
+  const confirmCancellation = async () => {
+    if (!onUpdateChurch || !cancelReason.trim()) return;
+    setIsCancelling(true);
+    try {
+      await onUpdateChurch({ 
+        cancel_at_period_end: true, 
+        cancellation_reason: cancelReason 
+      });
+      setShowCancelModal(false);
+      setCancelReason('');
+    } catch (err) {
+      console.error('Cancel error:', err);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleHardReset = async () => {
+    if (!churchData?.id) return;
+    setIsResetting(true);
+    try {
+        const cid = churchData.id;
+        
+        // 1. Clear Financial History (Ledger & Payroll)
+        const { error: err1 } = await supabase.from('ledger').delete().eq('church_id', cid);
+        const { error: err2 } = await supabase.from('payroll').delete().eq('church_id', cid);
+        
+        // 2. Reset Accounting Balances (Funds & Departments)
+        const { error: err3 } = await supabase.from('funds').update({ balance: 0 }).eq('church_id', cid);
+        const { error: err4 } = await supabase.from('departments').update({ spent_so_far: 0 }).eq('church_id', cid);
+        
+        // 3. Reset Strategy & Goals
+        const { error: err5 } = await supabase.from('goals').update({ current_amount: 0 }).eq('church_id', cid);
+        
+        // 4. Reset Staff Lifecycle Status
+        const { error: err6 } = await supabase.from('staff').update({ 
+            status: 'Pending', 
+            last_paid: 'Never' 
+        }).eq('church_id', cid);
+        
+        if (err1 || err2 || err3 || err4 || err5 || err6) {
+            console.error('Reset components error state:', { err1, err2, err3, err4, err5, err6 });
+            throw new Error("Hard Reset failed for some components. Please check your administrative permissions.");
+        }
+        
+        // 5. Purge Local Storage to prevent stale data hydration
+        const keysToPurge = [
+            'sanctuary_funds',
+            'sanctuary_ledger',
+            'sanctuary_members',
+            'sanctuary_departments',
+            'sanctuary_payroll_staff',
+            'sanctuary_budgets',
+            'sanctuary_expense_categories',
+            'sanctuary_sidebar_collapsed',
+            'stardust_ui_state'
+        ];
+        keysToPurge.forEach(key => localStorage.removeItem(key));
+        
+        alert("Board Cleared Successfully. The workspace has been reset to its Day One state.");
+        setActiveSection('grid');
+        setShowResetConfirm(false);
+        
+        // 6. Force full application synchronization
+        window.location.reload();
+    } catch (err: any) {
+        console.error('Reset error:', err);
+        alert(err.message || "Failed to reset data. Ensure you have owner-level permissions.");
+    } finally {
+        setIsResetting(false);
+    }
+  };
+
+  const handleUndoCancellation = async () => {
+    if (!onUpdateChurch) return;
+    try {
+      await onUpdateChurch({ cancel_at_period_end: false });
+    } catch (err) {
+      console.error('Undo cancel error:', err);
+    }
+  };
+
   const settingsCards = [
+    {
+      id: 'user_profile',
+      title: t('header_profile'),
+      desc: 'Manage your personal account details and public name.',
+      icon: User,
+      color: '#6366f1',
+      bg: 'rgba(99, 102, 241, 0.1)'
+    },
     {
       id: 'identity',
       title: t('churchIdentity'),
       desc: t('churchIdentityDesc'),
       icon: Building2,
-      color: '#6366f1',
-      bg: 'rgba(99, 102, 241, 0.1)'
+      color: '#ec4899',
+      bg: 'rgba(236, 72, 153, 0.1)'
     },
     {
       id: 'financial',
@@ -159,6 +271,14 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
       icon: Bell,
       color: '#06b6d4',
       bg: 'rgba(6, 182, 212, 0.1)'
+    },
+    {
+      id: 'maintenance',
+      title: 'Maintenance',
+      desc: 'System diagnostics and congregational data reset.',
+      icon: RotateCcw,
+      color: '#64748b',
+      bg: 'rgba(100, 116, 139, 0.1)'
     }
   ];
 
@@ -443,6 +563,27 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
             </div>
           )}
 
+          {subStatus?.isCancelled && (
+            <div style={{ background: 'hsla(var(--p)/0.1)', border: '1px solid hsla(var(--p)/0.2)', padding: '1.5rem', borderRadius: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'hsla(var(--p)/0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Clock size={20} color="hsl(var(--p))" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: 'white', fontWeight: 800, fontSize: '1rem' }}>Cancellation Pending</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                  Your subscription will remain active until <strong>{subStatus.subscriptionEndDate?.toLocaleDateString()}</strong>. After this date, your account will be downgraded to the free plan.
+                </div>
+              </div>
+              <button 
+                onClick={handleUndoCancellation}
+                className="btn btn-ghost" 
+                style={{ background: 'white', color: 'black', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 800 }}
+              >
+                Undo Cancellation
+              </button>
+            </div>
+          )}
+
           <div style={{ 
             background: `linear-gradient(135deg, ${currentPlan?.color}26 0%, rgba(15, 23, 42, 0.6) 100%)`, 
             padding: '2rem', borderRadius: '1.5rem', border: `1px solid ${currentPlan?.color}33`,
@@ -491,6 +632,22 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
             </div>
           </div>
 
+          {!subStatus?.isCancelled && (
+            <div style={{ marginTop: '0.5rem', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid hsla(var(--error)/0.1)', background: 'hsla(var(--error)/0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>Cancel Subscription</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Stop automatic renewal at the end of your billing cycle.</div>
+              </div>
+              <button 
+                onClick={handleCancelSubscription}
+                className="btn btn-ghost" 
+                style={{ color: 'hsl(var(--error))', fontWeight: 700 }}
+              >
+                {t('cancelSubscription') || 'Cancel Subscription'}
+              </button>
+            </div>
+          )}
+
           <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.25rem' }}>{t('planLimits')}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -506,6 +663,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
               </div>
             </div>
           </div>
+
         </div>
       </motion.div>
     );
@@ -605,6 +763,69 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
               </label>
             ))}
           </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const renderUserProfile = () => (
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+      {renderSectionHeader(t('header_profile'), 'Manage your personal account information and appearance.')}
+      
+      <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)', display: 'flex', gap: '2rem', alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+             <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), var(--primary-light))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 900, color: 'white' }}>
+                {profile?.full_name?.charAt(0) || 'U'}
+             </div>
+             <button style={{ position: 'absolute', bottom: 0, right: 0, width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}>
+                <Camera size={14} />
+             </button>
+          </div>
+          <div>
+             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.25rem' }}>{profile?.full_name}</h3>
+             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{profile?.role || 'Organization Member'}</p>
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Full Name</label>
+              <div style={{ position: 'relative' }}>
+                <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="text" 
+                  defaultValue={profile?.full_name}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem 0.875rem 0.875rem 2.5rem', borderRadius: '0.75rem', color: 'white', outline: 'none' }}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Email Address</label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="email" 
+                  disabled
+                  defaultValue={profile?.email || 'user@example.com'}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', padding: '0.875rem 0.875rem 0.875rem 2.5rem', borderRadius: '0.75rem', color: 'var(--text-muted)', outline: 'none', cursor: 'not-allowed' }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.1)', padding: '1.5rem', borderRadius: '1rem' }}>
+           <h4 style={{ color: 'white', fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.5rem' }}>Account Security</h4>
+           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '1rem' }}>To change your password or update sensitive account information, please visit the security section.</p>
+           <button 
+             onClick={() => setActiveSection('security')}
+             className="btn btn-ghost" 
+             style={{ fontSize: '0.75rem', color: '#ef4444' }}
+           >
+              Update Security Settings →
+           </button>
         </div>
       </div>
     </motion.div>
@@ -781,6 +1002,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
             </div>
             {renderGrid()}
           </motion.div>
+        ) : activeSection === 'user_profile' ? (
+          renderUserProfile()
         ) : activeSection === 'identity' ? (
           renderIdentity()
         ) : activeSection === 'financial' ? (
@@ -795,7 +1018,143 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch }) => {
           renderNotifications()
         ) : activeSection === 'pricing' ? (
           renderPricing()
+        ) : activeSection === 'maintenance' ? (
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+            {renderSectionHeader('Maintenance', 'Manage system health and data lifecycle.')}
+            <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem', color: '#ef4444' }}>
+                  <AlertTriangle size={24} />
+                  <h3 style={{ fontSize: '1rem', fontWeight: 800 }}>Danger Zone: Congregational Hard Reset</h3>
+                </div>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                  Clicking the button below will permanently delete all transaction history (ledger), clear all payroll records, and reset all fund balances to zero for <strong>{churchData?.name}</strong>. This action is <strong>irreversible</strong> and will affect all staff members.
+                </p>
+                <button 
+                  onClick={() => setShowResetConfirm(true)}
+                  className="btn btn-primary"
+                  style={{ background: '#ef4444', border: 'none', padding: '0.875rem 2rem', fontWeight: 800, color: 'white' }}
+                >
+                  <Trash2 size={18} /> Hard Reset Church Data
+                </button>
+              </div>
+            </div>
+          </motion.div>
         ) : null}
+      </AnimatePresence>
+      {/* Cancellation Reason Modal */}
+      <AnimatePresence>
+        {showCancelModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0,
+              backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 1000, padding: '1rem'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              style={{
+                width: '100%', maxWidth: '400px', background: 'var(--bg-card)',
+                borderRadius: '1.5rem', border: '1px solid var(--border)', padding: '2rem'
+              }}
+            >
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '0.5rem' }}>Cancel Subscription</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+                We're sorry to see you go! Please let us know why you're cancelling so we can improve our service.
+              </p>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Reason (Mandatory)</label>
+                <textarea
+                  required
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Tell us what influenced your decision..."
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem', borderRadius: '0.75rem', color: 'white', outline: 'none', resize: 'none', height: '100px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button 
+                  className="btn btn-ghost" 
+                  style={{ flex: 1 }}
+                  onClick={() => setShowCancelModal(false)}
+                >
+                  Keep Subscription
+                </button>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ flex: 1, background: '#ef4444' }}
+                  disabled={!cancelReason.trim() || isCancelling}
+                  onClick={confirmCancellation}
+                >
+                  {isCancelling ? <Loader2 className="spin" size={18} /> : 'Confirm Cancellation'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Hard Reset Confirmation Modal */}
+      <AnimatePresence>
+        {showResetConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0,
+              backgroundColor: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 2000, padding: '1rem'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 30 }}
+              style={{
+                width: '100%', maxWidth: '450px', background: 'var(--bg-card)',
+                borderRadius: '2rem', border: '1px solid #ef4444', padding: '3rem',
+                textAlign: 'center'
+              }}
+            >
+              <div style={{ width: '80px', height: '80px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', color: '#ef4444' }}>
+                <AlertTriangle size={40} />
+              </div>
+              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '1rem', color: 'white' }}>Are you absolutely sure?</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '2.5rem', lineHeight: 1.6 }}>
+                You are about to wipe all financial history and records. This will reset the entire platform to a "First Day" state. Only proceed if you have been authorized to clear the board.
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ background: '#ef4444', height: '56px', fontSize: '1rem', fontWeight: 900 }}
+                  disabled={isResetting}
+                  onClick={handleHardReset}
+                >
+                  {isResetting ? <Loader2 className="spin" size={24} /> : 'YES, WIPE ALL RECORDS'}
+                </button>
+                <button 
+                  className="btn btn-ghost" 
+                  style={{ height: '56px', fontSize: '1rem', fontWeight: 800 }}
+                  onClick={() => setShowResetConfirm(false)}
+                >
+                  CANCEL & GO BACK
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

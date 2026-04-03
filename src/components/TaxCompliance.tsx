@@ -20,7 +20,7 @@ interface TaxComplianceProps {
     churchId?: string;
 }
 
-const TAX_YEAR = '2025';
+const TAX_YEAR = new Date().getFullYear().toString();
 
 const FORM_INFO: Record<string, { title: string; desc: string; dueDate: string; icon: React.ElementType; color: string; bg: string }> = {
     'W-2': {
@@ -170,16 +170,13 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                 if (staffData && staffData.length > 0) {
                     setStaff(staffData.map((s: any) => ({
                         id: s.id, name: s.name, role: s.role, type: s.type,
-                        salary: s.salary, status: s.status, frequency: s.frequency,
+                        salary: s.salary, 
+                        housingAllowance: s.housing_allowance || 0,
+                        stateTaxRate: s.state_tax_rate || 0.05,
+                        status: s.status, frequency: s.frequency,
                     })));
                 } else {
-                    setStaff([
-                        { name: 'Dr. Marcus Thorne', role: 'Senior Pastor', type: 'Full-time', salary: 7500 },
-                        { name: 'Sarah Jenkins', role: 'Worship Director', type: 'Full-time', salary: 5200 },
-                        { name: 'Kevin O\'Brian', role: 'Youth Pastor', type: 'Full-time', salary: 4800 },
-                        { name: 'Linda Vance', role: 'Cleaner', type: 'Contractor', salary: 1200 },
-                        { name: 'Tom Harris', role: 'IT Support', type: 'Contractor', salary: 2800 },
-                    ]);
+                    setStaff([]);
                 }
 
                 const income = ledger?.filter((t: any) => t.type === 'in').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 28450;
@@ -223,8 +220,11 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
     const contractors = staff.filter(s => s.type === 'Contractor');
 
     const ytdWithholding = employees.reduce((sum, s) => {
-        const gross = s.salary * 12;
-        return sum + gross * (0.062 + 0.0145 + 0.12);
+        const annualGross = s.salary * 12;
+        const annualHousing = (s.housingAllowance || 0) * 12;
+        const taxable = Math.max(0, annualGross - annualHousing);
+        // Simplified annual calc: FICA on full gross + Fed on taxable
+        return sum + (annualGross * (0.062 + 0.0145)) + (taxable * 0.12) + (taxable * (s.stateTaxRate || 0.05));
     }, 0);
 
     const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
@@ -343,7 +343,13 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                             person={`${emp.name} — ${emp.role}`}
                             year={TAX_YEAR}
                             status={dlStatus[`w2_${i}`] || 'idle'}
-                            onDownload={() => handleDownload(`w2_${i}`, () => generateW2(emp, church))}
+                            onDownload={() => handleDownload(`w2_${i}`, () => generateW2({
+                                name: emp.name, 
+                                role: emp.role, 
+                                salary: emp.salary, 
+                                housingAllowance: emp.housingAllowance,
+                                stateTaxRate: emp.stateTaxRate
+                            }, church))}
                         />
                     ))}
                     {employees.length > 0 && (

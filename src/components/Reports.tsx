@@ -32,6 +32,7 @@ interface LedgerEntry {
     dept?: string; // Fallback
     receipt_url?: string;
     receiptImage?: string; // Fallback
+    created_at?: string;
 }
 
 interface Fund {
@@ -49,45 +50,63 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
     const { t } = useLanguage();
     const [viewStatement, setViewStatement] = useState<StatementType>(null);
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
-    const selectedYear = new Date().getFullYear();
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [ledger, setLedger] = useState<LedgerEntry[]>([]);
     const [funds, setFunds] = useState<Fund[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [church, setChurch] = useState<any>(null);
 
+    const fetchData = async () => {
+        if (!churchId) return;
+        setIsLoading(true);
+        try {
+            const [{ data: ledgerData }, { data: fundsData }, { data: churchData }] = await Promise.all([
+                supabase.from('ledger').select('*').eq('church_id', churchId).neq('voided', true),
+                supabase.from('funds').select('*').eq('church_id', churchId),
+                supabase.from('churches').select('*').eq('id', churchId).single()
+            ]);
+            
+            if (ledgerData) setLedger(ledgerData);
+            if (fundsData) setFunds(fundsData);
+            if (churchData) setChurch(churchData);
+        } catch (err) {
+            console.error('Error fetching data for reports:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            if (!churchId) return;
-            setIsLoading(true);
-            try {
-                const [{ data: ledgerData }, { data: fundsData }, { data: churchData }] = await Promise.all([
-                    supabase.from('ledger').select('*').eq('church_id', churchId),
-                    supabase.from('funds').select('*').eq('church_id', churchId),
-                    supabase.from('churches').select('*').eq('id', churchId).single()
-                ]);
-                
-                if (ledgerData) setLedger(ledgerData);
-                if (fundsData) setFunds(fundsData);
-                if (churchData) setChurch(churchData);
-            } catch (err) {
-                console.error('Error fetching data for reports:', err);
-            } finally {
-                setIsLoading(false);
-            }
-        };
         fetchData();
-    }, []);
+
+        // Realtime sync for reports
+        const ledgerChannel = supabase.channel('ledger-reports')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger', filter: `church_id=eq.${churchId}` }, fetchData)
+            .subscribe();
+
+        const fundsChannel = supabase.channel('funds-reports')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'funds', filter: `church_id=eq.${churchId}` }, fetchData)
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(ledgerChannel);
+            supabase.removeChannel(fundsChannel);
+        };
+    }, [churchId]);
 
     const months = [t('month0'), t('month1'), t('month2'), t('month3'), t('month4'), t('month5'), t('month6'), t('month7'), t('month8'), t('month9'), t('month10'), t('month11')];
 
     const metrics = useMemo(() => {
         const filteredLedger = ledger.filter(tx => {
-            const txDate = new Date(tx.date);
+            const dateStr = tx.date;
+            if (!dateStr) return false;
+            // Use T12:00:00 to avoid timezone shifts for YYYY-MM-DD strings
+            const txDate = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`);
             return txDate.getMonth() === selectedMonth && txDate.getFullYear() === selectedYear;
         });
 
-        const income = filteredLedger.filter(tx => tx.type === 'in').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-        const expenses = filteredLedger.filter(tx => tx.type === 'out').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+        const income = filteredLedger.filter(tx => tx.type === 'in' || tx.type === 'revenue').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+        const expenses = filteredLedger.filter(tx => tx.type === 'out' || tx.type === 'expense').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
         const net = income - expenses;
         const totalAssets = funds.reduce((sum, f) => sum + (f.balance || 0), 0);
 
@@ -363,15 +382,15 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                     { cat: 'Sabbath School', dept: 'Education', amount: metrics.incomeByDept['Sabbath School'] || metrics.incomeByCat['Sabbath School'] || 0 },
                                     ...Object.entries(metrics.incomeByCat)
                                         .filter(([cat]) => !['Tithes', 'Offerings', 'Offering', 'Sabbath School'].includes(cat))
-                                        .map(([cat, amt]) => ({ cat, dept: 'Designated', amount: amt }))
+                                        .map(([cat, dept]) => ({ cat, dept: 'Designated', amount: dept as any }))
                                 ].map((item, i) => (
                                     <tr key={i}>
                                         <td>
                                             <span style={{ fontWeight: 800, color: 'white' }}>{item.cat}</span>
                                         </td>
-                                        <td style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{item.dept}</td>
+                                        <td style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{item.cat === 'Tithes' ? 'General Fund' : item.cat === 'Offerings' ? 'Local Church' : 'Designated'}</td>
                                         <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--success)', fontSize: '1.125rem' }}>
-                                            +${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            +${(item.amount as number).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
                                 ))}
@@ -412,62 +431,6 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                 </div>
                                 <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>${metrics.expenses.toLocaleString()}</span>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2rem', marginBottom: '4rem' }}>
-                <div className="card glass" style={{ padding: '2rem', background: 'rgba(16, 185, 129, 0.02)' }}>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <TrendingUp size={20} color="#10b981" /> {t('revenueBySource')}
-                    </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        {Object.entries(metrics.incomeByCat).length > 0 ? (
-                            Object.entries(metrics.incomeByCat).map(([cat, amt]) => (
-                                <div key={cat}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: '8px' }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>{cat}</span>
-                                        <span style={{ color: 'white', fontWeight: 700 }}>${amt.toLocaleString()} ({Math.round((amt / metrics.income) * 100)}%)</span>
-                                    </div>
-                                    <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
-                                        <div style={{ width: `${(amt / metrics.income) * 100}%`, height: '100%', background: '#10b981', borderRadius: '4px' }} />
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No revenue recorded this month.</p>
-                        )}
-                        <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
-                            <span>{t('totalDesignatedRevenue')}</span>
-                            <span style={{ color: '#10b981' }}>${metrics.income.toLocaleString()}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="card glass" style={{ padding: '2rem', background: 'rgba(239, 68, 68, 0.02)' }}>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <ArrowDownRight size={20} color="#ef4444" /> {t('expenseAllocation')}
-                    </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        {Object.entries(metrics.expenseByCat).length > 0 ? (
-                            Object.entries(metrics.expenseByCat).map(([cat, amt]) => (
-                                <div key={cat}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: '8px' }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>{cat}</span>
-                                        <span style={{ color: 'white', fontWeight: 700 }}>${amt.toLocaleString()} ({Math.round((amt / metrics.expenses) * 100)}%)</span>
-                                    </div>
-                                    <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
-                                        <div style={{ width: `${(amt / metrics.expenses) * 100}%`, height: '100%', background: '#ef4444', borderRadius: '4px' }} />
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No expenses recorded this month.</p>
-                        )}
-                        <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
-                            <span>{t('totalStewardshipBurn')}</span>
-                            <span style={{ color: '#ef4444' }}>${metrics.expenses.toLocaleString()}</span>
                         </div>
                     </div>
                 </div>
@@ -518,7 +481,24 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                     fontWeight: 700
                                 }}>
                                     <Calendar size={18} className="gradient-text" />
-                                    {months[selectedMonth]} {selectedYear}
+                                    <select 
+                                        value={selectedMonth} 
+                                        onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                                        style={{ background: 'transparent', color: 'white', border: 'none', fontWeight: 700, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '1rem' }}
+                                    >
+                                        {months.map((m, i) => (
+                                            <option key={m} value={i} style={{ background: '#0f172a' }}>{m}</option>
+                                        ))}
+                                    </select>
+                                    <select 
+                                        value={selectedYear} 
+                                        onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                                        style={{ background: 'transparent', color: 'white', border: 'none', fontWeight: 700, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '1rem' }}
+                                    >
+                                        {[2024, 2025, 2026, 2027].map(y => (
+                                            <option key={y} value={y} style={{ background: '#0f172a' }}>{y}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <button className="btn btn-primary" style={{ height: '56px', padding: '0 2rem' }}>
                                     <Plus size={20} /> {t('newAuditRequest')}

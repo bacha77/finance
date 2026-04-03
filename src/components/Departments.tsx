@@ -74,6 +74,12 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => 
         e.preventDefault();
         if (!newName) return;
 
+        if (newBudget < 0 || newSpent < 0) {
+            alert('Financial Integrity Error: Department budgets and spending must be non-negative.');
+            return;
+        }
+
+
         const newDept = {
             name: newName,
             head: newHead,
@@ -87,15 +93,27 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => 
         };
 
         try {
-            const { data, error } = await supabase
+            let { data, error } = await supabase
                 .from('departments')
                 .insert([newDept])
                 .select();
 
+            // SECOND CHANCE: If columns are missing, try standard insert
+            if (error && error.message?.includes('column')) {
+               console.warn('Budget columns missing, trying simple insert.');
+               const simpleDept = { ...newDept };
+               delete (simpleDept as any).annual_budget;
+               delete (simpleDept as any).spent_so_far;
+               const result = await supabase.from('departments').insert([simpleDept]).select();
+               error = result.error;
+               data = result.data;
+            }
+
             if (error) throw error;
             if (data) setDepartments([...departments, data[0]]);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error adding department to Supabase:', err);
+            alert(`Failed to create department: ${err.message || 'Check database connection'}`);
         }
 
         setShowAddModal(false);
@@ -118,14 +136,20 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => 
 
     const handleUpdateDepartment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newName || !currentEditId) return;
+        if (newBudget < 0 || newSpent < 0) {
+            alert('Financial Integrity Error: Department budgets and spending must be non-negative.');
+            return;
+        }
 
         const updatedDept = {
             name: newName,
             head: newHead,
             type: newType,
-            description: newDesc
+            description: newDesc,
+            annual_budget: newBudget,
+            spent_so_far: newSpent
         };
+
 
         try {
             const { error } = await supabase
@@ -134,8 +158,9 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => 
                 .eq('id', currentEditId);
 
             if (error) throw error;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error updating department in Supabase:', err);
+            alert(`Failed to update department: ${err.message}`);
         }
 
         setDepartments(departments.map(d =>
@@ -217,21 +242,21 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => 
                                 background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%)',
                                 borderRadius: '28px',
                                 border: '1px solid rgba(255,255,255,0.1)',
-                                padding: '2.5rem',
+                                padding: window.innerWidth < 768 ? '1.25rem' : '1.75rem',
                                 boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.25rem', color: 'white' }}>
                                 {isEditMode ? t('editDepartment') : t('newDepartment')}
                             </h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.875rem' }}>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem', fontSize: '0.8rem', fontWeight: 500 }}>
                                 {isEditMode ? t('updateDetailsDesc') : t('initializeMinistryDesc')}
                             </p>
 
                             <form onSubmit={isEditMode ? handleUpdateDepartment : handleAddDepartment}>
-                                <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('departmentName')}</label>
+                                <div style={{ marginBottom: '0.85rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('departmentName')}</label>
                                     <input
                                         type="text"
                                         required
@@ -241,8 +266,8 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => 
                                         style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
                                     />
                                 </div>
-                                <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('departmentHead')} <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>({t('customLabels')})</span></label>
+                                <div style={{ marginBottom: '0.85rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('departmentHead')} <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>({t('customLabels')})</span></label>
                                     <input
                                         type="text"
                                         value={newHead}
@@ -251,8 +276,8 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => 
                                         style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
                                     />
                                 </div>
-                                <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('classification')}</label>
+                                <div style={{ marginBottom: '0.85rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('classification')}</label>
                                     <select
                                         value={newType}
                                         onChange={(e) => setNewType(e.target.value as any)}
@@ -265,37 +290,41 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => 
                                         <option value="Conference">Conference</option>
                                     </select>
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>Annual Budget ($)</label>
+                                        <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>Annual Budget ($)</label>
                                         <input
                                             type="number"
+                                            min="0"
+                                            step="0.01"
                                             value={newBudget}
                                             onChange={(e) => setNewBudget(Number(e.target.value))}
                                             style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
                                         />
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>Spent So Far ($)</label>
+                                        <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>Spent So Far ($)</label>
                                         <input
                                             type="number"
+                                            min="0"
+                                            step="0.01"
                                             value={newSpent}
                                             onChange={(e) => setNewSpent(Number(e.target.value))}
                                             style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
                                         />
                                     </div>
                                 </div>
-                                <div style={{ marginBottom: '2rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('description')}</label>
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('description')}</label>
                                     <textarea
                                         value={newDesc}
                                         onChange={(e) => setNewDesc(e.target.value)}
                                         placeholder={t('briefPurposeDesc')}
-                                        style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', height: '60px', resize: 'none' }}
+                                        style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', height: '50px', resize: 'none', fontSize: '0.85rem' }}
                                     />
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button type="button" className="btn glass" style={{ flex: 1 }} onClick={handleCloseModal}>{t('cancel')}</button>
+                                    <button type="button" className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'white', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }} onClick={handleCloseModal}>{t('cancel')}</button>
                                     <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
                                         {isEditMode ? t('save') : t('new')}
                                     </button>

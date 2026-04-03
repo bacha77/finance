@@ -13,7 +13,8 @@ import {
     Phone,
     Edit3,
     Trash2,
-    Check
+    Check,
+    TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -148,9 +149,19 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
     }, [churchId]);
 
     useEffect(() => {
-        const savedLedger = localStorage.getItem('sanctuary_ledger');
-        if (savedLedger) setLedger(JSON.parse(savedLedger));
-    }, [showInvoiceModal]);
+        const fetchLedger = async () => {
+            if (!churchId) return;
+            const { data } = await supabase.from('ledger').select('*').eq('church_id', churchId).neq('voided', true);
+            if (data) setLedger(data);
+        };
+        fetchLedger();
+        
+        const channel = supabase.channel('member-portal-sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger', filter: `church_id=eq.${churchId}` }, fetchLedger)
+            .subscribe();
+            
+        return () => { supabase.removeChannel(channel); };
+    }, [churchId]);
 
     const months = Array.from({ length: 12 }, (_, i) => t(`month${i}`));
 
@@ -488,6 +499,25 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                 }}>
                                     {member.role}
                                 </span>
+                                <span style={{
+                                    fontSize: '0.65rem',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                    color: 'var(--success)',
+                                    fontWeight: 800,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                }}>
+                                    <TrendingUp size={10} />
+                                    {t('totalContribution') || 'Total'}: ${ledger
+                                        .filter(tx => tx.member === member.name && (tx.type === 'in' || tx.type === 'revenue'))
+                                        .reduce((sum, tx) => sum + (tx.amount || 0), 0)
+                                        .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
                             </div>
                             <div style={{ display: 'flex', gap: '1.5rem', marginTop: '6px', flexWrap: 'wrap' }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
@@ -603,43 +633,48 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                             initial={{ scale: 0.95, y: 10, opacity: 0 }}
                             animate={{ scale: 1, y: 0, opacity: 1 }}
                             exit={{ scale: 0.95, y: 10, opacity: 0 }}
+                            className="glass-card"
                             style={{
                                 width: '100%',
-                                maxWidth: '440px',
-                                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%)',
-                                borderRadius: '28px',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                padding: '2.5rem',
+                                maxWidth: '460px',
+                                maxHeight: '90vh',
+                                overflowY: 'auto',
+                                background: 'linear-gradient(135deg, rgba(30, 41, 59, 1) 0%, rgba(15, 23, 42, 1) 100%)',
+                                borderRadius: '32px',
+                                border: '1px solid var(--border)',
+                                padding: window.innerWidth < 768 ? '1.25rem' : '1.75rem',
                                 boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>{t('addMember')}</h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.875rem' }}>{t('manuallyAddMemberDesc')}</p>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.25rem', color: 'white', letterSpacing: '-0.03em' }}>{t('addMember')}</h2>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem', fontSize: '0.8rem', fontWeight: 500 }}>{t('manuallyAddMemberDesc')}</p>
 
                             <form onSubmit={handleAddMember}>
-                                 <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('fullName')}</label>
+                                 <div style={{ marginBottom: '0.75rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('fullName')}</label>
                                     <input
                                         type="text"
                                         required
                                         value={newMemberName}
                                         onChange={(e) => setNewMemberName(e.target.value)}
-                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
+                                        className="glass-input"
+                                        style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
                                     />
                                 </div>
                                 <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('email')}</label>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('email')}</label>
                                     <input
                                         type="email"
                                         required
                                         value={newMemberEmail}
                                         onChange={(e) => setNewMemberEmail(e.target.value)}
-                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
+                                        className="glass-input"
+                                        style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
                                     />
                                 </div>
                                 <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('phoneNumber')}</label>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('phoneNumber')}</label>
                                     <div style={{ position: 'relative' }}>
                                         <Phone size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                                         <input
@@ -647,17 +682,19 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                             value={newMemberPhone}
                                             onChange={(e) => setNewMemberPhone(e.target.value)}
                                             placeholder="+1 (555) 000-0000"
-                                            style={{ width: '100%', padding: '10px 10px 10px 34px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
+                                            className="glass-input"
+                                            style={{ width: '100%', padding: '12px 12px 12px 36px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
                                         />
                                     </div>
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('role')}</label>
+                                        <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('role')}</label>
                                         <select
                                             value={newMemberRole}
                                             onChange={(e) => setNewMemberRole(e.target.value)}
-                                            style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'var(--primary-dark)', border: '1px solid var(--border)', color: 'white' }}
+                                            className="glass-input"
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', background: '#0f172a', border: '1px solid var(--border)', color: 'white' }}
                                         >
                                             <option value="Member">Member</option>
                                             <option value="Volunteer">Volunteer</option>
@@ -667,11 +704,12 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('department')}</label>
+                                        <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('department')}</label>
                                         <select
                                             value={newMemberDept}
                                             onChange={(e) => setNewMemberDept(e.target.value)}
-                                            style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'var(--primary-dark)', border: '1px solid var(--border)', color: 'white' }}
+                                            className="glass-input"
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', background: '#0f172a', border: '1px solid var(--border)', color: 'white' }}
                                         >
                                             <option value="General">General</option>
                                             {availableDepts.map(dept => (
@@ -680,8 +718,8 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                         </select>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button type="button" className="btn glass" style={{ flex: 1 }} onClick={() => setShowAddMemberModal(false)}>{t('cancel')}</button>
+                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                    <button type="button" className="btn" style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }} onClick={() => setShowAddMemberModal(false)}>{t('cancel')}</button>
                                     <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{t('addMember')}</button>
                                 </div>
                             </form>
@@ -697,18 +735,29 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                         style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }}
                         onClick={() => setEditingMember(null)}>
                         <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                            style={{ width: '100%', maxWidth: '460px', background: 'linear-gradient(135deg, rgba(30,41,59,0.97) 0%, rgba(15,23,42,0.97) 100%)', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.1)', padding: '2.25rem', boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}
+                            className="glass-card"
+                            style={{ 
+                                width: '100%', 
+                                maxWidth: '480px', 
+                                maxHeight: '90vh',
+                                overflowY: 'auto',
+                                background: 'linear-gradient(135deg, rgba(30,41,59,1) 0%, rgba(15,23,42,1) 100%)', 
+                                borderRadius: '32px', 
+                                border: '1px solid var(--border)', 
+                                padding: window.innerWidth < 768 ? '1.25rem' : '1.75rem', 
+                                boxShadow: '0 30px 60px rgba(0,0,0,0.5)' 
+                            }}
                             onClick={e => e.stopPropagation()}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
                                 <div>
-                                    <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'white' }}>{t('editMemberDetails')}</h2>
+                                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>{t('editMemberDetails')}</h2>
                                     <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '2px' }}>{t('updateDetailsFor')} {editingMember.member.name}</p>
                                 </div>
                                 <button onClick={() => setEditingMember(null)} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: '#64748b', display: 'flex' }}>
                                     <X size={18} />
                                 </button>
                             </div>
-                            <form onSubmit={handleEditSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <form onSubmit={handleEditSave} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                                 {/* Name */}
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('fullName')}</label>
@@ -746,7 +795,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                                     <button type="button" onClick={() => setEditingMember(null)}
-                                        style={{ flex: 1, padding: '0.8rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.875rem' }}>
+                                        style={{ flex: 1, padding: '0.8rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: '#ffffff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                         {t('cancel')}
                                     </button>
                                     <button type="submit"

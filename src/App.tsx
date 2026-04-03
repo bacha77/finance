@@ -15,15 +15,28 @@ import PaymentWall from './components/PaymentWall';
 import AdminPanel from './components/AdminPanel';
 import TaxCompliance from './components/TaxCompliance';
 import Settings from './components/Settings';
+import UpdatePassword from './components/UpdatePassword';
+import SupportModal from './components/SupportModal';
+import CookieConsent from './components/CookieConsent';
 import { supabase } from './lib/supabase';
 import { getSubscriptionStatus } from './lib/subscriptionConfig';
+import { runMigrations } from './lib/migrations';
 import type { SubscriptionStatus } from './lib/subscriptionConfig';
 import { 
-  Search, Bell, ChevronDown, CheckCircle2, Command as CmdIcon
+  Search, Bell, ChevronDown, CheckCircle2, Command as CmdIcon,
+  User, Settings as SettingsIcon, LogOut, BellRing, LayoutDashboard, Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from './contexts/LanguageContext';
-import React from 'react'; // Added React import for React.useState
+import React from 'react';
+
+const profileMenuBtnStyle: React.CSSProperties = {
+  width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px',
+  display: 'flex', alignItems: 'center', gap: '0.75rem',
+  background: 'none', border: 'none', color: 'hsl(var(--text-secondary))',
+  fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+  textAlign: 'left', transition: 'all 0.2s',
+};
 
 function App() {
   const { t } = useLanguage();
@@ -34,6 +47,11 @@ function App() {
   const [showSignupSuccess, setShowSignupSuccess] = React.useState(false);
   const [showCommandCenter, setShowCommandCenter] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [profileMenuOpen, setProfileMenuOpen] = React.useState(false);
+  const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+  const [settingsSection, setSettingsSection] = React.useState<any>('grid');
+  const [isRecovery, setIsRecovery] = useState(false);
+  const [supportModalOpen, setSupportModalOpen] = React.useState(false);
 
   const [activeTab, setActiveTabState] = React.useState(() => {
     return localStorage.getItem('sanctuary_active_tab') || 'dashboard';
@@ -62,6 +80,7 @@ function App() {
   }, []);
 
   useEffect(() => {
+    runMigrations();
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) fetchProfile(session.user.id);
@@ -78,6 +97,11 @@ function App() {
       setShowSignupSuccess(true);
       window.history.replaceState(null, '', window.location.pathname);
       setTimeout(() => setShowSignupSuccess(false), 8000);
+    }
+
+    if (window.location.hash.includes('type=recovery')) {
+      setIsRecovery(true);
+      window.history.replaceState(null, '', window.location.pathname);
     }
 
     return () => subscription.unsubscribe();
@@ -148,7 +172,9 @@ function App() {
           tax_id: newData.taxId,
           currency: newData.currency,
           fiscal_year_start: newData.fiscalYearStart,
-          logo_url: newData.logo_url
+          logo_url: newData.logo_url,
+          cancel_at_period_end: newData.cancel_at_period_end,
+          cancellation_reason: newData.cancellation_reason
         })
         .eq('id', church.id);
 
@@ -185,6 +211,10 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  if (isRecovery) {
+    return <UpdatePassword onComplete={() => setIsRecovery(false)} />;
+  }
+
   if (!session) return <Auth onBypass={handleBypass} />;
 
   if (isAdmin) {
@@ -209,6 +239,11 @@ function App() {
         userEmail={session.user.email || ''}
         initialName={session.user.user_metadata?.full_name || ''}
         onComplete={() => fetchProfile(session.user.id)}
+        onLogout={async () => {
+          await supabase.auth.signOut();
+          setSession(null);
+          setProfile(null);
+        }}
       />
     );
   }
@@ -238,7 +273,11 @@ function App() {
           setProfile(null);
           setSession(null);
         }}
+        onOpenSupport={() => setSupportModalOpen(true)}
       />
+      
+      <SupportModal isOpen={supportModalOpen} onClose={() => setSupportModalOpen(false)} />
+      <CookieConsent />
 
       <main style={{ 
         flex: 1, 
@@ -252,9 +291,40 @@ function App() {
         flexDirection: 'column'
       }}>
         
+        {subStatus?.isCancelled && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            style={{ 
+              background: 'linear-gradient(90deg, #ef4444 0%, #b91c1c 100%)', 
+              color: 'white', padding: '0.6rem 2rem', fontSize: '0.8rem', fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem',
+              zIndex: 60, position: 'sticky', top: 0
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Bell size={14} fill="white" />
+              Subscription Cancellation Pending — Ends on {subStatus.subscriptionEndDate?.toLocaleDateString()}
+            </span>
+            <button 
+              onClick={() => {
+                setActiveTab('settings');
+                setSettingsSection('billing');
+              }}
+              style={{ 
+                background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', 
+                padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer',
+                fontSize: '0.75rem', fontWeight: 800
+              }}
+            >
+              Manage / Undo
+            </button>
+          </motion.div>
+        )}
+
         {/* ── TOP NAV BAR ── */}
         <header className="glass" style={{ 
-          position: 'sticky', top: 0, zIndex: 50, padding: '0.75rem 2rem', 
+          position: 'sticky', top: 0, zIndex: 50, padding: isMobile ? '0.75rem 1rem' : '0.75rem 2rem', 
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderBottom: '1px solid hsla(var(--text-main)/0.05)'
         }}>
@@ -264,7 +334,10 @@ function App() {
                 <CmdIcon size={20} />
               </button>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div 
+              onClick={() => setActiveTab('dashboard')}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+            >
               <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'hsl(var(--text-muted))' }}>{church?.name}</span>
               <span style={{ color: 'hsla(var(--text-main)/0.1)' }}>/</span>
               <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white', textTransform: 'capitalize' }}>{activeTab}</span>
@@ -276,31 +349,195 @@ function App() {
               onClick={() => setShowCommandCenter(true)}
               className="glass-input" 
               style={{ 
-                width: '320px', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', 
+                width: isMobile ? '40px' : '320px', 
+                height: '36px',
+                padding: isMobile ? '0' : '0.5rem 1rem', 
+                display: 'flex', alignItems: 'center', 
+                justifyContent: isMobile ? 'center' : 'flex-start',
                 gap: '10px', color: 'hsl(var(--text-muted))', fontSize: '0.8rem', cursor: 'pointer',
                 borderRadius: '10px', border: '1px solid hsla(var(--text-main)/0.1)'
               }}
             >
               <Search size={14} />
-              <span>Search workspace...</span>
-              <div style={{ marginLeft: 'auto', padding: '2px 5px', background: 'hsla(var(--text-main)/0.05)', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 900 }}>⌘K</div>
+              {!isMobile && <span>Search workspace...</span>}
+              {!isMobile && (
+                <div style={{ marginLeft: 'auto', padding: '2px 5px', background: 'hsla(var(--text-main)/0.05)', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 900 }}>⌘K</div>
+              )}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <button className="flex-center" style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'hsla(var(--text-main)/0.03)', border: 'none', color: 'white', cursor: 'pointer' }}>
-                <Bell size={18} />
-              </button>
+              {/* Notifications */}
+              <div style={{ position: 'relative' }}>
+                <button 
+                  onClick={() => {
+                    setNotificationsOpen(!notificationsOpen);
+                    setProfileMenuOpen(false);
+                  }}
+                  className="flex-center" 
+                  style={{ 
+                    width: '36px', height: '36px', borderRadius: '10px', 
+                    background: notificationsOpen ? 'hsla(var(--p)/0.2)' : 'hsla(var(--text-main)/0.03)', 
+                    border: 'none', color: notificationsOpen ? 'hsl(var(--p))' : 'white', cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <Bell size={18} />
+                  <span style={{
+                    position: 'absolute', top: '8px', right: '8px',
+                    width: '8px', height: '8px', background: 'hsl(var(--p))',
+                    borderRadius: '50%', border: '2px solid hsl(var(--bg-main))'
+                  }}></span>
+                </button>
+
+                <AnimatePresence>
+                  {notificationsOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      style={{
+                        position: 'absolute', top: 'calc(100% + 10px)', right: 0,
+                        width: '280px', background: 'hsl(var(--bg-card))',
+                        border: '1px solid hsla(var(--text-main)/0.1)', borderRadius: '16px',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.3)', zIndex: 100,
+                        padding: '1rem', backdropFilter: 'blur(20px)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+                        <BellRing size={16} color="hsl(var(--p))" />
+                        <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{t('header_notifications')}</span>
+                      </div>
+                      
+                      {subStatus?.isCancelled && (
+                        <div 
+                          onClick={() => {
+                            setActiveTab('settings');
+                            setSettingsSection('billing');
+                            setNotificationsOpen(false);
+                          }}
+                          style={{ 
+                            padding: '1rem', background: 'hsla(var(--error)/0.1)', border: '1px solid hsla(var(--error)/0.2)',
+                            borderRadius: '12px', marginBottom: '1rem', cursor: 'pointer', display: 'flex', gap: '12px'
+                          }}
+                        >
+                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'hsl(var(--error))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <Shield size={16} color="white" />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white' }}>Reactivate Subscription</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>Avoid service interruption on {subStatus.subscriptionEndDate?.toLocaleDateString()}</div>
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ 
+                        padding: '2rem 1rem', textAlign: 'center', 
+                        background: 'hsla(var(--text-main)/0.02)', borderRadius: '12px',
+                        border: '1px dashed hsla(var(--text-main)/0.1)'
+                      }}>
+                        <div style={{ color: 'hsl(var(--text-muted))', fontSize: '0.75rem' }}>{t('header_no_notifications')}</div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <div style={{ height: '20px', width: '1px', background: 'hsla(var(--text-main)/0.1)' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.75rem' }}>
-                  {profile.full_name?.charAt(0) || 'U'}
-                </div>
-                {!isMobile && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{profile.full_name}</span>
-                    <ChevronDown size={14} color="hsl(var(--text-muted))" />
+              
+              {/* Profile */}
+              <div style={{ position: 'relative' }}>
+                <div 
+                  onClick={() => {
+                    setProfileMenuOpen(!profileMenuOpen);
+                    setNotificationsOpen(false);
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+                >
+                  <div style={{ 
+                    width: '32px', height: '32px', borderRadius: '50%', 
+                    background: 'linear-gradient(135deg, var(--primary), var(--primary-light))', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                    fontWeight: 900, fontSize: '0.75rem', color: 'white'
+                  }}>
+                    {profile.full_name?.charAt(0) || 'U'}
                   </div>
-                )}
+                  {!isMobile && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{profile.full_name}</span>
+                      <ChevronDown size={14} color="hsl(var(--text-muted))" />
+                    </div>
+                  )}
+                </div>
+
+                <AnimatePresence>
+                  {profileMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      style={{
+                        position: 'absolute', top: 'calc(100% + 14px)', right: 0,
+                        width: '240px', background: 'hsl(var(--bg-card))',
+                        border: '1px solid hsla(var(--text-main)/0.1)', borderRadius: '16px',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.3)', zIndex: 100,
+                        padding: '0.75rem', backdropFilter: 'blur(20px)'
+                      }}
+                    >
+                      <div 
+                        onClick={() => { setActiveTab('dashboard'); setProfileMenuOpen(false); }}
+                        style={{ padding: '0.5rem 0.5rem 0.75rem', marginBottom: '0.5rem', borderBottom: '1px solid hsla(var(--text-main)/0.05)', cursor: 'pointer' }}
+                      >
+                        <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white' }}>{profile.full_name}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-muted))' }}>{session.user.email}</div>
+                      </div>
+                      
+                      <button 
+                        onClick={() => { setActiveTab('dashboard'); setProfileMenuOpen(false); }}
+                        style={profileMenuBtnStyle}
+                      >
+                        <LayoutDashboard size={16} />
+                        <span>Homepage / Dashboard</span>
+                      </button>
+
+                      <button 
+                        onClick={() => { 
+                          setSettingsSection('user_profile');
+                          setActiveTab('settings'); 
+                          setProfileMenuOpen(false); 
+                        }}
+                        style={profileMenuBtnStyle}
+                      >
+                        <User size={16} />
+                        <span>{t('header_profile')}</span>
+                      </button>
+                      
+                      <button 
+                        onClick={() => { 
+                          setSettingsSection('grid');
+                          setActiveTab('settings'); 
+                          setProfileMenuOpen(false); 
+                        }}
+                        style={profileMenuBtnStyle}
+                      >
+                        <SettingsIcon size={16} />
+                        <span>{t('header_preferences')}</span>
+                      </button>
+
+                      <div style={{ height: '1px', background: 'hsla(var(--text-main)/0.05)', margin: '0.5rem 0' }} />
+
+                      <button 
+                         onClick={async () => {
+                          await supabase.auth.signOut();
+                          setProfile(null);
+                          setSession(null);
+                        }}
+                        style={{ ...profileMenuBtnStyle, color: '#ef4444' }}
+                      >
+                        <LogOut size={16} />
+                        <span>{t('header_signout')}</span>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
@@ -326,7 +563,7 @@ function App() {
               {activeTab === 'expenses' && <Expenses setActiveTab={setActiveTab} churchId={church.id} />}
               {activeTab === 'budget' && <Budget setActiveTab={setActiveTab} churchId={church.id} />}
               {activeTab === 'tax' && <TaxCompliance churchId={church.id} churchName={church.name} />}
-              {activeTab === 'settings' && <Settings churchData={church} onUpdateChurch={handleUpdateChurch} />}
+              {activeTab === 'settings' && <Settings churchData={church} onUpdateChurch={handleUpdateChurch} initialSection={settingsSection} profile={profile} />}
               {activeTab === 'pricing' && <Pricing currentPlan={church.plan} churchId={church.id} />}
             </motion.div>
           </AnimatePresence>

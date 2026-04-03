@@ -15,6 +15,7 @@ export interface ChurchRecord {
   created_at: string;
   subscription_end_date?: string | null;
   paypal_order_id?: string | null;
+  cancel_at_period_end?: boolean;
 }
 
 // ── Access Status ──────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ export interface SubscriptionStatus {
   canAddMembers: boolean;
   memberLimit: number | null;
   currentPlan: PlanId;
+  isCancelled: boolean;
 }
 
 /**
@@ -63,6 +65,7 @@ export function getSubscriptionStatus(church: ChurchRecord): SubscriptionStatus 
       canAddMembers: true,
       memberLimit,
       currentPlan: plan,
+      isCancelled: !!church.cancel_at_period_end,
     };
   }
 
@@ -84,6 +87,7 @@ export function getSubscriptionStatus(church: ChurchRecord): SubscriptionStatus 
     canAddMembers: true,
     memberLimit: TRIAL_CONFIG.TRIAL_MEMBER_LIMIT,
     currentPlan: 'trial',
+    isCancelled: false,
   };
 }
 

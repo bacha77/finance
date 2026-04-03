@@ -20,6 +20,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
+import { calculatePayroll } from '../lib/payrollUtils';
 
 const DEFAULT_STAFF: any[] = [];
 
@@ -66,6 +67,8 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     role: s.role,
                     type: s.type,
                     salary: s.salary,
+                    housingAllowance: s.housing_allowance || 0,
+                    stateTaxRate: s.state_tax_rate || 0.05,
                     lastPaid: s.last_paid,
                     status: s.status,
                     recurring: s.recurring,
@@ -88,8 +91,14 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
     const [hireSalary, setHireSalary] = useState('');
     const [hireFrequency, setHireFrequency] = useState('Monthly');
     const [hireRecurring, setHireRecurring] = useState(true);
+    const [hireHousingAllowance, setHireHousingAllowance] = useState('0');
+    const [hireStateTaxRate, setHireStateTaxRate] = useState('0.05');
 
     const handleProcessPayroll = async () => {
+        if (!churchId) {
+            alert('Church session not found. Please log in again.');
+            return;
+        }
         setProcessing(true);
         try {
             // Emulate background processing
@@ -109,7 +118,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                 const isMatch = s.frequency === activeFrequency && (s.status === 'Paid' || s.status === 'Pending') && s.recurring;
 
                 if (isMatch) {
-                    const taxes = calculateTaxes(s.salary, s.type === 'Full-time');
+                    const taxes = calculatePayroll(s.salary, s.housingAllowance, s.type !== 'Contractor', s.stateTaxRate);
                     totalNet += taxes.net;
 
                     const shiftLabel = s.frequency === 'Twice Daily' ? ` [${activeShift} Shift]` : '';
@@ -142,44 +151,60 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             // Update Supabase
             if (ledgerEntries.length > 0) {
                 // Find General Fund to associate and deduct from
-                const { data: gf } = await supabase
+                // Find General Fund to associate and deduct from
+                const { data: gfData, error: gfError } = await supabase
                     .from('funds')
                     .select('*')
                     .eq('church_id', churchId)
-                    .eq('name', 'General Fund')
+                    .ilike('name', '%General%')
                     .maybeSingle();
+
+                if (gfError) console.warn('Fund lookup error:', gfError);
+                
+                // Fallback to first fund if General Fund not found
+                let activeFund = gfData;
+                if (!activeFund) {
+                    const { data: anyFund } = await supabase.from('funds').select('*').eq('church_id', churchId).limit(1).maybeSingle();
+                    activeFund = anyFund;
+                }
 
                 const finalLedgerEntries = ledgerEntries.map(tx => ({
                     ...tx,
-                    fund_id: gf?.id
+                    fund_id: activeFund?.id
                 }));
 
                 const { error: ledgerError } = await supabase.from('ledger').insert(finalLedgerEntries);
                 if (ledgerError) throw ledgerError;
 
-                // Update Staff in Supabase
-                for (const update of staffUpdates) {
-                    await supabase.from('staff').update({
-                        status: update.status,
-                        last_paid: update.last_paid
-                    }).eq('id', update.id).eq('church_id', churchId);
-                }
+                // Update Staff in Supabase (Process in parallel for speed)
+                const updates = staffUpdates.map(u => 
+                    supabase.from('staff').update({
+                        status: u.status,
+                        last_paid: u.last_paid
+                    }).eq('id', u.id).eq('church_id', churchId)
+                );
+                
+                const results = await Promise.all(updates);
+                const firstError = results.find(r => r.error);
+                if (firstError?.error) throw firstError.error;
 
-                // Update General Fund balance
-                if (gf) {
-                    await supabase
+                // Update Fund balance
+                if (activeFund) {
+                    const { error: fundErr } = await supabase
                         .from('funds')
-                        .update({ balance: gf.balance - totalNet })
-                        .eq('id', gf.id)
+                        .update({ balance: activeFund.balance - totalNet })
+                        .eq('id', activeFund.id)
                         .eq('church_id', churchId);
+                    if (fundErr) throw fundErr;
                 }
             }
 
             setStaff(newStaff);
             setProcessComplete({ staffCount: eligibleStaff.length, amount: totalNet });
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error processing payroll:', err);
-            alert('Failed to process payroll on cloud.');
+            const msg = err.message || 'Check your database connection or try again.';
+            alert(`Failed to process payroll: ${msg}`);
         } finally {
             setProcessing(false);
         }
@@ -187,15 +212,29 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
 
     const handleHireMember = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!churchId) {
+            alert('Error: No active church workspace selected.');
+            return;
+        }
         if (!hireName || !hireRole || !hireSalary) return;
+
+        const salary = parseFloat(hireSalary);
+        const housing = parseFloat(hireHousingAllowance) || 0;
+        if (salary <= 0 || housing < 0) {
+            alert('Financial Integrity Error: Salaries and allowances must be positive values.');
+            return;
+        }
+
 
         setIsLoading(true);
         try {
-            const newStaff = {
+            const newStaff: any = {
                 name: hireName,
                 role: hireRole,
                 type: hireType,
-                salary: parseFloat(hireSalary),
+                salary: parseFloat(hireSalary) || 0,
+                housing_allowance: parseFloat(hireHousingAllowance) || 0,
+                state_tax_rate: parseFloat(hireStateTaxRate) || 0.05,
                 last_paid: 'Never',
                 status: 'Pending',
                 frequency: hireFrequency,
@@ -204,7 +243,18 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                 created_at: new Date().toISOString()
             };
 
-            const { error } = await supabase.from('staff').insert([newStaff]);
+            let { error } = await supabase.from('staff').insert([newStaff]);
+            
+            // SECOND CHANCE: If columns are missing, try standard insert
+            if (error && error.message?.includes('column')) {
+               console.warn('New columns missing, trying simple insert.');
+               const simpleStaff = { ...newStaff };
+               delete simpleStaff.housing_allowance;
+               delete simpleStaff.state_tax_rate;
+               const result = await supabase.from('staff').insert([simpleStaff]);
+               error = result.error;
+            }
+
             if (error) throw error;
 
             // Refresh staff list
@@ -216,6 +266,8 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     role: s.role,
                     type: s.type,
                     salary: s.salary,
+                    housingAllowance: s.housing_allowance || 0,
+                    stateTaxRate: s.state_tax_rate || 0.05,
                     lastPaid: s.last_paid,
                     status: s.status,
                     recurring: s.recurring,
@@ -227,9 +279,12 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             setHireName('');
             setHireRole('');
             setHireSalary('');
-        } catch (err) {
+            setHireHousingAllowance('0');
+            setHireStateTaxRate('0.05');
+        } catch (err: any) {
             console.error('Error hiring staff:', err);
-            alert('Failed to save staff record to cloud.');
+            const msg = err.message || 'Database columns for Housing Allowance or Church ID may be missing. Please run the SQL Update.';
+            alert(`Failed to save staff record to cloud: ${msg}`);
         } finally {
             setIsLoading(false);
         }
@@ -247,20 +302,6 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
         }, 3000);
     };
 
-    const calculateTaxes = (amount: number, isEmployee: boolean) => {
-        if (!isEmployee) return { total: amount, withholding: 0, net: amount };
-        const ss = amount * 0.062;
-        const medicare = amount * 0.0145;
-        const federal = amount * 0.12; // Simplified
-        return {
-            gross: amount,
-            ss,
-            medicare,
-            federal,
-            totalWithholding: ss + medicare + federal,
-            net: amount - (ss + medicare + federal)
-        };
-    };
 
     const taxForms: any[] = [];
 
@@ -434,12 +475,41 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                                     <input
                                                         type="number"
                                                         required
+                                                        min="0.01"
+                                                        step="0.01"
                                                         value={hireSalary}
                                                         onChange={(e) => setHireSalary(e.target.value)}
                                                         style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
                                                     />
                                                 </div>
                                             </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('housingAllowance') || 'HOUSING ALLOWANCE'} ($)</label>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        value={hireHousingAllowance}
+                                                        onChange={(e) => setHireHousingAllowance(e.target.value)}
+                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('stateTaxRateLabel') || 'STATE TAX RATE'} (0.05)</label>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max="0.5"
+                                                        step="0.01"
+                                                        value={hireStateTaxRate}
+                                                        onChange={(e) => setHireStateTaxRate(e.target.value)}
+                                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
+                                                    />
+                                                </div>
+                                            </div>
+
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
                                                 <div>
                                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>{t('payFrequency').toUpperCase()}</label>
@@ -494,9 +564,15 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                         <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem', color: 'white' }}>{t('payrollSuccessful')}</h3>
                                         <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', fontSize: '0.9rem' }}>{t('success')}</p>
 
-                                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem', border: '1px solid var(--border)' }}>
-                                            <p style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{t('totalDisbursed')}</p>
-                                            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--success)' }}>${processComplete.amount.toLocaleString()}</p>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1.25rem', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                                                <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Net Disbursed</p>
+                                                <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--success)' }}>${processComplete.amount.toLocaleString()}</p>
+                                            </div>
+                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1.25rem', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                                                <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Tax Liability</p>
+                                                <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-light)' }}>${(processComplete.amount * 0.15).toLocaleString()}</p>
+                                            </div>
                                         </div>
 
                                         <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setProcessComplete(null)}>{t('done')}</button>
@@ -602,7 +678,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                     </thead>
                                     <tbody>
                                         {staff.map((person: any) => {
-                                            const taxes = calculateTaxes(person.salary, person.type === 'Full-time');
+                                            const taxes = calculatePayroll(person.salary, person.housingAllowance, person.type !== 'Contractor', person.stateTaxRate);
                                             return (
                                                 <tr key={person.id}>
                                                     <td>
@@ -649,6 +725,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                                         ${person.salary.toLocaleString()}
                                                     </td>
                                                     <td style={{ textAlign: 'right', fontSize: '1rem', fontWeight: 800, color: 'var(--primary-light)' }}>
+                                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginRight: '6px' }}>{person.housingAllowance > 0 ? `(Inc. Housing)` : ''}</span>
                                                         ${taxes.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </td>
                                                     <td>
