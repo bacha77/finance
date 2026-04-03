@@ -17,7 +17,8 @@ import {
     Shield,
     PieChart,
     Landmark,
-    LineChart
+    LineChart,
+    Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -64,6 +65,27 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
     const [showAuditModal, setShowAuditModal] = useState(false);
     const [isAuditRunning, setIsAuditRunning] = useState(false);
     const [auditSummary, setAuditSummary] = useState<any>(null);
+    const [showRecipientsModal, setShowRecipientsModal] = useState(false);
+    const [recipients, setRecipients] = useState<string[]>([]); // Array of member IDs
+    const [allMembers, setAllMembers] = useState<any[]>([]);
+
+    const fetchRecipients = async () => {
+        if (!churchId) return;
+        try {
+            const { data } = await supabase.from('members').select('*').eq('church_id', churchId);
+            if (data) {
+                setAllMembers(data);
+                // Default recipients: anyone with 'Board' or 'Admin' or 'Trustee' in their role
+                setRecipients(data.filter((m: any) => 
+                    m.role?.toLowerCase().includes('board') || 
+                    m.role?.toLowerCase().includes('admin') ||
+                    m.role?.toLowerCase().includes('trustee')
+                ).map((m: any) => m.id));
+            }
+        } catch (err) {
+            console.error('Error fetching recipients:', err);
+        }
+    };
 
     const fetchData = async () => {
         if (!churchId) return;
@@ -87,6 +109,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
 
     useEffect(() => {
         fetchData();
+        fetchRecipients();
 
         // Realtime sync for reports
         const ledgerChannel = supabase.channel('ledger-reports')
@@ -705,6 +728,109 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                             )}
                         </AnimatePresence>
 
+                        <AnimatePresence>
+                            {showRecipientsModal && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem' }}
+                                    onClick={() => setShowRecipientsModal(false)}
+                                >
+                                    <motion.div
+                                        initial={{ scale: 0.95, y: 20 }}
+                                        animate={{ scale: 1, y: 0 }}
+                                        exit={{ scale: 0.95, y: 20 }}
+                                        className="glass-card"
+                                        style={{ width: '100%', maxWidth: '500px', padding: '2.5rem', borderRadius: '32px', position: 'relative' }}
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <button 
+                                            onClick={() => setShowRecipientsModal(false)}
+                                            style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                                        >
+                                            <X size={20} />
+                                        </button>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                                            <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Users size={24} color="var(--primary-light)" />
+                                            </div>
+                                            <div>
+                                                <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'white' }}>Report Recipients</h2>
+                                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Manage who receives the {t('monthlyFinancialClose')}</p>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            {allMembers.length > 0 ? allMembers.map(member => {
+                                                const isRecipient = recipients.includes(member.id);
+                                                return (
+                                                    <div 
+                                                        key={member.id}
+                                                        onClick={() => {
+                                                            setRecipients(prev => 
+                                                                isRecipient ? prev.filter(id => id !== member.id) : [...prev, member.id]
+                                                            );
+                                                        }}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '1rem',
+                                                            borderRadius: '16px',
+                                                            backgroundColor: isRecipient ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255,255,255,0.02)',
+                                                            border: isRecipient ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid var(--border)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
+                                                                {member.name?.charAt(0)}
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{member.name}</div>
+                                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{member.role || 'Member'}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div style={{
+                                                            width: '20px',
+                                                            height: '20px',
+                                                            borderRadius: '6px',
+                                                            border: '2px solid',
+                                                            borderColor: isRecipient ? 'var(--success)' : 'var(--border)',
+                                                            backgroundColor: isRecipient ? 'var(--success)' : 'transparent',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center'
+                                                        }}>
+                                                            {isRecipient && <CheckCircle2 size={14} color="white" />}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }) : (
+                                                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                                    No members found. Please add board members in the Members Portal.
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <button 
+                                            className="btn btn-primary" 
+                                            style={{ width: '100%', marginTop: '2rem', height: '56px' }}
+                                            onClick={() => {
+                                                alert(`Successfully updated schedule. ${recipients.length} members will receive the next report on the 1st.`);
+                                                setShowRecipientsModal(false);
+                                            }}
+                                        >
+                                            Save Changes
+                                        </button>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '4rem' }}>
                                         {[
                                             { label: t('revenueAccuracy'), value: metrics.audit.revenueAccuracy, icon: ShieldCheck, color: metrics.audit.isBalanced ? 'var(--success)' : 'var(--danger)' },
@@ -888,7 +1014,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                                 <button 
                                                     className="btn glass" 
                                                     style={{ width: '100%', fontSize: '0.875rem', height: '48px', fontWeight: 700 }}
-                                                    onClick={() => alert('Recipients Management: Your Church Board members are already synced to this automated schedule and will receive the report on the 1st.')}
+                                                    onClick={() => setShowRecipientsModal(true)}
                                                 >
                                                     {t('manageRecipients')}
                                                 </button>
