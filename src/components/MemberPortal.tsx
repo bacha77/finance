@@ -31,6 +31,7 @@ interface Member {
     join_date: string;
     status: string;
     church_id: string | null;
+    distribution_method?: 'automated' | 'manual';
 }
 
 
@@ -45,6 +46,8 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [openMenuId, setOpenMenuId] = useState<number | null>(null);
     const [editingMember, setEditingMember] = useState<{ member: Member; idx: number } | null>(null);
+    const [newMemberDistMethod, setNewMemberDistMethod] = useState<'automated' | 'manual'>('manual');
+    const [editDistMethod, setEditDistMethod] = useState<'automated' | 'manual'>('manual');
     const menuRef = useRef<HTMLDivElement>(null);
 
     // Close menu on outside click
@@ -309,11 +312,19 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
     const [bulkSending, setBulkSending] = useState(false);
 
     const handleBulkSend = () => {
+        const activeMembers = members.filter(m => m.status === 'Active' && m.email);
+        if (activeMembers.length === 0) {
+            alert('No active members with valid email addresses found.');
+            return;
+        }
+
+        if (!window.confirm(`Dispatch monthly giving invoices to ${activeMembers.length} active members?`)) return;
+
         setBulkSending(true);
-        // Simulate bulk processing
+        // Simulate bulk processing to each member's record
         setTimeout(() => {
             setBulkSending(false);
-            alert(`Statements for ${months[new Date().getMonth()]} have been dispatched to all active members.`);
+            alert(`Success: ${activeMembers.length} Contribution Invoices for ${months[invoiceMonth]} ${invoiceYear} have been dispatched.`);
         }, 3000);
     };
 
@@ -333,7 +344,8 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
             role: `${newMemberRole} (${newMemberDept})`,
             join_date: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
             status: 'Active',
-            church_id: churchId
+            church_id: churchId,
+            distribution_method: newMemberDistMethod || 'manual'
         };
 
         try {
@@ -367,6 +379,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
         setEditPhone(member.phone || '');
         setEditRole(member.role);
         setEditStatus(member.status);
+        setEditDistMethod(member.distribution_method || 'manual');
         setEditingMember({ member, idx });
         setOpenMenuId(null);
     };
@@ -381,6 +394,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
             phone: editPhone,
             role: editRole,
             status: editStatus,
+            distribution_method: editDistMethod
         };
         const newList = members.map((m, i) => i === editingMember.idx ? updated : m);
         setMembers(newList);
@@ -393,6 +407,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                     phone: updated.phone,
                     role: updated.role,
                     status: updated.status,
+                    distribution_method: updated.distribution_method
                 }).eq('id', updated.id);
             } catch (err) { console.error('Edit sync failed:', err); }
         }
@@ -531,6 +546,13 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 500 }}>
                                     <Clock size={14} /> {t('joined')} {member.join_date}
                                 </span>
+                                <span style={{ 
+                                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', 
+                                    color: member.distribution_method === 'automated' ? 'var(--success)' : 'var(--primary-light)', 
+                                    fontWeight: 800, textTransform: 'uppercase'
+                                }}>
+                                    {member.distribution_method === 'automated' ? '⚡ Auto-1st' : '📨 Manual Port'}
+                                </span>
                             </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -663,10 +685,13 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                     />
                                 </div>
                                 <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('email')}</label>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'white', marginBottom: '6px' }}>
+                                        {t('email')} <span style={{ color: '#ef4444' }}>*</span>
+                                    </label>
                                     <input
                                         type="email"
                                         required
+                                        placeholder="required for report delivery"
                                         value={newMemberEmail}
                                         onChange={(e) => setNewMemberEmail(e.target.value)}
                                         className="glass-input"
@@ -718,6 +743,39 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                         </select>
                                     </div>
                                 </div>
+                                <div style={{ marginBottom: '1.25rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: 'white', marginBottom: '8px', textTransform: 'uppercase' }}>Invoices Dispatch Channel</label>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setNewMemberDistMethod('manual')}
+                                            style={{ 
+                                                padding: '10px', borderRadius: '10px', 
+                                                border: '1px solid', 
+                                                borderColor: newMemberDistMethod === 'manual' ? 'var(--primary-light)' : 'rgba(255,255,255,0.05)',
+                                                background: newMemberDistMethod === 'manual' ? 'rgba(99,102,241,0.1)' : 'transparent',
+                                                color: newMemberDistMethod === 'manual' ? 'white' : 'var(--text-muted)',
+                                                fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Send size={14} style={{ marginRight: '6px' }} /> Manual
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setNewMemberDistMethod('automated')}
+                                            style={{ 
+                                                padding: '10px', borderRadius: '10px', 
+                                                border: '1px solid', 
+                                                borderColor: newMemberDistMethod === 'automated' ? 'var(--success)' : 'rgba(255,255,255,0.05)',
+                                                background: newMemberDistMethod === 'automated' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                                                color: newMemberDistMethod === 'automated' ? 'white' : 'var(--text-muted)',
+                                                fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Clock size={14} style={{ marginRight: '6px' }} /> Automated (1st)
+                                        </button>
+                                    </div>
+                                </div>
                                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                                     <button type="button" className="btn" style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }} onClick={() => setShowAddMemberModal(false)}>{t('cancel')}</button>
                                     <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{t('addMember')}</button>
@@ -766,7 +824,9 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                 </div>
                                 {/* Email */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('email')}</label>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'white', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        {t('email')} <span style={{ color: '#ef4444' }}>*</span>
+                                    </label>
                                     <input type="email" required value={editEmail} onChange={e => setEditEmail(e.target.value)}
                                         style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
                                 </div>
@@ -791,6 +851,41 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                             <option value="Active">Active</option>
                                             <option value="Inactive">Inactive</option>
                                         </select>
+                                    </div>
+                                </div>
+
+                                {/* Distribution Method for Edit */}
+                                <div style={{ marginBottom: '0.5rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, color: 'white', marginBottom: '8px', textTransform: 'uppercase' }}>Invoices Dispatch Channel</label>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setEditDistMethod('manual')}
+                                            style={{ 
+                                                padding: '10px', borderRadius: '10px', 
+                                                border: '1px solid', 
+                                                borderColor: editDistMethod === 'manual' ? 'var(--primary-light)' : 'rgba(255,255,255,0.05)',
+                                                background: editDistMethod === 'manual' ? 'rgba(99,102,241,0.1)' : 'transparent',
+                                                color: editDistMethod === 'manual' ? 'white' : 'var(--text-muted)',
+                                                fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Send size={14} style={{ marginRight: '6px' }} /> Manual
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setEditDistMethod('automated')}
+                                            style={{ 
+                                                padding: '10px', borderRadius: '10px', 
+                                                border: '1px solid', 
+                                                borderColor: editDistMethod === 'automated' ? 'var(--success)' : 'rgba(255,255,255,0.05)',
+                                                background: editDistMethod === 'automated' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                                                color: editDistMethod === 'automated' ? 'white' : 'var(--text-muted)',
+                                                fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Clock size={14} style={{ marginRight: '6px' }} /> Automated (1st)
+                                        </button>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>

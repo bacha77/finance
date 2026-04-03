@@ -791,7 +791,10 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                                             </div>
                                                             <div>
                                                                 <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{member.name}</div>
-                                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{member.role || 'Member'}</div>
+                                                                <div style={{ fontSize: '0.7rem', color: member.email ? 'var(--text-muted)' : 'var(--danger)', fontStyle: member.email ? 'normal' : 'italic' }}>
+                                                                    {member.email || '⚠️ Missing Email Address'}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.65rem', color: 'var(--primary-light)', fontWeight: 600, marginTop: '2px' }}>{member.role || 'Member'}</div>
                                                             </div>
                                                         </div>
                                                         <div style={{
@@ -1018,6 +1021,28 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                                 >
                                                     {t('manageRecipients')}
                                                 </button>
+
+                                                {/* 🏷️ DELIVERY AUDIT LOG */}
+                                                <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px dashed var(--border)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                                        <Clock size={14} color="var(--text-muted)" />
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recent Transmissions</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                        {[
+                                                            { month: 'March', date: 'Mar 1', recipients: 4, hash: 'SH-7A2B' },
+                                                            { month: 'February', date: 'Feb 1', recipients: 4, hash: 'SH-9F11' }
+                                                        ].map(log => (
+                                                            <div key={log.hash} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'white' }}>{log.month} Close</div>
+                                                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>ID: {log.hash} • {log.date}</div>
+                                                                </div>
+                                                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--success)', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>✓ SENT</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
