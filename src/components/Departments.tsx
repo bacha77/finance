@@ -254,74 +254,80 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => 
                                 {isEditMode ? t('updateDetailsDesc') : t('initializeMinistryDesc')}
                             </p>
 
-                            <form onSubmit={isEditMode ? handleUpdateDepartment : handleAddDepartment}>
-                                <div style={{ marginBottom: '0.65rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>{t('departmentName')}</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={newName}
-                                        onChange={(e) => setNewName(e.target.value)}
-                                        placeholder="e.g. Media & Tech"
-                                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontSize: '0.875rem' }}
-                                    />
-                                </div>
-                                <div style={{ marginBottom: '0.65rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>{t('departmentHead')}</label>
-                                    <input
-                                        type="text"
-                                        value={newHead}
-                                        onChange={(e) => setNewHead(e.target.value)}
-                                        placeholder="Enter name"
-                                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontSize: '0.875rem' }}
-                                    />
-                                </div>
-                                <div style={{ marginBottom: '0.65rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>{t('classification')}</label>
-                                    <select
-                                        value={newType}
-                                        onChange={(e) => setNewType(e.target.value as any)}
-                                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', background: 'var(--primary-dark)', border: '1px solid var(--border)', color: 'white', fontSize: '0.875rem' }}
-                                    >
-                                        <option value="Ministry">Ministry</option>
-                                        <option value="Education">Education</option>
-                                        <option value="Operations">Operations</option>
-                                        <option value="Offerings">Offerings</option>
-                                        <option value="Conference">Conference</option>
-                                    </select>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.65rem' }}>
+                             <form onSubmit={isEditMode ? handleUpdateDepartment : handleAddDepartment}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', marginBottom: '0.65rem' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '2px', textTransform: 'uppercase' }}>Budget ($)</label>
+                                        <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>{t('departmentName')}</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={newName}
+                                            onChange={(e) => setNewName(e.target.value)}
+                                            placeholder="Name"
+                                            style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontSize: '0.85rem' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>{t('departmentHead')}</label>
+                                        <input
+                                            type="text"
+                                            value={newHead}
+                                            onChange={(e) => setNewHead(e.target.value)}
+                                            placeholder="Head"
+                                            style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontSize: '0.85rem' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', marginBottom: '0.65rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>{t('classification')}</label>
+                                        <select
+                                            value={newType}
+                                            onChange={(e) => setNewType(e.target.value as any)}
+                                            style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'var(--primary-dark)', border: '1px solid var(--border)', color: 'white', fontSize: '0.85rem' }}
+                                        >
+                                            <option value="Ministry">Ministry</option>
+                                            <option value="Education">Education</option>
+                                            <option value="Operations">Operations</option>
+                                            <option value="Offerings">Offerings</option>
+                                            <option value="Conference">Conference</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Budget ($)</label>
                                         <input
                                             type="number"
                                             min="0"
                                             step="0.01"
                                             value={newBudget}
                                             onChange={(e) => setNewBudget(Number(e.target.value))}
-                                            style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontSize: '0.875rem' }}
+                                            style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontSize: '0.85rem' }}
                                         />
                                     </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.65rem', marginBottom: '0.85rem' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '2px', textTransform: 'uppercase' }}>Spent ($)</label>
+                                        <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Spent ($)</label>
                                         <input
                                             type="number"
                                             min="0"
                                             step="0.01"
                                             value={newSpent}
                                             onChange={(e) => setNewSpent(Number(e.target.value))}
-                                            style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontSize: '0.875rem' }}
+                                            style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontSize: '0.85rem' }}
                                         />
                                     </div>
-                                </div>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>{t('description')}</label>
-                                    <textarea
-                                        value={newDesc}
-                                        onChange={(e) => setNewDesc(e.target.value)}
-                                        placeholder={t('briefPurposeDesc')}
-                                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', height: '40px', resize: 'none', fontSize: '0.85rem' }}
-                                    />
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>{t('description')}</label>
+                                        <textarea
+                                            value={newDesc}
+                                            onChange={(e) => setNewDesc(e.target.value)}
+                                            placeholder="Purpose..."
+                                            style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', height: '32px', resize: 'none', fontSize: '0.8rem' }}
+                                        />
+                                    </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem' }}>
                                     <button type="button" className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'white', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }} onClick={handleCloseModal}>{t('cancel')}</button>
