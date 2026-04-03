@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const RESEND_API_KEY = "re_ir63AG7B_axpVnUBgCg72XyrPJkdvcDab";
+// 1. Resend API Key (Pulled from Supabase Secrets for security)
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
 serve(async (req) => {
   // 1. Handle CORS (Allow your app to talk to this function)

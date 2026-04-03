@@ -451,7 +451,18 @@ END $$;
 -- ============================================================
 CREATE OR REPLACE FUNCTION exec_sql(sql text)
 RETURNS void AS $$
+DECLARE
+  is_admin BOOLEAN;
 BEGIN
+  -- CHECK FOR ADMIN OR SERVICE ROLE IDENTITY
+  SELECT EXISTS (
+    SELECT 1 FROM public.admins WHERE user_id = auth.uid()
+  ) INTO is_admin;
+
+  IF NOT is_admin AND (current_setting('role', true) <> 'service_role') THEN
+    RAISE EXCEPTION 'Unauthorized! This function is restricted to system administrators.';
+  END IF;
+
   EXECUTE sql;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
