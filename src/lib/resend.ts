@@ -1,30 +1,25 @@
-
-export const RESEND_API_KEY = 're_ir63AG7B_axpVnUBgCg72XyrPJkdvcDab';
+import { supabase } from './supabase';
 
 export const sendResendEmail = async (to: string, subject: string, html: string, fromName: string = 'Storehouse Finance') => {
     try {
-        const response = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${RESEND_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                from: `${fromName} <onboarding@resend.dev>`,
+        // 🚀 SECURE RELAY DISPATCH
+        // Calling the Supabase Edge Function to avoid CORS and hide the API Key
+        const { data, error } = await supabase.functions.invoke('send-invoice-relay', {
+            body: {
                 to: [to],
                 subject: subject,
-                html: html
-            })
+                html: html,
+                fromName: fromName
+            }
         });
         
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.message || 'Failed to send email');
+        if (error) {
+            throw new Error(error.message || 'Failed to send email via Relay');
         }
         
-        return await response.json();
+        return data;
     } catch (error) {
-        console.error('Resend Error:', error);
+        console.error('Relay Error:', error);
         throw error;
     }
 };
