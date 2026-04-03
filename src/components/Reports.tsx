@@ -1117,11 +1117,11 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                                     {t('manageRecipients')}
                                                 </button>
                                                 <button 
-                                                    className="btn glass" 
-                                                    style={{ width: '100%', fontSize: '0.875rem', height: '48px', fontWeight: 700 }}
+                                                    className="btn" 
+                                                    style={{ width: '100%', fontSize: '0.875rem', height: '48px', fontWeight: 800, background: '#1e293b', color: 'white', border: '1px solid #334155' }}
                                                     onClick={() => setViewMode('vault-view')}
                                                 >
-                                                    Access Secure Vault
+                                                    <Shield size={18} color="var(--primary-light)" /> Access Secure Vault
                                                 </button>
 
                                                 {/* 🏷️ DELIVERY AUDIT LOG */}
