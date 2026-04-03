@@ -1,49 +1,50 @@
+// @ts-nocheck: Deno environment
+// @ts-ignore: Deno type definitions
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// 1. Resend API Key (Pulled from Supabase Secrets for security)
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
-serve(async (req) => {
-  // 1. Handle CORS (Allow your app to talk to this function)
-  const headers = {
+serve(async (req: Request) => {
+  const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   };
 
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { to, subject, html, fromName } = await req.json();
+    const { to, subject, html } = await req.json();
 
-    // 2. Dispatch to Resend (Securely from the server)
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
+    if (!RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY is not configured in Supabase Secrets');
+    }
+
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: `${fromName} <onboarding@resend.dev>`,
-        to,
+        from: 'Church Reports <onboarding@resend.dev>',
+        to: Array.isArray(to) ? to : [to],
         subject,
         html,
       }),
     });
 
     const data = await res.json();
-    
     return new Response(JSON.stringify(data), {
-      headers: { ...headers, "Content-Type": "application/json" },
-      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: res.ok ? 200 : 400,
     });
-
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...headers, "Content-Type": "application/json" },
-      status: 400,
+  } catch (error: any) {
+    console.error('Relay error:', error);
+    return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
     });
   }
 });
