@@ -14,7 +14,10 @@ import {
     Clock,
     FileCheck,
     X,
-    Shield
+    Shield,
+    PieChart,
+    Landmark,
+    LineChart
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -100,6 +103,13 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
         };
     }, [churchId]);
 
+    const reports = [
+        { id: 'pnl', name: t('profitAndLoss'), icon: PieChart, color: '#6366f1', desc: t('incomeExpensesDesc') },
+        { id: 'balance', name: t('balanceSheet'), icon: Landmark, color: '#10b981', desc: t('assetsLiabilitiesDesc') },
+        { id: 'board', name: t('boardFinancialReport'), icon: LineChart, color: '#f59e0b', desc: t('summaryDesc') },
+        { id: 'cashflow', name: t('cashflowStatement'), icon: BarChart3, color: '#ec4899', desc: t('movementDesc') }
+    ];
+
     const months = [t('month0'), t('month1'), t('month2'), t('month3'), t('month4'), t('month5'), t('month6'), t('month7'), t('month8'), t('month9'), t('month10'), t('month11')];
 
     const metrics = useMemo(() => {
@@ -167,12 +177,6 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
         };
     }, [ledger, funds, selectedMonth, selectedYear]);
 
-    const reports = [
-        { id: 'board', title: t('boardReport'), category: t('executive'), lastGenerated: 'Current', type: 'Instant', icon: ShieldCheck, color: '#ec4899' },
-        { id: 'pnl', title: t('pnlStatement'), category: t('financial'), lastGenerated: 'Live', type: 'Instant', icon: TrendingUp, color: '#10b981' },
-        { id: 'balance', title: t('balanceSheet'), category: t('financial'), lastGenerated: 'Live', type: 'Instant', icon: Building2, color: '#6366f1' },
-        { id: 'cashflow', title: t('cashflowStatement'), category: t('financial'), lastGenerated: 'Live', type: 'Instant', icon: BarChart3, color: '#a855f7' },
-    ];
 
     const BrandedHeader = ({ title, subtitle }: { title: string, subtitle: string }) => (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
@@ -702,116 +706,197 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                         </AnimatePresence>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '4rem' }}>
-                            {[
-                                { label: t('revenueAccuracy'), value: metrics.audit.revenueAccuracy, icon: ShieldCheck, color: metrics.audit.isBalanced ? 'var(--success)' : 'var(--danger)' },
-                                { label: t('boardCompliance'), value: metrics.audit.boardCompliance, icon: CheckCircle2, color: 'var(--primary)' },
-                                { label: t('auditTrail'), value: metrics.audit.auditIntegrity, icon: FileText, color: '#a855f7' },
-                                { label: t('reportLatency'), value: '< 200ms', icon: Activity, color: '#ec4899' },
-                            ].map((stat, idx) => (
-                                <motion.div whileHover={{ y: -5 }} key={idx} className="glass-card" style={{ padding: '2rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
-                                        <stat.icon size={20} style={{ color: stat.color }} />
-                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{stat.label}</span>
+                                        {[
+                                            { label: t('revenueAccuracy'), value: metrics.audit.revenueAccuracy, icon: ShieldCheck, color: metrics.audit.isBalanced ? 'var(--success)' : 'var(--danger)' },
+                                            { label: t('boardCompliance'), value: metrics.audit.boardCompliance, icon: CheckCircle2, color: 'var(--primary)' },
+                                            { label: t('auditTrail'), value: metrics.audit.auditIntegrity, icon: FileText, color: '#a855f7' },
+                                            { label: t('reportLatency'), value: '< 200ms', icon: Activity, color: '#ec4899' },
+                                        ].map((stat, idx) => (
+                                            <motion.div whileHover={{ y: -5 }} key={idx} className="glass-card" style={{ padding: '2rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
+                                                    <stat.icon size={20} style={{ color: stat.color }} />
+                                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{stat.label}</span>
+                                                </div>
+                                                <p style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white' }}>{stat.value}</p>
+                                            </motion.div>
+                                        ))}
                                     </div>
-                                    <p style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white' }}>{stat.value}</p>
-                                </motion.div>
-                            ))}
-                        </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '2.5rem' }}>
-                            <div className="glass-card" style={{ padding: '3rem' }}>
-                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2.5rem', color: 'white' }}>{t('missionCriticalStatements')}</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {reports.map((report) => (
-                                        <motion.div
-                                            key={report.id}
-                                            whileHover={{ x: 10, backgroundColor: 'rgba(255,255,255,0.05)' }}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                                padding: '1.5rem',
-                                                borderRadius: '20px',
-                                                backgroundColor: 'rgba(255,255,255,0.02)',
-                                                border: '1px solid var(--border)',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.3s ease'
-                                            }}
-                                            onClick={() => setViewStatement(report.id as StatementType)}
-                                        >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '2.5rem' }}>
+                                        <div className="glass-card" style={{ padding: '3rem' }}>
+                                            <div style={{ marginBottom: '4rem' }}>
+                                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2.5rem', color: 'white' }}>{t('missionCriticalStatements')}</h3>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                    {reports.map((report) => (
+                                                        <motion.div
+                                                            key={report.id}
+                                                            whileHover={{ x: 10, backgroundColor: 'rgba(255,255,255,0.05)' }}
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'space-between',
+                                                                padding: '1.5rem',
+                                                                borderRadius: '20px',
+                                                                backgroundColor: 'rgba(255,255,255,0.02)',
+                                                                border: '1px solid var(--border)',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.3s ease'
+                                                            }}
+                                                            onClick={() => setViewStatement(report.id as StatementType)}
+                                                        >
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                                                                <div style={{
+                                                                    width: '56px',
+                                                                    height: '56px',
+                                                                    borderRadius: '16px',
+                                                                    backgroundColor: `${report.color}15`,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    color: report.color,
+                                                                    boxShadow: `0 8px 16px -4px ${report.color}30`
+                                                                }}>
+                                                                    <report.icon size={28} />
+                                                                </div>
+                                                                <div>
+                                                                    <h4 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'white' }}>{report.name}</h4>
+                                                                    <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '4px' }}>{report.desc}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div style={{ display: 'flex', gap: '12px' }}>
+                                                                <button className="btn btn-ghost" style={{ padding: '12px', borderRadius: '12px' }}>
+                                                                    <DownloadCloud size={20} />
+                                                                </button>
+                                                                <button className="btn btn-primary" style={{ padding: '12px 24px', borderRadius: '12px', fontSize: '0.875rem', fontWeight: 800 }}>
+                                                                    {t('viewNow')}
+                                                                </button>
+                                                            </div>
+                                                        </motion.div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* 🏦 MISSION FUND VITALITY SECTION */}
+                                            <div style={{ marginTop: '2rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{t('fundTransparency')}</h3>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{funds.length} ACTIVE FUNDS</span>
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                                                    {funds.length > 0 ? funds.map((fund) => {
+                                                        const fundIncome = ledger.filter((tx: any) => (tx.fund_id === fund.id || tx.category === fund.name) && (tx.type === 'in' || tx.type === 'revenue')).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+                                                        const fundExpenses = ledger.filter((tx: any) => (tx.fund_id === fund.id || tx.category === fund.name) && (tx.type === 'out' || tx.type === 'expense')).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+                                                        const vitality = (fundIncome + fundExpenses) > 0 ? Math.min(100, (fundIncome / (fundIncome + fundExpenses)) * 100) : 0;
+                                                        
+                                                        return (
+                                                            <motion.div 
+                                                                key={fund.id}
+                                                                whileHover={{ y: -5, borderColor: 'var(--primary)' }}
+                                                                style={{
+                                                                    padding: '1.75rem',
+                                                                    borderRadius: '24px',
+                                                                    backgroundColor: 'rgba(255,255,255,0.02)',
+                                                                    border: '1px solid var(--border)',
+                                                                    transition: 'all 0.3s ease'
+                                                                }}
+                                                            >
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                                                                    <div>
+                                                                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '4px' }}>{fund.name}</h4>
+                                                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{fund.category || 'Mission Fund'}</p>
+                                                                    </div>
+                                                                    <div style={{ 
+                                                                        padding: '6px 12px', 
+                                                                        borderRadius: '10px', 
+                                                                        backgroundColor: fund.balance >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                                        color: fund.balance >= 0 ? '#10b981' : '#ef4444',
+                                                                        fontSize: '0.7rem',
+                                                                        fontWeight: 800
+                                                                    }}>
+                                                                        {fund.balance >= 0 ? 'LEVEL 1 HEALTH' : 'ATTENTION REQ.'}
+                                                                    </div>
+                                                                </div>
+
+                                                                <p style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', marginBottom: '1.25rem' }}>
+                                                                    ${fund.balance?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                                </p>
+
+                                                                <div style={{ marginBottom: '1.5rem' }}>
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '6px' }}>
+                                                                        <span>FUND VITALITY</span>
+                                                                        <span>{vitality.toFixed(1)}%</span>
+                                                                    </div>
+                                                                    <div style={{ width: '100%', height: '4px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                                                                        <motion.div 
+                                                                            initial={{ width: 0 }}
+                                                                            animate={{ width: `${vitality}%` }}
+                                                                            style={{ height: '100%', backgroundColor: vitality > 50 ? 'var(--success)' : 'var(--warning)', borderRadius: '2px' }} 
+                                                                        />
+                                                                    </div>
+                                                                </div>
+
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                                                    <div>
+                                                                        <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700 }}>MONTHLY IN</p>
+                                                                        <p style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--success)' }}>+${fundIncome.toLocaleString()}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700 }}>MONTHLY OUT</p>
+                                                                        <p style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--danger)' }}>-${fundExpenses.toLocaleString()}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </motion.div>
+                                                        );
+                                                    }) : (
+                                                        <div className="glass-card" style={{ padding: '3rem', gridColumn: '1 / -1', textAlign: 'center' }}>
+                                                            <p style={{ color: 'var(--text-secondary)' }}>No active funds detected in Ledger.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="card glass" style={{ height: 'fit-content' }}>
+                                            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1.5rem' }}>{t('automatedReports')}</h3>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                                 <div style={{
-                                                    width: '56px',
-                                                    height: '56px',
-                                                    borderRadius: '16px',
-                                                    backgroundColor: `${report.color}15`,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    color: report.color,
-                                                    boxShadow: `0 8px 16px -4px ${report.color}30`
+                                                    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                                                    border: '1px solid rgba(16, 185, 129, 0.1)',
+                                                    padding: '1.25rem',
+                                                    borderRadius: '20px',
+                                                    position: 'relative',
+                                                    overflow: 'hidden'
                                                 }}>
-                                                    <report.icon size={28} />
+                                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', backgroundColor: '#10b981' }} />
+                                                    <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white' }}>{t('monthlyFinancialClose')}</h4>
+                                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '8px 0' }}>
+                                                        {t('nextRun')}: {(() => {
+                                                            const d = new Date();
+                                                            const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+                                                            return next.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+                                                        })()}
+                                                    </p>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>
+                                                        <motion.div 
+                                                            animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                                                            transition={{ repeat: Infinity, duration: 2 }}
+                                                            style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }} 
+                                                        />
+                                                        {t('activeSchedule').toUpperCase()}
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <h4 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'white' }}>{report.title}</h4>
-                                                    <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '4px' }}>{report.category} • {t('updated')} {report.lastGenerated}</p>
-                                                </div>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '12px' }}>
-                                                <button className="btn btn-ghost" style={{ padding: '12px', borderRadius: '12px' }}>
-                                                    <DownloadCloud size={20} />
-                                                </button>
-                                                <button className="btn btn-primary" style={{ padding: '12px 24px', borderRadius: '12px', fontSize: '0.875rem', fontWeight: 800 }}>
-                                                    {t('viewNow')}
+                                                <button 
+                                                    className="btn glass" 
+                                                    style={{ width: '100%', fontSize: '0.875rem', height: '48px', fontWeight: 700 }}
+                                                    onClick={() => alert('Recipients Management: Your Church Board members are already synced to this automated schedule and will receive the report on the 1st.')}
+                                                >
+                                                    {t('manageRecipients')}
                                                 </button>
                                             </div>
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="card glass" style={{ height: 'fit-content' }}>
-                                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1.5rem' }}>{t('automatedReports')}</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                    <div style={{
-                                        backgroundColor: 'rgba(16, 185, 129, 0.05)',
-                                        border: '1px solid rgba(16, 185, 129, 0.1)',
-                                        padding: '1.25rem',
-                                        borderRadius: '20px',
-                                        position: 'relative',
-                                        overflow: 'hidden'
-                                    }}>
-                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', backgroundColor: '#10b981' }} />
-                                        <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white' }}>{t('monthlyFinancialClose')}</h4>
-                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '8px 0' }}>
-                                            {t('nextRun')}: {(() => {
-                                                const d = new Date();
-                                                const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-                                                return next.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
-                                            })()}
-                                        </p>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>
-                                            <motion.div 
-                                                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                                                transition={{ repeat: Infinity, duration: 2 }}
-                                                style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }} 
-                                            />
-                                            {t('activeSchedule').toUpperCase()}
                                         </div>
                                     </div>
-                                    <button 
-                                        className="btn glass" 
-                                        style={{ width: '100%', fontSize: '0.875rem', height: '48px', fontWeight: 700 }}
-                                        onClick={() => alert('Recipients Management: Your Church Board members are already synced to this automated schedule and will receive the report on the 1st.')}
-                                    >
-                                        {t('manageRecipients')}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                ) : (
+                                </motion.div>
+                            ) : (
                     <motion.div
                         key="statement-view"
                         initial={{ opacity: 0, x: 20 }}
