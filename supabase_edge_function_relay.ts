@@ -1,23 +1,17 @@
-
-// ============================================================
-// 📨 SUPABASE EDGE FUNCTION: send-invoice-relay
-// Copy this code into your Supabase Edge Function editor
-// ============================================================
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const RESEND_API_KEY = "re_ir63AG7B_axpVnUBgCg72XyrPJkdvcDab";
 
 serve(async (req) => {
   // 1. Handle CORS (Allow your app to talk to this function)
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      }
-    });
+    return new Response('ok', { headers });
   }
 
   try {
@@ -41,13 +35,13 @@ serve(async (req) => {
     const data = await res.json();
     
     return new Response(JSON.stringify(data), {
-      headers: { "Content-Type": "application/json", 'Access-Control-Allow-Origin': '*' },
+      headers: { ...headers, "Content-Type": "application/json" },
       status: 200,
     });
 
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
-      headers: { "Content-Type": "application/json", 'Access-Control-Allow-Origin': '*' },
+      headers: { ...headers, "Content-Type": "application/json" },
       status: 400,
     });
   }
