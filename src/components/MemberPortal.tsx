@@ -933,20 +933,22 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                         style={{
                             position: 'fixed',
                             inset: 0,
-                            backgroundColor: 'rgba(0,0,0,0.9)',
+                            backgroundColor: 'rgba(0,0,0,0.92)',
                             backdropFilter: 'blur(20px)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            zIndex: 2000,
-                            padding: '2rem'
+                            zIndex: 3000,
+                            padding: '1.5rem'
                         }}
+                        onClick={() => setShowInvoiceModal(false)}
                     >
                         <motion.div
                             initial={{ y: 50, opacity: 0, scale: 0.95 }}
                             animate={{ y: 0, opacity: 1, scale: 1 }}
                             exit={{ y: 50, opacity: 0, scale: 0.95 }}
                             className="glass-card"
+                            onClick={(e) => e.stopPropagation()}
                             style={{
                                 width: '100%',
                                 maxWidth: '850px',
@@ -1084,6 +1086,13 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                             </div>
 
                             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1rem' }}>
+                                <button 
+                                    className="btn" 
+                                    onClick={() => setShowInvoiceModal(false)}
+                                    style={{ background: '#f8fafc', color: '#ef4444', border: '1px solid #fecaca', padding: '1rem 1.5rem', fontSize: '0.875rem', fontWeight: 800 }}
+                                >
+                                    {t('close') || 'Close & Return'}
+                                </button>
                                 <button className="btn" onClick={handleExportPDF} style={{ background: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0', padding: '1rem 1.5rem', fontSize: '0.875rem' }}>
                                     <Download size={18} /> {t('exportPDF')}
                                 </button>
