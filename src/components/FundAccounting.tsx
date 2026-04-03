@@ -61,6 +61,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
     const [isSyncing, setIsSyncing] = useState(false);
 
     const [funds, setFunds] = useState<Fund[]>([]);
+    const [showNewFundModal, setShowNewFundModal] = useState(false);
     const [ledger, setLedger] = useState<Transaction[]>([]);
 
     // Supabase Sync & Realtime
@@ -88,8 +89,19 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
 
                 // Auto-select General Fund for new transactions if available
                 const gf = fundData?.find(f => f.name.toLowerCase().includes('general'));
-                if (gf && allocations[0].fundId === '') {
-                    setAllocations([{ deptId: '1', fundId: gf.id, amount: '' }]);
+                // Auto-seed General Fund if none exist
+                if (!fundData || fundData.length === 0) {
+                    const { data: seededFund, error: seedError } = await supabase.from('funds').insert({
+                        name: 'General Fund',
+                        balance: 0,
+                        church_id: churchId,
+                        type: 'Unrestricted',
+                        status: 'Active',
+                        color: '#6366f1'
+                    }).select().single();
+                    if (!seedError && seededFund) {
+                        setFunds([seededFund]);
+                    }
                 }
             } catch (err) {
                 console.error('Error syncing with Supabase:', err);
@@ -282,6 +294,9 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                     <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>{t('fundStewardshipDesc')}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button className="btn btn-ghost" onClick={() => setShowNewFundModal(true)}>
+                        <PieChart size={18} /> {t('newFund') || 'New Fund'}
+                    </button>
                     <button className={`btn ${showReconcile ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setShowReconcile(!showReconcile)}>
                         {isSyncing ? <RefreshCw size={18} className="spin" /> : <CheckCircle size={18} />}
                         {showReconcile ? t('integratedLedger') : t('reconcileBank')}
@@ -518,6 +533,52 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
 
             {/* Modals */}
             <AnimatePresence>
+                {showNewFundModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}
+                        onClick={() => setShowNewFundModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="glass-card"
+                            style={{ width: '100%', maxWidth: '400px', padding: '2rem', borderRadius: '24px' }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem', color: 'white' }}>{t('createFund') || 'Create New Fund'}</h2>
+                            <form onSubmit={async (e) => {
+                                e.preventDefault();
+                                const name = (e.target as any).fundName.value;
+                                const { data, error } = await supabase.from('funds').insert({
+                                    name,
+                                    church_id: churchId,
+                                    balance: 0,
+                                    type: 'Unrestricted',
+                                    status: 'Active',
+                                    color: '#6366f1'
+                                }).select().single();
+                                if (data) {
+                                    setFunds([...funds, data]);
+                                    setShowNewFundModal(false);
+                                }
+                            }}>
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{t('fundName') || 'Fund Name'}</label>
+                                    <input name="fundName" required className="glass-input" style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }} placeholder="e.g. Building Fund" />
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem' }}>
+                                    <button type="button" className="btn" style={{ flex: 1, color: 'white', border: '1px solid rgba(255,255,255,0.2)' }} onClick={() => setShowNewFundModal(false)}>{t('cancel')}</button>
+                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{t('create') || 'Create'}</button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+
                 {showNewTxModal && (
                     <motion.div
                         initial={{ opacity: 0 }}
