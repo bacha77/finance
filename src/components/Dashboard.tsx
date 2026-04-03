@@ -160,12 +160,15 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
             if (!churchId) return;
             setSyncing(true);
             try {
-                const [{ data: ledger }, { data: funds }, { data: members }, { data: church, error: churchError }] = await Promise.all([
+                const results = await Promise.all([
                     supabase.from('ledger').select('*').eq('church_id', churchId).neq('voided', true).order('created_at', { ascending: false }),
-                    supabase.from('funds').select('*').eq('church_id', churchId),
                     supabase.from('members').select('id').eq('church_id', churchId),
                     supabase.from('churches').select('name, logo_url').eq('id', churchId).single(),
                 ]);
+                
+                const { data: ledger } = results[0];
+                const { data: members } = results[1];
+                const { data: church, error: churchError } = results[2];
 
                 if (churchError) {
                     console.error("Error fetching church data:", churchError);
@@ -178,22 +181,17 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                 const currentMonth = now.getMonth();
                 const currentYear = now.getFullYear();
 
-                const totalBalance = funds?.reduce((s: number, f: any) => s + (f.balance || 0), 0) || 0;
+                const totalIn = ledger?.filter((t: any) => t.type === 'in' || t.type === 'revenue').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
+                const totalOut = ledger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
+                const totalBalance = totalIn - totalOut;
                 
                 const monthlyLedger = ledger?.filter((t: any) => {
                     const dateStr = t.date || t.created_at;
                     if (!dateStr) return false;
                     
-                    // Robust date parsing for various formats (YYYY-MM-DD, M/D/YYYY, ISO)
                     let d: Date;
                     if (dateStr.includes('/')) {
-                        const parts = dateStr.split('/');
-                        if (parts.length === 3) {
-                            // Assumes M/D/YYYY or D/M/YYYY - JS Date usually handles M/D/YYYY well
-                            d = new Date(dateStr);
-                        } else {
-                            d = new Date(dateStr);
-                        }
+                        d = new Date(dateStr);
                     } else {
                         d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`);
                     }
