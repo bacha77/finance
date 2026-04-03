@@ -142,7 +142,10 @@ const FeatureCard: React.FC<{
 // ── Main Dashboard ─────────────────────────────────────────────────────────
 const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
     const { t, language } = useLanguage();
-    const [stats, setStats] = useState({ balance: 0, tithes: 0, members: 0, expenses: 0 });
+    const [stats, setStats] = useState({ 
+        balance: 0, tithes: 0, members: 0, expenses: 0,
+        titheGrowth: 0, expenseGrowth: 0, balGrowth: 0
+    });
     const [recentTx, setRecentTx] = useState<any[]>([]);
     const [syncing, setSyncing] = useState(false);
     const [projection, setProjection] = useState<{income: number, expense: number, confidence: number} | null>(null);
@@ -185,29 +188,39 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                 const totalOut = ledger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
                 const totalBalance = totalIn - totalOut;
                 
-                const monthlyLedger = ledger?.filter((t: any) => {
-                    const dateStr = t.date || t.created_at;
-                    if (!dateStr) return false;
-                    
-                    let d: Date;
-                    if (dateStr.includes('/')) {
-                        d = new Date(dateStr);
-                    } else {
-                        d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`);
-                    }
+                const prevMonthDate = new Date();
+                prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+                const prevMonth = prevMonthDate.getMonth();
+                const prevYear = prevMonthDate.getFullYear();
 
-                    if (isNaN(d.getTime())) return false;
+                const monthlyLedger = ledger?.filter((t: any) => {
+                    const d = new Date(t.date || t.created_at);
                     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
                 });
 
+                const previousMonthLedger = ledger?.filter((t: any) => {
+                    const d = new Date(t.date || t.created_at);
+                    return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
+                });
+
                 const totalTithes = monthlyLedger?.filter((t: any) => t.type === 'in' || t.type === 'revenue').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
-                const totalExpenses = Math.abs(monthlyLedger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0);
+                const totalExpenses = monthlyLedger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + Math.abs(t.amount || 0), 0) || 0;
                 
+                const oldTithes = previousMonthLedger?.filter((t: any) => t.type === 'in' || t.type === 'revenue').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
+                const oldExpenses = previousMonthLedger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + Math.abs(t.amount || 0), 0) || 0;
+
+                const titheGrowth = oldTithes > 0 ? ((totalTithes - oldTithes) / oldTithes) * 100 : totalTithes > 0 ? 100 : 0;
+                const expenseGrowth = oldExpenses > 0 ? ((totalExpenses - oldExpenses) / oldExpenses) * 100 : totalExpenses > 0 ? 100 : 0;
+                const balGrowth = (totalIn - totalOut) > 0 ? ((totalTithes - totalExpenses) / Math.max(1, totalBalance)) * 100 : 0;
+
                 setStats({
                     balance: totalBalance,
                     tithes: totalTithes,
                     members: members?.length || 0,
                     expenses: totalExpenses,
+                    titheGrowth,
+                    expenseGrowth,
+                    balGrowth
                 });
 
                 if (ledger) {
@@ -270,14 +283,13 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
 
     const totalIncome = stats.tithes;
     const budgetUsed = Math.min(99, Math.round((stats.expenses / Math.max(totalIncome, 1)) * 100));
-    const sparkData = [14, 18, 12, 22, 19, 26, 28];
 
     const statCards: StatCardProps[] = [
         {
             label: t('totalBalance'),
             value: fmt(stats.balance),
-            change: '+5.4%',
-            up: true,
+            change: `${stats.balGrowth >= 0 ? '+' : ''}${stats.balGrowth.toFixed(1)}%`,
+            up: stats.balGrowth >= 0,
             icon: Wallet,
             iconBg: 'rgba(37,99,235,0.15)',
             iconColor: '#2563eb',
@@ -287,24 +299,24 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         {
             label: `${t('tithes')} (MTD)`,
             value: fmt(stats.tithes),
-            change: '+12.5%',
-            up: true,
+            change: `${stats.titheGrowth >= 0 ? '+' : ''}${stats.titheGrowth.toFixed(1)}%`,
+            up: stats.titheGrowth >= 0,
             icon: DollarSign,
             iconBg: 'rgba(16,185,129,0.15)',
             iconColor: '#10b981',
-            sparkline: sparkData,
+            sparkline: [14, 18, 12, 22, 19, 26, 28],
             sub: t('thisMonth'),
             delay: 0.08,
         },
         {
             label: t('members'),
-            value: stats.members.toLocaleString(),
+            value: stats.members.toString(),
             change: '+3.2%',
             up: true,
             icon: Users,
-            iconBg: 'rgba(168,85,247,0.15)',
-            iconColor: '#a855f7',
-            sparkline: [8, 10, 9, 11, 12, 13, 15],
+            iconBg: 'rgba(139,92,246,0.15)',
+            iconColor: '#8b5cf6',
+            sparkline: [8, 12, 10, 15, 14, 18, 20],
             delay: 0.16,
         },
         {
