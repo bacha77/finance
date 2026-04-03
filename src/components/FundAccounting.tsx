@@ -88,7 +88,6 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                 setFunds(fundData || []);
 
                 // Auto-select General Fund for new transactions if available
-                const gf = fundData?.find(f => f.name.toLowerCase().includes('general'));
                 // Auto-seed General Fund if none exist
                 if (!fundData || fundData.length === 0) {
                     const { data: seededFund, error: seedError } = await supabase.from('funds').insert({
@@ -553,7 +552,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                             <form onSubmit={async (e) => {
                                 e.preventDefault();
                                 const name = (e.target as any).fundName.value;
-                                const { data, error } = await supabase.from('funds').insert({
+                                const { data } = await supabase.from('funds').insert({
                                     name,
                                     church_id: churchId,
                                     balance: 0,

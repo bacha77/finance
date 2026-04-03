@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "rd /s /q docs && xcopy /e /i /y dist docs && git add docs && git commit -m \"deploy: update docs folder\" && git push origin main"
+    "deploy": "(if exist docs rd /s /q docs) && xcopy /e /i /y dist docs && git add . && git commit -m \"deploy: update site and source\" && git push origin main"
   },
   "dependencies": {
     "@paypal/react-paypal-js": "^9.0.1",
