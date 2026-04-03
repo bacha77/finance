@@ -285,13 +285,13 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => 
                                         <select
                                             value={newType}
                                             onChange={(e) => setNewType(e.target.value as any)}
-                                            style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'var(--primary-dark)', border: '1px solid var(--border)', color: 'white', fontSize: '0.85rem' }}
+                                            style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'rgba(30, 41, 59, 0.9)', border: '1px solid var(--border)', color: 'white', fontSize: '0.85rem' }}
                                         >
-                                            <option value="Ministry">Ministry</option>
-                                            <option value="Education">Education</option>
-                                            <option value="Operations">Operations</option>
-                                            <option value="Offerings">Offerings</option>
-                                            <option value="Conference">Conference</option>
+                                            <option value="Ministry" style={{ background: '#0f172a' }}>Ministry</option>
+                                            <option value="Education" style={{ background: '#0f172a' }}>Education</option>
+                                            <option value="Operations" style={{ background: '#0f172a' }}>Operations</option>
+                                            <option value="Offerings" style={{ background: '#0f172a' }}>Offerings</option>
+                                            <option value="Conference" style={{ background: '#0f172a' }}>Conference</option>
                                         </select>
                                     </div>
                                     <div>
