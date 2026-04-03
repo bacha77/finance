@@ -541,7 +541,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                         onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                                         style={{ background: 'transparent', color: 'white', border: 'none', fontWeight: 700, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '1rem' }}
                                     >
-                                        {[2024, 2025, 2026, 2027].map(y => (
+                                        {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
                                             <option key={y} value={y} style={{ background: '#0f172a' }}>{y}</option>
                                         ))}
                                     </select>
