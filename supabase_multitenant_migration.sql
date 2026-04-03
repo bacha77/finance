@@ -446,7 +446,6 @@ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- ============================================================
 -- STEP 11: Exec SQL Helper (for migrations.ts)
 -- ============================================================
 CREATE OR REPLACE FUNCTION exec_sql(sql text)
@@ -466,3 +465,72 @@ BEGIN
   EXECUTE sql;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
+-- STEP 12: Real-Time Balance Synchronization & Fiscal Locking
+-- ============================================================
+
+-- A. Balance Sync Function
+CREATE OR REPLACE FUNCTION update_fund_balance()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (TG_OP = 'INSERT') THEN
+    UPDATE public.funds 
+    SET balance = balance + (CASE WHEN NEW.type IN ('in', 'revenue') THEN NEW.amount ELSE -NEW.amount END)
+    WHERE id = NEW.fund_id;
+  ELSIF (TG_OP = 'DELETE') THEN
+    UPDATE public.funds 
+    SET balance = balance - (CASE WHEN OLD.type IN ('in', 'revenue') THEN OLD.amount ELSE -OLD.amount END)
+    WHERE id = OLD.fund_id;
+  ELSIF (TG_OP = 'UPDATE') THEN
+    -- Reverse old, apply new
+    UPDATE public.funds 
+    SET balance = balance - (CASE WHEN OLD.type IN ('in', 'revenue') THEN OLD.amount ELSE -OLD.amount END)
+    WHERE id = OLD.fund_id;
+    
+    UPDATE public.funds 
+    SET balance = balance + (CASE WHEN NEW.type IN ('in', 'revenue') THEN NEW.amount ELSE -NEW.amount END)
+    WHERE id = NEW.fund_id;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- B. Apply Sync Trigger
+DROP TRIGGER IF EXISTS tr_ledger_sync ON public.ledger;
+CREATE TRIGGER tr_ledger_sync
+AFTER INSERT OR UPDATE OR DELETE ON public.ledger
+FOR EACH ROW EXECUTE FUNCTION update_fund_balance();
+
+-- C. Fiscal Lock Enforcement
+ALTER TABLE public.churches ADD COLUMN IF NOT EXISTS locked_years INT[] DEFAULT '{}';
+
+CREATE OR REPLACE FUNCTION check_fiscal_lock()
+RETURNS TRIGGER AS $$
+DECLARE
+  is_locked BOOLEAN;
+BEGIN
+  SELECT (EXTRACT(YEAR FROM COALESCE(NEW.created_at, NOW()))::INT = ANY(c.locked_years))
+  INTO is_locked
+  FROM public.churches c
+  WHERE c.id = NEW.church_id;
+
+  IF is_locked THEN
+    RAISE EXCEPTION 'This fiscal year is locked for audit. No changes allowed.';
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_fiscal_lock ON public.ledger;
+CREATE TRIGGER tr_fiscal_lock
+BEFORE INSERT OR UPDATE OR DELETE ON public.ledger
+FOR EACH ROW EXECUTE FUNCTION check_fiscal_lock();
+
+-- D. Dual-Entry Hardening
+ALTER TABLE public.ledger ALTER COLUMN fund_id SET DEFAULT null; -- Ensure we can check
+-- We will layer this as a CHECK rather than NOT NULL for better error handling
+ALTER TABLE public.ledger DROP CONSTRAINT IF EXISTS ledger_dual_entry_check;
+ALTER TABLE public.ledger ADD CONSTRAINT ledger_dual_entry_check 
+CHECK (fund_id IS NOT NULL AND category IS NOT NULL);
