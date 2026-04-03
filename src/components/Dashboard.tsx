@@ -183,13 +183,27 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                 const monthlyLedger = ledger?.filter((t: any) => {
                     const dateStr = t.date || t.created_at;
                     if (!dateStr) return false;
-                    // Use T12:00:00 to avoid timezone shifts for YYYY-MM-DD strings
-                    const d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`);
+                    
+                    // Robust date parsing for various formats (YYYY-MM-DD, M/D/YYYY, ISO)
+                    let d: Date;
+                    if (dateStr.includes('/')) {
+                        const parts = dateStr.split('/');
+                        if (parts.length === 3) {
+                            // Assumes M/D/YYYY or D/M/YYYY - JS Date usually handles M/D/YYYY well
+                            d = new Date(dateStr);
+                        } else {
+                            d = new Date(dateStr);
+                        }
+                    } else {
+                        d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`);
+                    }
+
+                    if (isNaN(d.getTime())) return false;
                     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
                 });
 
                 const totalTithes = monthlyLedger?.filter((t: any) => t.type === 'in' || t.type === 'revenue').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
-                const totalExpenses = monthlyLedger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
+                const totalExpenses = Math.abs(monthlyLedger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0);
                 
                 setStats({
                     balance: totalBalance,

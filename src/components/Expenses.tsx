@@ -181,7 +181,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
             .maybeSingle();
 
         const expenseData: any = {
-            date: new Date(date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }),
+            date, // Store as standard YYYY-MM-DD string for better parsing
             description: desc,
             category: `${cat} Exp`,
             department: dept,
