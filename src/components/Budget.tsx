@@ -78,6 +78,13 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId }) => {
         };
 
         fetchData();
+        const ledgerChannel = supabase.channel('budget-ledger-sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger', filter: `church_id=eq.${churchId}` }, fetchData)
+            .subscribe();
+        
+        return () => {
+            supabase.removeChannel(ledgerChannel);
+        };
     }, [churchId]);
 
     useEffect(() => {
