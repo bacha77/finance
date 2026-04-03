@@ -98,11 +98,18 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
 
     const metrics = useMemo(() => {
         const filteredLedger = ledger.filter(tx => {
-            const dateStr = tx.date;
+            const dateStr = tx.date || tx.created_at;
             if (!dateStr) return false;
-            // Use T12:00:00 to avoid timezone shifts for YYYY-MM-DD strings
-            const txDate = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`);
-            return txDate.getMonth() === selectedMonth && txDate.getFullYear() === selectedYear;
+            
+            let d: Date;
+            if (dateStr.includes('/')) {
+                d = new Date(dateStr); // Handles M/D/YYYY
+            } else {
+                d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`); // Handles ISO/YYYY-MM-DD
+            }
+
+            if (isNaN(d.getTime())) return false;
+            return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
         });
 
         const income = filteredLedger.filter(tx => tx.type === 'in' || tx.type === 'revenue').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
