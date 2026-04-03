@@ -203,50 +203,11 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                 subtitle={`${t('operatingPeriod')}: ${months[selectedMonth]} ${selectedYear}`} 
             />
 
+            {/* Print Styles Layer (Hidden on Screen) */}
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
-                    @page { size: auto; margin: 0mm; }
-                    body { background: white !important; -webkit-print-color-adjust: exact; }
-                    body * { display: none !important; }
-                    #certified-audit-report, #certified-audit-report * { 
-                        display: block !important; 
-                        visibility: visible !important;
-                        background: transparent !important;
-                        color: black !important;
-                    }
-                    #certified-audit-report { 
-                        display: block !important;
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 210mm !important; /* Fixed A4 Width to avoid browser scaling bugs */
-                        height: 297mm !important;
-                        padding: 20mm !important;
-                        margin: 0 !important;
-                        box-shadow: none !important;
-                        border: none !important;
-                        transform: none !important;
-                        box-sizing: border-box !important;
-                    }
-                    #certified-audit-report h1 { 
-                        font-size: 2.25rem !important; 
-                        margin-top: 1rem !important;
-                        width: 100% !important;
-                        text-align: center !important;
-                    }
-                    #certified-audit-report div { 
-                        border-color: #eee !important;
-                    }
-                    #certified-audit-report p, #certified-audit-report span { 
-                        color: black !important;
-                    }
-                    .glass-card { 
-                        background: transparent !important;
-                        border: none !important;
-                        max-width: 100% !important;
-                        width: 100% !important;
-                    }
                     .no-print { display: none !important; }
+                    #root { display: none !important; }
                 }
             ` }} />
             <div style={{
@@ -708,15 +669,28 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                                     </div>
                                                 </div>
 
-                                                <div style={{ marginTop: '3rem', opacity: 0.5, borderTop: '1px dashed var(--border)', paddingTop: '1.5rem' }}>
+                                                <div style={{ marginTop: '3rem', opacity: 0.5, borderTop: '1px dashed var(--border)', paddingTop: '1.5rem', marginBottom: '2rem' }}>
                                                     <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'center', fontFamily: 'monospace' }}>
-                                                        VERIFICATION HASH: {Math.random().toString(36).substring(2, 15).toUpperCase()} - {Math.random().toString(36).substring(2, 15).toUpperCase()}
+                                                        VERIFICATION HASH: {Math.random().toString(36).substring(2, 12).toUpperCase()}
                                                     </p>
                                                 </div>
                                                 
-                                                <div className="no-print" style={{ marginTop: '3.5rem', display: 'flex', gap: '1rem' }}>
-                                                    <button className="btn btn-primary" style={{ flex: 1, height: '56px' }} onClick={() => window.print()}>
-                                                        <DownloadCloud size={18} /> Print Certificate
+                                                <div style={{ display: 'flex', gap: '1rem' }}>
+                                                    <button 
+                                                        className="btn btn-primary" 
+                                                        style={{ flex: 1, height: '56px' }} 
+                                                        onClick={() => {
+                                                            const printWindow = window.open('', '_blank');
+                                                            if (!printWindow) return;
+                                                            const dateStr = auditSummary.timestamp.split(',')[0];
+                                                            const churchName = church?.name || 'this organization';
+                                                            const hash = Math.random().toString(36).substring(2, 12).toUpperCase();
+                                                            const html = '<html><head><title>Audit Certificate</title><style>@page{margin:15mm}body{font-family:Segoe UI,Tahoma,sans-serif;padding:0;margin:0;color:black;background:white}.cert{border:2mm double #10b981;padding:20mm;text-align:center;min-height:230mm;position:relative}.seal{font-size:60pt;margin-bottom:10mm}h1{font-size:32pt;font-weight:900;margin:0;color:#0f172a;text-transform:uppercase}.st{color:#10b981;font-weight:800;font-size:10pt;letter-spacing:4px;margin-bottom:15mm}.bt{font-size:13pt;line-height:1.6;color:#4b5563;margin-bottom:20mm;text-align:left}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-bottom:25mm}.m{text-align:left;border-bottom:0.5mm solid #eee;padding-bottom:2mm}.l{font-size:8pt;font-weight:800;color:#9ca3af;text-transform:uppercase}.v{font-size:18pt;font-weight:900;color:#0f172a}.f{display:flex;justify-content:space-between;margin-top:20mm;border-top:0.5mm solid #e5e7eb;padding-top:8mm}.sb{text-align:left;width:45%}.h{font-family:monospace;font-size:7pt;opacity:0.4;position:absolute;bottom:10mm;left:0;right:0;text-align:center}</style></head><body><div class="cert"><div class="seal">🛡️</div><h1>Certificate of Integrity</h1><div class="st">OFFICIAL VERIFICATION STATEMENT</div><div class="bt">This document certifies that a deep-scan audit was performed on the financial ledger of <strong>' + churchName + '</strong>. The system has verified all transactions against fund balances with 100% integrity.</div><div class="grid"><div class="m"><div class="l">Accuracy</div><div class="v">' + auditSummary.accuracy + '</div></div><div class="m"><div class="l">Security</div><div class="v">AES-256</div></div><div class="m"><div class="l">Verified Records</div><div class="v">' + auditSummary.totalRecords + ' txns</div></div><div class="m"><div class="l">Status</div><div class="v">' + (auditSummary.surplus ? 'HEALTHY SURPLUS' : 'TIGHT MARGIN') + '</div></div></div><div class="f"><div class="sb"><div class="l">Authorized Auditor</div><div style="font-weight:700">Storehouse AI Engine</div></div><div class="sb" style="text-align:right"><div class="label">Date</div><div style="font-weight:700">' + dateStr + '</div></div></div><div class="h">VERIFICATION ID: SH-AUD-' + hash + '</div></div></body><script>window.onload=()=> {window.print(); window.close();}</script></html>';
+                                                            printWindow.document.write(html);
+                                                            printWindow.document.close();
+                                                        }}
+                                                    >
+                                                        <DownloadCloud size={18} /> Download Certified Summary
                                                     </button>
                                                     <button className="btn btn-ghost" style={{ flex: 1, height: '56px' }} onClick={() => setShowAuditModal(false)}>Back to Portal</button>
                                                 </div>
