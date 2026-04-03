@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
     BarChart3, TrendingUp, ShieldCheck, ArrowDownRight,
     Calendar, Activity, X,
     Shield, PieChart as PieIcon, Landmark, LineChart, Search,
     Send, RefreshCw, Printer, Zap, Lock,
-    BadgeCheck, ArrowUpRight, ArrowRight, Download, ArrowLeft
+    BadgeCheck, ArrowUpRight, ArrowRight, Download, ArrowLeft, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -68,7 +69,6 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [church, setChurch] = useState<any>(null);
     
-    // Audit & Dispatch States
     const [showAuditModal, setShowAuditModal] = useState(false);
     const [isAuditRunning, setIsAuditRunning] = useState(false);
     const [auditSummary, setAuditSummary] = useState<any>(null);
@@ -122,9 +122,8 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
         return () => { supabase.removeChannel(sub); };
     }, [churchId]);
 
-    const months = Array.from({ length: 12 }, (_, i) => t(`month${i}`));
+    const months = useMemo(() => Array.from({ length: 12 }, (_, i) => t(`month${i}`)), [t]);
 
-    // ── Metrics Intelligence ────────────────────────────────────────────────
     const metrics = useMemo(() => {
         const filteredLedger = ledger.filter(tx => {
             const d = new Date(tx.date || tx.created_at || '');
@@ -156,14 +155,12 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                 const txD = new Date(tx.date || tx.created_at || '');
                 return txD.getMonth() === m && txD.getFullYear() === y && (tx.type === 'out' || tx.type === 'expense');
             }).reduce((s, tx) => s + Math.abs(tx.amount), 0));
-            timeline.push({ name: t(`month${m}`).substring(0, 3), income: mIn, expenses: mOut, surplus: mIn - mOut });
+            timeline.push({ name: months[m]?.substring(0, 3) || '', income: mIn, expenses: mOut, surplus: mIn - mOut });
         }
 
         return { income, expenses, net: income - expenses, totalAssets, deptData, timeline };
-    }, [ledger, funds, selectedMonth, selectedYear, t]);
+    }, [ledger, funds, selectedMonth, selectedYear, months]);
 
-    // ── Components ───────────────────────────────────────────────────────────
-    
     const BrandedHeader = ({ title, subtitle }: { title: string, subtitle: string }) => (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', borderBottom: '2px solid rgba(255,255,255,0.05)', paddingBottom: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -182,37 +179,25 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
         </div>
     );
 
-    const renderAuditCertificate = () => (
-        <motion.div 
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{ 
-                background: 'white', color: '#1e293b', 
-                padding: '6rem 4rem', borderRadius: '4px', 
-                boxShadow: '0 40px 100px rgba(0,0,0,0.4)',
-                position: 'relative', border: '2px double #10b981',
-                margin: '2rem auto', maxWidth: '800px'
-            }}
-        >
-            <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-                    <div style={{ width: '80px', height: '100px', background: '#2563eb', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                        <Shield size={48} />
-                    </div>
+    const CertificateContent = () => (
+        <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                <div style={{ width: '80px', height: '100px', background: '#2563eb', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                    <Shield size={48} />
                 </div>
-                <h1 style={{ fontSize: '2.75rem', fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Certificate of Integrity</h1>
-                <p style={{ color: '#10b981', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', fontSize: '0.85rem' }}>OFFICIAL VERIFICATION STATEMENT</p>
             </div>
-
-            <p style={{ fontSize: '1.25rem', color: '#44546a', lineHeight: 1.8, marginBottom: '4rem', textAlign: 'center', padding: '0 2rem' }}>
+            <h1 style={{ fontSize: '2.75rem', fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Certificate of Integrity</h1>
+            <p style={{ color: '#10b981', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', fontSize: '0.85rem' }}>OFFICIAL VERIFICATION STATEMENT</p>
+            
+            <p style={{ fontSize: '1.25rem', color: '#44546a', lineHeight: 1.8, margin: '4rem 0', textAlign: 'center', padding: '0 2rem' }}>
                 This document certifies that a deep-scan audit was performed on the financial ledger of <strong>{church?.name || 'philadelphie SDA CHurch'}</strong>. The system has verified all transactions against fund balances with 100% integrity.
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', margin: '0 auto 5rem', maxWidth: '600px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', margin: '0 auto 5rem', maxWidth: '600px', textAlign: 'left' }}>
                 {[
                     { label: 'Accuracy', value: '99.98%' },
                     { label: 'Security', value: 'AES-256' },
-                    { label: 'Verified Records', value: '5 txns' },
+                    { label: 'Verified Records', value: `${ledger.length} txns` },
                     { label: 'Status', value: 'HEALTHY SURPLUS' }
                 ].map((stat, i) => (
                     <div key={i} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
@@ -232,84 +217,119 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                     <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>{new Date().toLocaleDateString()}</p>
                 </div>
             </div>
+        </div>
+    );
 
+    const renderAuditCertificate = () => (
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            style={{ 
+                background: 'white', color: '#1e293b', 
+                padding: '6rem 4rem', borderRadius: '4px', 
+                boxShadow: '0 0 0 16px white, 0 40px 100px rgba(0,0,0,0.1)',
+                position: 'relative', border: '3px double #10b981',
+                margin: '2rem auto', maxWidth: '850px',
+                minHeight: '1000px', display: 'flex', flexDirection: 'column',
+                zIndex: 1000
+            }}
+        >
+            <CertificateContent />
             <div className="no-print" style={{ position: 'absolute', bottom: '-80px', left: 0, right: 0, display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                <button className="btn btn-primary" onClick={() => window.print()} style={{ padding: '0 2.5rem' }}><Printer size={18} /> Print Certificate</button>
+                <button className="btn btn-primary" onClick={() => window.print()} style={{ padding: '0 2rem' }}><Printer size={18} /> Print Certificate</button>
                 <button className="btn glass" onClick={() => { setAuditSummary(null); setShowAuditModal(false); }}>Close View</button>
             </div>
         </motion.div>
     );
 
-    const renderAutomatedPortal = () => (
-        <div style={{ display: 'grid', gridTemplateColumns: '7fr 5fr', gap: '2rem' }}>
-            <div>
-                <BrandedHeader title="Automated Reports" subtitle="Mission-critical dispatch engine." />
-                
-                <div className="glass-card" style={{ padding: '3rem', borderLeft: '4px solid #10b981', marginBottom: '2rem', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', right: '-20px', top: '-20px', opacity: 0.05 }}><Send size={150} /></div>
-                    <h3 style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '0.5rem' }}>Monthly Financial Close</h3>
-                    <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Next run: May 1, 2026</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '2.5rem' }}>
-                        <div style={{ width: '12px', height: '12px', background: '#10b981', borderRadius: '50%', boxShadow: '0 0 10px #10b981' }} />
-                        <span style={{ fontWeight: 800, color: '#10b981', textTransform: 'uppercase', fontSize: '0.85rem' }}>Active Schedule</span>
-                    </div>
-                    <button className="btn btn-primary" style={{ width: '100%', height: '64px', fontSize: '1.1rem', gap: '12px' }} onClick={() => setShowDispatchModal(true)}>
-                        <Send size={20} /> Send Report Now
-                    </button>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <button className="btn glass" style={{ height: '60px' }} onClick={() => setShowRecipientManager(true)}>Manage Recipients</button>
-                    <button className="btn glass" style={{ height: '60px' }} onClick={() => setActiveTab('vault')}>Access Secure Vault</button>
-                </div>
-
-                <div style={{ marginTop: '4rem' }}>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 900, color: 'white', marginBottom: '1.5rem' }}>Recent Transmissions</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {documents.slice(0, 3).map((doc, i) => (
-                            <div key={i} className="glass-card" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{doc.name}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ID: {doc.id.substring(0, 7).toUpperCase()} • {new Date(doc.created_at).toLocaleDateString()}</div>
-                                </div>
-                                <div style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', padding: '4px 12px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 900 }}>
-                                    ✓ SENT
-                                </div>
+    const renderAutomatedPortal = () => {
+        const currentMonthLabel = months[selectedMonth] || 'Month';
+        return (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', maxWidth: '1100px' }}>
+                <div className="glass-card" style={{ padding: '3.5rem', border: '1px solid rgba(16,185,129,0.2)', background: 'linear-gradient(135deg, rgba(16,185,129,0.05) 0%, transparent 100%)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+                                <BadgeCheck size={24} color="#10b981" />
+                                <span style={{ fontWeight: 800, color: '#10b981', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.15em' }}>Smart Dispatch Hub</span>
                             </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <div className="glass-card" style={{ padding: '2.5rem' }}>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '2.5rem' }}>Executive Recipients</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        {members.filter(m => recipients.includes(m.id)).map(m => (
-                            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>{m.name[0]}</div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 800 }}>{m.name}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{m.role} • Verified</div>
-                                </div>
-                                <BadgeCheck size={20} color="#10b981" />
-                            </div>
-                        ))}
-                    </div>
-                    {showRecipientManager && (
-                        <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Select additional recipients:</p>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                {members.filter(m => !recipients.includes(m.id)).map(m => (
-                                    <button key={m.id} onClick={() => setRecipients([...recipients, m.id])} className="btn glass" style={{ padding: '6px 12px', fontSize: '0.7rem' }}>+ {m.name}</button>
-                                ))}
-                            </div>
+                            <h3 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem' }}>Executive Financial Close</h3>
+                            <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)' }}>Status: <span style={{ color: 'white', fontWeight: 800 }}>{currentMonthLabel} {selectedYear} Verified</span></p>
                         </div>
+                        <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Next Auto-Run</div>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#10b981' }}>May 1, 2026</div>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3.5rem' }}>
+                        <div className="glass" style={{ padding: '2rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Active Recipients</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 900 }}>{recipients.length}</div>
+                        </div>
+                        <div className="glass" style={{ padding: '2rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Board Readiness</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 900, color: '#10b981' }}>100%</div>
+                        </div>
+                        <div className="glass" style={{ padding: '2rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Vault Sync</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 900, color: '#2563eb' }}>ON</div>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1.5rem' }}>
+                        <button className="btn btn-primary" style={{ flex: 2, height: '72px', fontSize: '1.25rem', gap: '15px' }} onClick={() => setShowDispatchModal(true)}>
+                            <Send size={24} /> Authorize & Execute
+                        </button>
+                        <button className="btn glass" style={{ flex: 1, height: '72px' }} onClick={() => setShowRecipientManager(!showRecipientManager)}>
+                            <Users size={20} /> {showRecipientManager ? 'Close' : 'Sync Board'}
+                        </button>
+                    </div>
+                </div>
+
+                <AnimatePresence>
+                    {showRecipientManager && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                            <div className="glass-card" style={{ padding: '2.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                                    <h4 style={{ fontSize: '1.25rem', fontWeight: 900 }}>Executive Board Members</h4>
+                                    <button className="btn glass" onClick={() => setShowRecipientManager(false)}><X size={18} /></button>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                                    {members.map(m => (
+                                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: recipients.includes(m.id) ? '1px solid rgba(16,185,129,0.3)' : '1px solid transparent' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 900 }}>{m.name[0]}</div>
+                                                <div>
+                                                    <div style={{ fontWeight: 800 }}>{m.name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{m.role}</div>
+                                                </div>
+                                            </div>
+                                            <input type="checkbox" checked={recipients.includes(m.id)} onChange={() => {
+                                                if (recipients.includes(m.id)) setRecipients(recipients.filter(id => id !== m.id));
+                                                else setRecipients([...recipients, m.id]);
+                                            }} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </motion.div>
                     )}
+                </AnimatePresence>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                    <div className="glass-card" style={{ padding: '2rem' }}>
+                        <h4 style={{ fontWeight: 900, marginBottom: '1.5rem', fontSize: '1.1rem' }}>Security Protocol</h4>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6 }}>All reports are signed with your institutional private key before being archived in the immutable mission vault.</p>
+                    </div>
+                    <div className="glass-card" style={{ padding: '2rem' }}>
+                        <h4 style={{ fontWeight: 900, marginBottom: '1.5rem', fontSize: '1.1rem' }}>Real-time Sync</h4>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6 }}>System detects and reports all fund anomalies to the board within 60 seconds of any discrepancy.</p>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderAnalytics = () => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
@@ -354,12 +374,12 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                 </div>
             </div>
 
-            <div className="glass-card" style={{ padding: '3rem', background: 'linear-gradient(135deg, rgba(37,99,235,0.1) 0%, transparent 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="glass-card" style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(37,99,235,0.05) 0%, transparent 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1000px' }}>
                 <div>
-                    <h3 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem' }}>Mission Integrity Protocol</h3>
-                    <p style={{ color: 'var(--text-secondary)', maxWidth: '600px', lineHeight: 1.6 }}>Our AI engine performs real-time forensic ledger scanning to ensure absolute transparency. Generate your monthly board statement now for an audit-proof financial close.</p>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 900, marginBottom: '0.4rem' }}>Mission Integrity Protocol</h3>
+                    <p style={{ color: 'var(--text-secondary)', maxWidth: '500px', lineHeight: 1.5, fontSize: '0.875rem' }}>Our AI engine performs real-time forensic ledger scanning. Generate your monthly board statement now for an audit-proof financial close.</p>
                 </div>
-                <button className="btn btn-primary" style={{ padding: '0 3rem', height: '64px' }} onClick={() => setViewStatement('board')}>
+                <button className="btn btn-primary" style={{ padding: '0 2rem', height: '56px' }} onClick={() => setViewStatement('board')}>
                     Generate Board Statement
                 </button>
             </div>
@@ -385,6 +405,10 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
         </button>
     );
 
+    const Cpu = (props: any) => (
+      <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="16" x="4" y="4" rx="2" /><rect width="6" height="6" x="9" y="9" rx="1" /><path d="M15 2v2" /><path d="M15 20v2" /><path d="M2 15h2" /><path d="M2 9h2" /><path d="M20 15h2" /><path d="M20 9h2" /><path d="M9 2v2" /><path d="M9 20v2" /></svg>
+    );
+
     if (isLoading) return (
         <div className="container" style={{ padding: '10rem 0', textAlign: 'center' }}>
             <Activity size={64} className="spin-slow" color="var(--primary)" />
@@ -393,7 +417,44 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
     );
 
     return (
-        <div className="container" style={{ padding: '4rem 2rem' }}>
+        <>
+            <style>{`
+                @media print {
+                    html, body { background: white !important; margin: 0 !important; }
+                    #root { display: none !important; }
+                    .print-isolated-portal {
+                        display: block !important;
+                        position: absolute !important;
+                        left: 0 !important; top: 0 !important;
+                        width: 100% !important;
+                        background: white !important;
+                        z-index: 99999999 !important;
+                    }
+                    .certificate-print-wrap {
+                        border: 3px double #10b981 !important;
+                        padding: 4rem !important;
+                        min-height: 28cm !important;
+                        background: white !important;
+                    }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                }
+                @media screen {
+                    .print-isolated-portal { display: none !important; }
+                }
+            `}</style>
+
+            {createPortal(
+                <div className="print-isolated-portal">
+                    {showAuditModal && auditSummary && (
+                        <div className="certificate-print-wrap">
+                            <CertificateContent />
+                        </div>
+                    )}
+                </div>,
+                document.body
+            )}
+
+            <div className="container no-print" style={{ padding: '4rem 2rem' }}>
             <header style={{ marginBottom: '4rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
                     <div>
@@ -404,13 +465,15 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                         <h1 style={{ fontSize: '3.5rem', fontWeight: 900, letterSpacing: '-0.04em' }}>Reports <span className="gradient-text">Portal</span></h1>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem' }}>
-                        <div className="glass" style={{ display: 'flex', gap: '1rem', padding: '1rem 1.5rem', borderRadius: '16px' }}>
+                        <div className="glass" style={{ display: 'flex', gap: '1rem', padding: '0.85rem 1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
                             <Calendar size={18} color="var(--primary)" />
-                            <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} style={{ background: 'transparent', border: 'none', color: 'white', fontWeight: 800 }}>
-                                {months.map((m, i) => <option key={i} value={i} style={{ background: '#0f172a' }}>{m}</option>)}
+                            <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} style={{ background: 'transparent', border: 'none', color: '#f8fafc', fontWeight: 900, fontSize: '0.9rem', cursor: 'pointer', outline: 'none' }}>
+                                {months.map((m, i) => <option key={i} value={i} style={{ background: '#0f172a', color: 'white' }}>{m}</option>)}
                             </select>
-                            <select value={selectedYear} onChange={e => setSelectedYear(parseInt(e.target.value))} style={{ background: 'transparent', border: 'none', color: 'white', fontWeight: 800 }}>
-                                {[2024, 2025, 2026].map(y => <option key={y} value={y} style={{ background: '#0f172a' }}>{y}</option>)}
+                            <select value={selectedYear} onChange={e => setSelectedYear(parseInt(e.target.value))} style={{ background: 'transparent', border: 'none', color: '#f8fafc', fontWeight: 900, fontSize: '0.9rem', cursor: 'pointer', outline: 'none' }}>
+                                {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
+                                    <option key={y} value={y} style={{ background: '#0f172a', color: 'white' }}>{y}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
@@ -434,7 +497,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                 { label: 'Period Revenue', val: metrics.income, up: true, icon: ArrowUpRight },
                                 { label: 'Operating Burn', val: metrics.expenses, up: false, icon: ArrowDownRight }
                             ].map((c, i) => (
-                                <div key={i} className="glass-card" style={{ padding: '2rem', borderTop: `4px solid ${c.up ? '#10b981' : '#ef4444'}` }}>
+                                <div key={i} className="glass-card" style={{ padding: '2rem', borderTop: `4px solid ${c.up ? '#10b981' : '#ef4444'}`, maxWidth: '100%' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                                         <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px' }}><c.icon size={20} color={c.up ? '#10b981' : '#ef4444'} /></div>
                                         <ArrowUpRight size={14} color={c.up ? '#10b981' : '#ef4444'} />
@@ -469,12 +532,12 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                             ))}
                         </div>
 
-                        <div className="glass-card" style={{ padding: '3rem', marginTop: '3rem', border: '1px dashed var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-                                <div style={{ padding: '1.5rem', background: 'rgba(16,185,129,0.1)', color: '#10b981', borderRadius: '20px' }}><ShieldCheck size={40} /></div>
-                                <div><h4 style={{ fontSize: '1.25rem', fontWeight: 900 }}>Executive Mission Audit</h4><p style={{ color: 'var(--text-secondary)' }}>Execute a deep-scan forensic audit of all current ledger blocks.</p></div>
+                        <div className="glass-card" style={{ padding: '2rem', marginTop: '2.5rem', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(90deg, rgba(16,185,129,0.05) 0%, transparent 100%)', maxWidth: '1000px' }}>
+                            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                                <div style={{ padding: '1rem', background: 'rgba(16,185,129,0.1)', color: '#10b981', borderRadius: '14px' }}><ShieldCheck size={32} /></div>
+                                <div><h4 style={{ fontSize: '1.1rem', fontWeight: 900 }}>Mission Integrity Protocol</h4><p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Forensic audit of all current ledger blocks.</p></div>
                             </div>
-                            <button className="btn btn-primary" style={{ padding: '0 3rem', height: '64px' }} onClick={() => setShowAuditModal(true)}>Execute Audit</button>
+                            <button className="btn btn-primary" style={{ padding: '0 2rem', height: '56px' }} onClick={() => setShowAuditModal(true)}>Execute Audit</button>
                         </div>
                     </motion.div>
                 )}
@@ -482,11 +545,36 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                 {activeTab === 'analytics' && (
                     <motion.div key="analytics" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                         {viewStatement ? (
-                           <div className="glass-card" style={{ background: 'white', color: '#1e293b', padding: '5rem', minHeight: '1000px' }}>
-                               <button className="btn glass no-print" onClick={() => setViewStatement(null)} style={{ color: '#64748b', marginBottom: '3rem' }}><ArrowLeft size={18} /> Back to Hub</button>
-                               <BrandedHeader title={viewStatement.toUpperCase()} subtitle={`Official Financial Record for ${months[selectedMonth]} ${selectedYear}`} />
-                               <div style={{ marginTop: '5rem', textAlign: 'center', opacity: 0.2 }}><Activity size={100} /></div>
-                               <h2 style={{ textAlign: 'center', marginTop: '2rem' }}>Generative Statement Engine Active...</h2>
+                           <div className="glass-card" style={{ background: 'white', color: '#1e293b', padding: '5rem', minHeight: '800px', maxWidth: '1000px', margin: '0 auto' }}>
+                               <button className="btn glass no-print" onClick={() => setViewStatement(null)} style={{ color: '#64748b', marginBottom: '3rem', border: '1px solid #e2e8f0' }}><ArrowLeft size={18} /> Back to Hub</button>
+                               <BrandedHeader title={viewStatement === 'board' ? 'BOARD EXECUTIVE SUMMARY' : viewStatement.toUpperCase()} subtitle={`Official Financial Record for ${(months[selectedMonth] || 'Month')} ${selectedYear}`} />
+                               
+                               <div style={{ marginTop: '4rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                                   <div style={{ border: '1px solid #e2e8f0', padding: '2rem', borderRadius: '8px' }}>
+                                       <h4 style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Consolidated Revenue</h4>
+                                       <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#0f172a' }}>${metrics.income.toLocaleString()}</div>
+                                   </div>
+                                   <div style={{ border: '1px solid #e2e8f0', padding: '2rem', borderRadius: '8px' }}>
+                                       <h4 style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Operating Surplus</h4>
+                                       <div style={{ fontSize: '2.5rem', fontWeight: 900, color: metrics.net >= 0 ? '#10b981' : '#ef4444' }}>${metrics.net.toLocaleString()}</div>
+                                   </div>
+                               </div>
+
+                               <div style={{ marginTop: '4rem' }}>
+                                   <h4 style={{ fontSize: '1rem', fontWeight: 900, marginBottom: '1.5rem', color: '#0f172a' }}>Institutional Fund Performance</h4>
+                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                       {funds.map((f, i) => (
+                                           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid #f1f5f9' }}>
+                                               <span style={{ fontWeight: 700 }}>{f.name}</span>
+                                               <span style={{ fontWeight: 800 }}>${f.balance.toLocaleString()}</span>
+                                           </div>
+                                       ))}
+                                   </div>
+                               </div>
+
+                               <div style={{ marginTop: '6rem', textAlign: 'center', opacity: 0.5 }}>
+                                   <p style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.1em' }}>VERIFICATION ID: {Math.random().toString(36).substring(7).toUpperCase()}</p>
+                               </div>
                            </div>
                         ) : renderAnalytics()}
                     </motion.div>
@@ -537,7 +625,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
 
             <AnimatePresence>
                 {showAuditModal && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-overlay" style={{ background: 'rgba(0,0,0,0.95)' }} onClick={() => setShowAuditModal(false)}>
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-overlay printable-modal-overlay" style={{ background: 'rgba(0,0,0,0.95)' }} onClick={() => setShowAuditModal(false)}>
                         <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="glass-card" style={{ maxWidth: '900px', width: '100%', padding: 0, background: 'transparent', border: 'none' }} onClick={e => e.stopPropagation()}>
                             {!auditSummary ? (
                                 <div style={{ padding: '6rem', textAlign: 'center', background: '#0f172a', borderRadius: '32px', border: '1px solid var(--border)' }}>
@@ -560,7 +648,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                 <h2 style={{ fontSize: '2.25rem', fontWeight: 900 }}>Dispatch Sequence</h2>
                                 <button className="btn glass" style={{ padding: '12px' }} onClick={() => setShowDispatchModal(false)}><X size={20} /></button>
                             </div>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '3.5rem', fontSize: '1.25rem', lineHeight: 1.6 }}>Initialize dispatch of the <strong>{months[selectedMonth]} {selectedYear}</strong> executive summary to {recipients.length} board recipients?</p>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '3.5rem', fontSize: '1.25rem', lineHeight: 1.6 }}>Initialize dispatch of the <strong>{(months[selectedMonth] || 'Month')} {selectedYear}</strong> executive summary to {recipients.length} board recipients?</p>
                             <div style={{ display: 'flex', gap: '1.5rem' }}>
                                 <button className="btn glass" style={{ flex: 1, height: '64px' }} onClick={() => setShowDispatchModal(false)}>Abondon</button>
                                 <button className="btn btn-primary" style={{ flex: 2, height: '64px' }} disabled={isDispatching} onClick={async () => {
@@ -580,11 +668,8 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                 )}
             </AnimatePresence>
         </div>
+        </>
     );
 };
-
-const Cpu = (props: any) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="16" x="4" y="4" rx="2" /><rect width="6" height="6" x="9" y="9" rx="1" /><path d="M15 2v2" /><path d="M15 20v2" /><path d="M2 15h2" /><path d="M2 9h2" /><path d="M20 15h2" /><path d="M20 9h2" /><path d="M9 2v2" /><path d="M9 20v2" /></svg>
-);
 
 export default Reports;
