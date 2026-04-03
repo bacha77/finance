@@ -132,7 +132,11 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
         bodyText += `${t('statementTreasurerLabel')}, ${churchInfo.name}\n`;
         bodyText += `${churchInfo.address || ''}`;
 
-        // 🚀 INTERNAL DISPATCH ENGINE
+        // 🚀 REAL-SEND DELIVERY PIPELINE
+        // while continuing to log the archival data in the background.
+        const mailtoLink = `mailto:${selectedMember.email}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
+        window.location.href = mailtoLink;
+
         setTimeout(async () => {
             try {
                 // Log the successful dispatch to the Secure Vault
@@ -141,11 +145,10 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                     name: `Invoice: ${selectedMember.name} - ${currentMonth} ${invoiceYear}`,
                     type: 'invoice',
                     metadata: { 
-                        status: 'dispatched_internally', 
+                        status: 'dispatched_via_client', 
                         recipient: selectedMember.email,
                         subject: decodeURIComponent(subject),
-                        body_preview: bodyText.substring(0, 500) + '...',
-                        method: 'Background Relay'
+                        method: 'Local Mailer'
                     }
                 });
 
@@ -156,7 +159,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                 console.error('Vault logging failed:', err);
                 setIsSending(false);
             }
-        }, 2200); // Simulated relay latency for premium feel
+        }, 1500);
     };
 
     const [churchInfo, setChurchInfo] = useState<{name: string, city: string, state: string, address?: string, logo_url?: string} | null>(null);
@@ -1066,8 +1069,8 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                             <div style={{ padding: '3rem', backgroundColor: '#4f46e5', borderRadius: '32px', color: 'white', marginBottom: '3rem', position: 'relative', overflow: 'hidden' }}>
                                 <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)' }} />
                                 <h4 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>{t('churchMessage')}</h4>
-                                <p style={{ fontSize: '1.125rem', lineHeight: 1.6, opacity: 0.9, fontWeight: 500 }}>
-                                    {t('stewardshipMessageBefore') || 'Dear'} {selectedMember.name}, {t('stewardshipMessageMiddle') || 'thank you for your faithful stewardship this month. Your contribution of'} <strong style={{ fontWeight: 800 }}>${getMemberDonations(selectedMember.name).reduce((sum, tx) => sum + tx.amount, 0).toLocaleString()}</strong> {t('stewardshipMessageAfter') || 'helps us continue our mission.'}
+                                <p style={{ fontSize: '1.25rem', lineHeight: 1.6, opacity: 0.9, fontWeight: 500, letterSpacing: '-0.01em' }}>
+                                    Dear {selectedMember.name}, thank you for your faithful stewardship this month. Your total contribution of <strong style={{ fontWeight: 800, borderBottom: '2px solid rgba(255,255,255,0.3)', paddingBottom: '2px' }}>${getMemberDonations(selectedMember.name).reduce((sum, tx) => sum + tx.amount, 0).toLocaleString()}</strong> helps us continue our mission of providing spiritual nourishment and community outreach. Your generosity empowers our ministries and transforms lives through faith.
                                 </p>
                                 <div style={{ marginTop: '2.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                     <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
