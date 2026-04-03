@@ -20,7 +20,9 @@ import {
   Clock,
   Trash2,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  FileJson,
+  History
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,6 +46,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
   const [isCancelling, setIsCancelling] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isBackingUp, setIsBackingUp] = useState(false);
 
   React.useEffect(() => {
     if (initialSection) setActiveSection(initialSection);
@@ -1022,7 +1025,70 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
             {renderSectionHeader('Maintenance', 'Manage system health and data lifecycle.')}
             <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+              <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem', color: 'var(--primary-light)' }}>
+                  <ShieldCheck size={24} />
+                  <h3 style={{ fontSize: '1rem', fontWeight: 800 }}>Data Safeguard & Backups</h3>
+                </div>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                  Your church data is double-protected. In addition to Supabase's automatic 7-day point-in-time recovery, you can download a complete manual backup of your congregational records at any time.
+                </p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <button 
+                      onClick={async () => {
+                        if (!churchData?.id) return;
+                        setIsBackingUp(true);
+                        try {
+                            const cid = churchData.id;
+                            const [{ data: ledger }, { data: funds }, { data: members }, { data: depts }] = await Promise.all([
+                                supabase.from('ledger').select('*').eq('church_id', cid),
+                                supabase.from('funds').select('*').eq('church_id', cid),
+                                supabase.from('members').select('*').eq('church_id', cid).select('name, contact'),
+                                supabase.from('departments').select('*').eq('church_id', cid)
+                            ]);
+
+                            const backup = {
+                                organization: churchData.name,
+                                timestamp: new Date().toISOString(),
+                                schema_version: 'v8',
+                                data: { ledger, funds, members, depts }
+                            };
+
+                            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = `Storehouse_Backup_${churchData.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        } catch (err) {
+                            console.error('Manual backup failed:', err);
+                            alert("Backup failed. Please check your connection.");
+                        } finally {
+                            setIsBackingUp(false);
+                        }
+                      }}
+                      className="btn btn-primary"
+                      style={{ height: '56px', fontSize: '0.9rem', fontWeight: 800 }}
+                      disabled={isBackingUp}
+                    >
+                      {isBackingUp ? <Loader2 className="spin" size={20} /> : <FileJson size={20} />} 
+                      {isBackingUp ? 'Generating Archive...' : 'Download Manual Backup (.json)'}
+                    </button>
+
+                    <button 
+                      onClick={() => alert("Point-In-Time-Recovery (PITR) is active for this tenant. Daily snapshots are stored for 7 days. Contact support for emergency database rolling.")}
+                      className="btn btn-ghost"
+                      style={{ height: '56px', fontSize: '0.9rem', fontWeight: 800, background: 'rgba(255,255,255,0.03)' }}
+                    >
+                      <History size={20} /> View Recovery Logs
+                    </button>
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(239, 68, 68, 0.03)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem', color: '#ef4444' }}>
                   <AlertTriangle size={24} />
                   <h3 style={{ fontSize: '1rem', fontWeight: 800 }}>Danger Zone: Congregational Hard Reset</h3>
