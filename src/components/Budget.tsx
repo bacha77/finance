@@ -493,13 +493,13 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId }) => {
                             <select
                                 value={selectedNewDept}
                                 onChange={(e) => setSelectedNewDept(e.target.value)}
-                                style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'var(--primary-dark)', border: '1px solid var(--border)', color: 'white' }}
+                                style={{ width: '100%', padding: '12px', borderRadius: '10px', background: '#1e293b', border: '1px solid var(--border)', color: 'white', outline: 'none' }}
                             >
-                                <option value="">{t('selectDepartment')}</option>
+                                <option value="" style={{ background: '#1e293b' }}>{t('selectDepartment')}</option>
                                 {departments
                                     .filter(d => !currentBudget.allocations.find(a => a.deptId === d.id))
                                     .map(d => (
-                                        <option key={d.id} value={d.id}>{d.name}</option>
+                                        <option key={d.id} value={d.id} style={{ background: '#1e293b' }}>{d.name}</option>
                                     ))
                                 }
                             </select>
@@ -570,7 +570,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId }) => {
                         </p>
                         <button
                             className="btn"
-                            style={{ width: '100%', background: 'white', color: 'var(--primary-dark)', fontWeight: 800 }}
+                            style={{ width: '100%', background: 'white', color: '#0f172a', fontWeight: 800, border: 'none' }}
                             onClick={() => setShowHistoryModal(true)}
                         >
                             {t('auditLog')}
