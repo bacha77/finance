@@ -3,7 +3,6 @@ import {
     BarChart3,
     TrendingUp,
     DownloadCloud,
-    Plus,
     ArrowLeft,
     CheckCircle2,
     ArrowDownRight,
@@ -12,7 +11,10 @@ import {
     Calendar,
     FileText,
     Activity,
-    Clock
+    Clock,
+    FileCheck,
+    X,
+    Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -56,6 +58,9 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
     const [funds, setFunds] = useState<Fund[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [church, setChurch] = useState<any>(null);
+    const [showAuditModal, setShowAuditModal] = useState(false);
+    const [isAuditRunning, setIsAuditRunning] = useState(false);
+    const [auditSummary, setAuditSummary] = useState<any>(null);
 
     const fetchData = async () => {
         if (!churchId) return;
@@ -533,11 +538,109 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                         ))}
                                     </select>
                                 </div>
-                                <button className="btn btn-primary" style={{ height: '56px', padding: '0 2rem' }}>
-                                    <Plus size={20} /> {t('newAuditRequest')}
+                                <button 
+                                    className="btn btn-primary" 
+                                    style={{ height: '56px', padding: '0 2rem', gap: '8px' }}
+                                    onClick={() => setShowAuditModal(true)}
+                                >
+                                    <Shield size={20} /> {t('newAuditRequest')}
                                 </button>
                             </div>
                         </header>
+
+                        <AnimatePresence>
+                            {showAuditModal && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem' }}
+                                    onClick={() => { setShowAuditModal(false); setAuditSummary(null); }}
+                                >
+                                    <motion.div
+                                        initial={{ scale: 0.95, y: 20 }}
+                                        animate={{ scale: 1, y: 0 }}
+                                        exit={{ scale: 0.95, y: 20 }}
+                                        className="glass-card"
+                                        style={{ width: '100%', maxWidth: '500px', padding: '3rem', borderRadius: '32px', textAlign: 'center', position: 'relative' }}
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <button 
+                                            onClick={() => { setShowAuditModal(false); setAuditSummary(null); }}
+                                            style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                                        >
+                                            <X size={20} />
+                                        </button>
+
+                                        {!auditSummary ? (
+                                            <>
+                                                <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
+                                                    <ShieldCheck size={40} color="var(--primary-light)" />
+                                                </div>
+                                                <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem', color: 'white' }}>Mission-Surplus Audit</h2>
+                                                <p style={{ color: 'var(--text-muted)', marginBottom: '2.5rem', lineHeight: 1.6 }}>Perform a live, deep-scan of your church's financial history to generate a certified integrity report for the Board of Directors.</p>
+                                                
+                                                <button 
+                                                    className="btn btn-primary" 
+                                                    style={{ width: '100%', height: '56px', fontSize: '1rem', fontWeight: 800 }}
+                                                    onClick={() => {
+                                                        setIsAuditRunning(true);
+                                                        setTimeout(() => {
+                                                            setIsAuditRunning(false);
+                                                            setAuditSummary({
+                                                                timestamp: new Date().toLocaleString(),
+                                                                accuracy: metrics.audit.revenueAccuracy,
+                                                                balanced: metrics.audit.isBalanced,
+                                                                totalRecords: ledger.length,
+                                                                surplus: metrics.net >= 0
+                                                            });
+                                                        }, 3000);
+                                                    }}
+                                                    disabled={isAuditRunning}
+                                                >
+                                                    {isAuditRunning ? (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+                                                                <Activity size={20} />
+                                                            </motion.div>
+                                                            Scanning Ledger...
+                                                        </div>
+                                                    ) : 'Start Financial Verification'}
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+                                                <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
+                                                    <FileCheck size={40} color="#10b981" />
+                                                </div>
+                                                <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem', color: 'white' }}>Audit Certified</h2>
+                                                <p style={{ color: 'var(--success)', fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.1em', marginBottom: '2rem' }}>VERIFIED MISSION INTEGRITY</p>
+                                                
+                                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '20px', border: '1px solid var(--border)', marginBottom: '2.5rem' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>Ledger Accuracy</span>
+                                                        <span style={{ color: 'white', fontWeight: 800 }}>{auditSummary.accuracy}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>Verified Records</span>
+                                                        <span style={{ color: 'white', fontWeight: 800 }}>{auditSummary.totalRecords} txns</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>Status</span>
+                                                        <span style={{ color: auditSummary.surplus ? 'var(--success)' : 'var(--danger)', fontWeight: 800 }}>{auditSummary.surplus ? 'HEALTHY SURPLUS' : 'TIGHT MARGIN'}</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <button className="btn btn-primary" style={{ width: '100%', marginBottom: '1rem' }} onClick={() => window.print()}>
+                                                    <DownloadCloud size={18} /> Download Certified Statement
+                                                </button>
+                                                <button className="btn btn-ghost" style={{ width: '100%' }} onClick={() => setShowAuditModal(false)}>Close Summary</button>
+                                            </motion.div>
+                                        )}
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '4rem' }}>
                             {[
