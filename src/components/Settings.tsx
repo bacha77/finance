@@ -47,6 +47,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
   const [isResetting, setIsResetting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
+  const [resetCountdown, setResetCountdown] = useState(0);
 
   React.useEffect(() => {
     if (initialSection) setActiveSection(initialSection);
@@ -154,7 +156,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
   };
 
   const handleHardReset = async () => {
-    if (!churchData?.id) return;
+    if (!churchData?.id || resetConfirmText !== churchData.name) return;
     setIsResetting(true);
     try {
         const cid = churchData.id;
@@ -1187,35 +1189,87 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
               initial={{ scale: 0.9, y: 30 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 30 }}
+              onViewportEnter={() => {
+                setResetCountdown(5);
+                const timer = setInterval(() => {
+                  setResetCountdown(prev => {
+                    if (prev <= 1) {
+                      clearInterval(timer);
+                      return 0;
+                    }
+                    return prev - 1;
+                  });
+                }, 1000);
+              }}
               style={{
-                width: '100%', maxWidth: '450px', background: 'var(--bg-card)',
-                borderRadius: '2rem', border: '1px solid #ef4444', padding: '3rem',
+                width: '100%', maxWidth: '480px', background: 'var(--bg-card)',
+                borderRadius: '2rem', border: '1px solid #ef4444', padding: '3.5rem',
                 textAlign: 'center'
               }}
             >
               <div style={{ width: '80px', height: '80px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', color: '#ef4444' }}>
                 <AlertTriangle size={40} />
               </div>
-              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '1rem', color: 'white' }}>Are you absolutely sure?</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '2.5rem', lineHeight: 1.6 }}>
-                You are about to wipe all financial history and records. This will reset the entire platform to a "First Day" state. Only proceed if you have been authorized to clear the board.
+              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '1rem', color: 'white', letterSpacing: '-0.02em' }}>Final Institutional Warning</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '2rem', lineHeight: 1.6 }}>
+                This will physically purge all ledger history, payroll logs, and reset all fund balances to zero for **{churchData?.name}**. This action cannot be undone.
               </p>
+
+              <div style={{ marginBottom: '2.5rem', textAlign: 'left' }}>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>
+                  TYPE NAME OF CHURCH TO AUTHORIZE:
+                </label>
+                <input 
+                  type="text"
+                  value={resetConfirmText}
+                  onChange={(e) => setResetConfirmText(e.target.value)}
+                  placeholder={churchData?.name}
+                  style={{ 
+                    width: '100%', 
+                    background: 'rgba(239, 68, 68, 0.05)', 
+                    border: '2px solid rgba(239, 68, 68, 0.2)', 
+                    padding: '1rem', 
+                    borderRadius: '12px', 
+                    color: 'white', 
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    textAlign: 'center',
+                    outline: 'none'
+                  }}
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px', textAlign: 'center' }}>
+                  Verification: <span style={{ color: resetConfirmText === churchData?.name ? '#10b981' : 'var(--text-muted)', fontWeight: 700 }}>
+                    {resetConfirmText === churchData?.name ? 'Identity Confirmed' : 'Awaiting Match'}
+                  </span>
+                </p>
+              </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                 <button 
                   className="btn btn-primary" 
-                  style={{ background: '#ef4444', height: '56px', fontSize: '1rem', fontWeight: 900 }}
-                  disabled={isResetting}
+                  style={{ 
+                    background: resetConfirmText === churchData?.name && resetCountdown === 0 ? '#ef4444' : 'rgba(255,255,255,0.05)', 
+                    color: resetConfirmText === churchData?.name && resetCountdown === 0 ? 'white' : 'rgba(255,255,255,0.2)',
+                    height: '60px', 
+                    fontSize: '1rem', 
+                    fontWeight: 900,
+                    border: 'none',
+                    cursor: resetConfirmText === churchData?.name && resetCountdown === 0 ? 'pointer' : 'not-allowed'
+                  }}
+                  disabled={isResetting || resetConfirmText !== churchData?.name || resetCountdown > 0}
                   onClick={handleHardReset}
                 >
-                  {isResetting ? <Loader2 className="spin" size={24} /> : 'YES, WIPE ALL RECORDS'}
+                  {isResetting ? <Loader2 className="spin" size={24} /> : resetCountdown > 0 ? `LOCKED (${resetCountdown}s)` : 'YES, PERMANENTLY WIPE ALL DATA'}
                 </button>
                 <button 
                   className="btn btn-ghost" 
-                  style={{ height: '56px', fontSize: '1rem', fontWeight: 800 }}
-                  onClick={() => setShowResetConfirm(false)}
+                  style={{ height: '52px', fontSize: '1rem', fontWeight: 800 }}
+                  onClick={() => {
+                    setShowResetConfirm(false);
+                    setResetConfirmText('');
+                  }}
                 >
-                  CANCEL & GO BACK
+                  ABORT RESET
                 </button>
               </div>
             </motion.div>
