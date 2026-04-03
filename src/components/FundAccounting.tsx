@@ -62,6 +62,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
 
     const [funds, setFunds] = useState<Fund[]>([]);
     const [showNewFundModal, setShowNewFundModal] = useState(false);
+    const [isCreatingFund, setIsCreatingFund] = useState(false);
     const [ledger, setLedger] = useState<Transaction[]>([]);
 
     // Supabase Sync & Realtime
@@ -551,27 +552,63 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem', color: 'white' }}>{t('createFund') || 'Create New Fund'}</h2>
                             <form onSubmit={async (e) => {
                                 e.preventDefault();
-                                const name = (e.target as any).fundName.value;
-                                const { data } = await supabase.from('funds').insert({
-                                    name,
-                                    church_id: churchId,
-                                    balance: 0,
-                                    type: 'Unrestricted',
-                                    status: 'Active',
-                                    color: '#6366f1'
-                                }).select().single();
-                                if (data) {
-                                    setFunds([...funds, data]);
-                                    setShowNewFundModal(false);
+                                if (!churchId) return alert("Church ID not found. Please refresh.");
+                                
+                                setIsCreatingFund(true);
+                                try {
+                                    const name = (e.target as any).fundName.value;
+                                    const { data, error: insertError } = await supabase.from('funds').insert({
+                                        name: name.trim(),
+                                        church_id: churchId,
+                                        balance: 0,
+                                        type: 'Unrestricted',
+                                        status: 'Active',
+                                        color: '#6366f1'
+                                    }).select().single();
+                                    
+                                    if (insertError) throw insertError;
+                                    
+                                    if (data) {
+                                        setFunds(prev => [...prev, data]);
+                                        setShowNewFundModal(false);
+                                    }
+                                } catch (err: any) {
+                                    console.error('Failed to create fund:', err);
+                                    alert(`Failed to create fund: ${err.message || 'Unknown error'}`);
+                                } finally {
+                                    setIsCreatingFund(false);
                                 }
                             }}>
                                 <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{t('fundName') || 'Fund Name'}</label>
-                                    <input name="fundName" required className="glass-input" style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }} placeholder="e.g. Building Fund" />
+                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        {t('fundName') || 'Fund Name'}
+                                    </label>
+                                    <input 
+                                        name="fundName" 
+                                        required 
+                                        autoFocus
+                                        className="glass-input" 
+                                        style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', borderRadius: '12px' }} 
+                                        placeholder="e.g. Building Fund" 
+                                    />
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button type="button" className="btn" style={{ flex: 1, color: 'white', border: '1px solid rgba(255,255,255,0.2)' }} onClick={() => setShowNewFundModal(false)}>{t('cancel')}</button>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{t('create') || 'Create'}</button>
+                                    <button 
+                                        type="button" 
+                                        className="btn btn-ghost" 
+                                        style={{ flex: 1, color: 'white', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 800 }} 
+                                        onClick={() => setShowNewFundModal(false)}
+                                    >
+                                        {t('cancel')}
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        disabled={isCreatingFund}
+                                        className="btn btn-primary" 
+                                        style={{ flex: 1, fontWeight: 800 }}
+                                    >
+                                        {isCreatingFund ? <RefreshCw size={18} className="spin" /> : (t('create') || 'Create')}
+                                    </button>
                                 </div>
                             </form>
                         </motion.div>
