@@ -63,8 +63,6 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
     const [viewStatement, setViewStatement] = useState<StatementType>(null);
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-    const [ledger, setLedger] = useState<LedgerEntry[]>([]);
-    const [funds, setFunds] = useState<Fund[]>([]);
     const [documents, setDocuments] = useState<any[]>([]);
     const [members, setMembers] = useState<Member[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -86,14 +84,17 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
             if (!churchId) return;
             const [
                 { data: churchData }, 
-                { data: docsData }
+                { data: docsData },
+                { data: membersData }
             ] = await Promise.all([
                 supabase.from('churches').select('*').eq('id', churchId).single(),
-                supabase.from('documents').select('*').eq('church_id', churchId).order('created_at', { ascending: false })
+                supabase.from('documents').select('*').eq('church_id', churchId).order('created_at', { ascending: false }),
+                supabase.from('members').select('*').eq('church_id', churchId)
             ]);
             
             if (churchData) setChurch(churchData);
             if (docsData) setDocuments(docsData);
+            if (membersData) setMembers(membersData);
             if (!isFinanceLoading) setIsLoading(false);
         };
         fetchMeta();

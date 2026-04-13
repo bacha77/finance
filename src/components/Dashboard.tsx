@@ -5,11 +5,12 @@ import {
     FileText, ShieldCheck, Shield, Lock, Calendar, Download, Target, HeartHandshake,
     Brain, Sparkles, AlertTriangle,
     BrainCircuit,
-    Zap
+    Zap,
+    PieChart as PieIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot, PieChart, Pie, Cell } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { predictNextMonth, detectAnomalies } from '../lib/intelligence';
@@ -417,6 +418,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                         <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{syncing ? t('syncing') : 'SYSTEM LIVE'}</span>
                     </div>
                 </div>
+                </div>
             </motion.div>
 
             {/* ── Stat Cards ─────────────────────────────────────────── */}
@@ -719,7 +721,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                              { icon: Zap, label: 'Analytics', tab: 'accounting', color: '#2563eb' },
                              { icon: Users, label: 'Members', tab: 'members', color: '#10b981' },
                              { icon: CreditCard, label: 'Expenses', tab: 'expenses', color: '#f59e0b' },
-                             { icon: PieChart, label: 'Budgets', tab: 'budget', color: '#a855f7' }
+                             { icon: PieIcon, label: 'Budgets', tab: 'budget', color: '#a855f7' }
                          ].map((btn, i) => (
                              <motion.button
                                  key={i}

@@ -216,6 +216,16 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true); setError(null);
+
+        // ── Local Bypass Account ─────────────────────────────────────────────
+        if (isLocal && email === 'admin@bias.com' && password === 'admin') {
+            if (onBypass) {
+                onBypass();
+                setLoading(false);
+                return;
+            }
+        }
+
         try {
             const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) {
