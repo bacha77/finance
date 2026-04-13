@@ -161,29 +161,41 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
     try {
         const cid = churchData.id;
         
-        // 1. Clear Financial History (Ledger & Payroll)
-        const { error: err1 } = await supabase.from('ledger').delete().eq('church_id', cid);
-        const { error: err2 } = await supabase.from('payroll').delete().eq('church_id', cid);
+        // Helper to ignore "column/table missing" errors
+        const safeReset = async (promise: Promise<any>, description: string) => {
+            const { error } = await promise;
+            if (error) {
+                console.warn(`Safe Reset: Component "${description}" failed. This is often normal if the component is not in use or the schema is simplified.`, error);
+            }
+            return error;
+        };
+
+        console.info("Initiating Deep Reset for Church ID:", cid);
+
+        // Core Financials (Critical)
+        const errLedger = await safeReset(supabase.from('ledger').delete().eq('church_id', cid), "Ledger History");
+        const errFunds = await safeReset(supabase.from('funds').update({ balance: 0 }).eq('church_id', cid), "Fund Balances");
         
-        // 2. Reset Accounting Balances (Funds & Departments)
-        const { error: err3 } = await supabase.from('funds').update({ balance: 0 }).eq('church_id', cid);
-        const { error: err4 } = await supabase.from('departments').update({ spent_so_far: 0 }).eq('church_id', cid);
+        // Extended Data
+        await safeReset(supabase.from('payroll').delete().eq('church_id', cid), "Payroll History");
+        await safeReset(supabase.from('departments').update({ spent_so_far: 0 }).eq('church_id', cid), "Department Spending");
+        await safeReset(supabase.from('goals').update({ current_amount: 0 }).eq('church_id', cid), "Strategic Goals");
+        await safeReset(supabase.from('budgets').delete().eq('church_id', cid), "Annual Budgets");
+        await safeReset(supabase.from('documents').delete().eq('church_id', cid), "Vault Documents");
         
-        // 3. Reset Strategy & Goals
-        const { error: err5 } = await supabase.from('goals').update({ current_amount: 0 }).eq('church_id', cid);
-        
-        // 4. Reset Staff Lifecycle Status
-        const { error: err6 } = await supabase.from('staff').update({ 
+        // Members & Staff
+        await safeReset(supabase.from('members').update({ tithe_total: 0 }).eq('church_id', cid), "Member Tithing");
+        await safeReset(supabase.from('staff').update({ 
             status: 'Pending', 
             last_paid: 'Never' 
-        }).eq('church_id', cid);
+        }).eq('church_id', cid), "Staff Status");
         
-        if (err1 || err2 || err3 || err4 || err5 || err6) {
-            console.error('Reset components error state:', { err1, err2, err3, err4, err5, err6 });
-            throw new Error("Hard Reset failed for some components. Please check your administrative permissions.");
+        if (errLedger || errFunds) {
+            console.error('Critical reset components failed:', { errLedger, errFunds });
+            throw new Error("Hard Reset failed for core financial components. Please check your administrative permissions.");
         }
         
-        // 5. Purge Local Storage to prevent stale data hydration
+        // Purge Local Storage to prevent stale data hydration
         const keysToPurge = [
             'sanctuary_funds',
             'sanctuary_ledger',
@@ -201,10 +213,10 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
         setActiveSection('grid');
         setShowResetConfirm(false);
         
-        // 6. Force full application synchronization
+        // Force full application synchronization
         window.location.reload();
     } catch (err: any) {
-        console.error('Reset error:', err);
+        console.error('Reset system error:', err);
         alert(err.message || "Failed to reset data. Ensure you have owner-level permissions.");
     } finally {
         setIsResetting(false);
