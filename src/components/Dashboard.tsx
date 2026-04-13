@@ -282,8 +282,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         {
             label: t('members'),
             value: financeStats.membersCount.toLocaleString(),
-            change: '+2',
-            up: true,
+            change: financeStats.membersCount > 0 ? 'ACTIVE' : 'NONE',
+            up: financeStats.membersCount > 0,
             icon: Users,
             iconBg: 'rgba(168,85,247,0.15)',
             iconColor: '#a855f7',

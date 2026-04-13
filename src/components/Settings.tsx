@@ -170,29 +170,28 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
             return error;
         };
 
-        console.info("Initiating Deep Reset for Church ID:", cid);
+        // 1. Clear Fiscal Locks (Critical for deleting ledger)
+        await safeReset(supabase.from('churches').update({ locked_years: [] }).eq('id', cid), "Fiscal Year Locks");
 
-        // Core Financials (Critical)
+        // 2. Core Financials (Critical)
         const errLedger = await safeReset(supabase.from('ledger').delete().eq('church_id', cid), "Ledger History");
         const errFunds = await safeReset(supabase.from('funds').update({ balance: 0 }).eq('church_id', cid), "Fund Balances");
         
-        // Extended Data
+        // 3. Extended Data
         await safeReset(supabase.from('payroll').delete().eq('church_id', cid), "Payroll History");
-        await safeReset(supabase.from('departments').update({ spent_so_far: 0 }).eq('church_id', cid), "Department Spending");
-        await safeReset(supabase.from('goals').update({ current_amount: 0 }).eq('church_id', cid), "Strategic Goals");
+        await safeReset(supabase.from('departments').update({ budget: 0 }).eq('church_id', cid), "Department Budgets");
+        await safeReset(supabase.from('goals').delete().eq('church_id', cid), "Strategic Goals");
         await safeReset(supabase.from('budgets').delete().eq('church_id', cid), "Annual Budgets");
         await safeReset(supabase.from('documents').delete().eq('church_id', cid), "Vault Documents");
         
-        // Members & Staff
-        await safeReset(supabase.from('members').update({ tithe_total: 0 }).eq('church_id', cid), "Member Tithing");
-        await safeReset(supabase.from('staff').update({ 
-            status: 'Pending', 
-            last_paid: 'Never' 
-        }).eq('church_id', cid), "Staff Status");
+        // 4. Members & Staff (Full Wipe for Day One state)
+        await safeReset(supabase.from('members').delete().eq('church_id', cid), "Congregation Records");
+        await safeReset(supabase.from('staff').delete().eq('church_id', cid), "Staff Records");
         
         if (errLedger || errFunds) {
             console.error('Critical reset components failed:', { errLedger, errFunds });
-            throw new Error("Hard Reset failed for core financial components. Please check your administrative permissions.");
+            const errMsg = errLedger?.message || errFunds?.message || "Unknown permission error";
+            throw new Error(`Hard Reset failed for core financial components: ${errMsg}. Ensure you have owner-level permissions.`);
         }
         
         // Purge Local Storage to prevent stale data hydration
