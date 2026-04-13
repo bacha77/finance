@@ -75,6 +75,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                     .from('ledger')
                     .select('*')
                     .eq('church_id', churchId)
+                    .neq('voided', true)
                     .order('created_at', { ascending: false });
 
                 setLedger(ledgerData || []);
@@ -172,6 +173,22 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
         setAllocations(newAllocations);
     };
 
+    const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+
+    const handleEditTransaction = (tx: Transaction) => {
+        setEditingTx(tx);
+        setTxMember(tx.member || '');
+        setTxDate(tx.date || tx.created_at?.split('T')[0] || '');
+        setPaymentMethod(tx.method || 'Cash');
+        setTxNotes(tx.notes || '');
+        setAllocations([{ 
+            deptId: availableDepts.find(d => d.name === tx.department)?.id || '1', 
+            fundId: tx.fund_id || '', 
+            amount: tx.amount.toString() 
+        }]);
+        setShowNewTxModal(true);
+    };
+
     const handleAddTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
         if (allocations.length === 0 || !churchId) return;
@@ -193,7 +210,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
             }
             const selectedDept = availableDepts.find(d => d.id === alloc.deptId);
 
-            newTxs.push({
+            const txData: Transaction = {
                 date: txDate,
                 description: txNotes ? `${t('donations')}: ${txNotes}` : `${t('donations')} ${t('to')} ${selectedDept?.name}`,
                 category: t('revenue'),
@@ -206,30 +223,55 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                 method: paymentMethod,
                 notes: txNotes,
                 church_id: churchId,
-                audit_trail: [{
-                    timestamp: new Date().toISOString(),
-                    user: 'Admin',
-                    action: 'CREATED',
-                    details: t('recordedManually').replace('{method}', paymentMethod)
-                }]
-            });
+                audit_trail: [
+                    ...(editingTx?.audit_trail || []),
+                    {
+                        timestamp: new Date().toISOString(),
+                        user: 'Admin',
+                        action: editingTx ? 'UPDATED' : 'CREATED',
+                        details: editingTx 
+                            ? `Transaction modified. Previous amount: ${editingTx.amount}`
+                            : t('recordedManually').replace('{method}', paymentMethod)
+                    }
+                ]
+            };
 
-            updatedFunds = updatedFunds.map(f => 
-                f.id === alloc.fundId ? { ...f, balance: f.balance + amount } : f
-            );
+            if (editingTx?.id) {
+                txData.id = editingTx.id;
+            }
+            newTxs.push(txData);
         }
 
         try {
-            const { error: ledgerError } = await supabase
-                .from('ledger')
-                .insert(newTxs.map(tx => ({
-                    ...tx,
-                    member: tx.member?.trim() || null,
-                    created_at: new Date().toISOString()
-                })));
+            if (editingTx?.id) {
+                const { error } = await supabase
+                    .from('ledger')
+                    .update({
+                        ...newTxs[0],
+                        member: newTxs[0].member?.trim() || null
+                    })
+                    .eq('id', editingTx.id);
+                if (error) throw error;
+            } else {
+                const { error: ledgerError } = await supabase
+                    .from('ledger')
+                    .insert(newTxs.map(tx => ({
+                        ...tx,
+                        member: tx.member?.trim() || null,
+                        created_at: new Date().toISOString()
+                    })));
 
-            if (ledgerError) throw ledgerError;
+                if (ledgerError) throw ledgerError;
+            }
 
+            setShowNewTxModal(false);
+            setEditingTx(null);
+            setTxMember('');
+            setTxNotes('');
+            setPaymentMethod('Cash');
+            setAllocations([{ deptId: '1', fundId: funds[0]?.id || '', amount: '' }]);
+
+            // Refresh local data
             const { data: freshLedger } = await supabase
                 .from('ledger')
                 .select('*')
@@ -237,13 +279,6 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                 .order('created_at', { ascending: false });
             
             if (freshLedger) setLedger(freshLedger);
-            setFunds([...updatedFunds]);
-
-            setShowNewTxModal(false);
-            setTxMember('');
-            setTxNotes('');
-            setPaymentMethod('Cash');
-            setAllocations([{ deptId: '1', fundId: funds[0]?.id || '', amount: '' }]);
 
         } catch (err: any) {
             console.error('Save error:', err);
@@ -252,20 +287,32 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
     };
 
     const handleDeleteTransaction = async (id: string) => {
-        if (!confirm('Are you sure you want to permanently remove this transaction? Fund balances will be automatically recalculated.')) return;
+        const confirmMsg = language === 'es' 
+            ? '¿Está seguro de anular esta transacción? Esto se registrará permanentemente en el registro de auditoría.'
+            : 'Are you sure you want to VOID this transaction? This will be permanently recorded in the audit trail.';
+        
+        if (!confirm(confirmMsg)) return;
         
         try {
+            // Financial practice: VOID instead of physically deleting
             const { error } = await supabase
                 .from('ledger')
-                .delete()
+                .update({ 
+                    voided: true,
+                    voided_at: new Date().toISOString(),
+                    voided_by: 'Authorized Admin'
+                })
                 .eq('id', id)
                 .eq('church_id', churchId);
             
             if (error) throw error;
-            alert('Synchronized.');
+            
+            // Local state cleanup
+            setLedger(prev => prev.filter(tx => tx.id !== id));
+            alert('Transaction voided successfully.');
         } catch (err: any) {
-            console.error('Delete error:', err);
-            alert(`Failed to remove transaction: ${err.message}`);
+            console.error('Void error:', err);
+            alert(`Failed to void transaction: ${err.message}`);
         }
     };
 
@@ -415,8 +462,9 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                                 </td>
                                                 <td style={{ textAlign: 'right' }}>
                                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                                        <button onClick={() => setSelectedTxForAudit(tx)} style={{ background: 'var(--glass-light)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }}><Shield size={12} /> {t('history')}</button>
-                                                        <button onClick={async () => tx.id && await handleDeleteTransaction(tx.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }}><Trash2 size={12} /></button>
+                                                        <button onClick={() => setSelectedTxForAudit(tx)} style={{ background: 'var(--glass-light)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }} title="Audit Trail"><Shield size={12} /></button>
+                                                        <button onClick={() => handleEditTransaction(tx)} style={{ background: 'var(--glass-light)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }} title="Edit"><Plus size={12} style={{ transform: 'rotate(45deg)' }} /></button>
+                                                        <button onClick={async () => tx.id && await handleDeleteTransaction(tx.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }} title="Void"><Trash2 size={12} /></button>
                                                     </div>
                                                 </td>
                                             </tr>

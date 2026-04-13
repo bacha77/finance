@@ -279,9 +279,12 @@ CREATE POLICY "Users can view their own church"
     ON public.churches FOR SELECT
     USING (id = public.get_my_church_id() OR owner_id = auth.uid());
 
-CREATE POLICY "Owner can update their church"
+CREATE POLICY "Admins can update their church"
     ON public.churches FOR UPDATE
-    USING (owner_id = auth.uid());
+    USING (
+        owner_id = auth.uid() OR 
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin' AND church_id = public.churches.id)
+    );
 
 CREATE POLICY "Owner can insert church"
     ON public.churches FOR INSERT
