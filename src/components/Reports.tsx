@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { sendResendEmail } from '../lib/resend';
+import { useFinanceData } from '../hooks/useFinanceData';
 import {
     XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
     ResponsiveContainer, AreaChart, Area, PieChart as RePieChart, Pie, Cell,
@@ -78,49 +79,32 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
     const [isDispatching, setIsDispatching] = useState(false);
     const [searchVault, setSearchVault] = useState('');
 
-    const fetchData = async () => {
-        if (!churchId) return;
-        setIsLoading(true);
-        try {
-            const [
-                { data: ledgerData }, 
-                { data: fundsData }, 
-                { data: churchData }, 
-                { data: docsData },
-                { data: membersData }
-            ] = await Promise.all([
-                supabase.from('ledger').select('*').eq('church_id', churchId).neq('voided', true).order('date', { ascending: false }),
-                supabase.from('funds').select('*').eq('church_id', churchId),
-                supabase.from('churches').select('*').eq('id', churchId).single(),
-                supabase.from('documents').select('*').eq('church_id', churchId).order('created_at', { ascending: false }),
-                supabase.from('members').select('*').eq('church_id', churchId)
-            ]);
-            
-            if (ledgerData) setLedger(ledgerData);
-            if (fundsData) setFunds(fundsData);
-            if (churchData) setChurch(churchData);
-            if (docsData) setDocuments(docsData);
-            if (membersData) {
-                setMembers(membersData);
-                setRecipients(membersData.filter(m => 
-                    (m.role||'').toLowerCase().includes('board') || 
-                    (m.role||'').toLowerCase().includes('admin')
-                ).map(m => m.id));
-            }
-        } catch (err) {
-            console.error('Reports Sync Error:', err);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const { ledger, funds, members: membersData, stats, isLoading: isFinanceLoading, refresh } = useFinanceData(churchId);
 
     useEffect(() => {
-        fetchData();
-        const sub = supabase.channel('reports-sync-deep')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger', filter: `church_id=eq.${churchId}` }, fetchData)
-            .subscribe();
-        return () => { supabase.removeChannel(sub); };
-    }, [churchId]);
+        const fetchMeta = async () => {
+            if (!churchId) return;
+            const [
+                { data: churchData }, 
+                { data: docsData }
+            ] = await Promise.all([
+                supabase.from('churches').select('*').eq('id', churchId).single(),
+                supabase.from('documents').select('*').eq('church_id', churchId).order('created_at', { ascending: false })
+            ]);
+            
+            if (churchData) setChurch(churchData);
+            if (docsData) setDocuments(docsData);
+            if (!isFinanceLoading) setIsLoading(false);
+        };
+        fetchMeta();
+    }, [churchId, isFinanceLoading]);
+
+    useEffect(() => {
+        if (!isFinanceLoading) setIsLoading(false);
+    }, [isFinanceLoading]);
+
+    const fetchData = refresh;
+
 
     const months = useMemo(() => Array.from({ length: 12 }, (_, i) => t(`month${i}`)), [t]);
 
@@ -131,8 +115,9 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
         });
 
         const income = filteredLedger.filter(tx => tx.type === 'in' || tx.type === 'revenue').reduce((s, tx) => s + Math.abs(tx.amount), 0);
-        const expenses = Math.abs(filteredLedger.filter(tx => tx.type === 'out' || tx.type === 'expense').reduce((s, tx) => s + Math.abs(tx.amount), 0));
-        const totalAssets = funds.reduce((s, f) => s + (f.balance || 0), 0);
+        const expenses = filteredLedger.filter(tx => tx.type === 'out' || tx.type === 'expense').reduce((s, tx) => s + Math.abs(tx.amount), 0);
+        const totalAssets = stats.totalAssets;
+
 
         const deptMap: Record<string, number> = {};
         filteredLedger.filter(tx => tx.type === 'out' || tx.type === 'expense').forEach(tx => {

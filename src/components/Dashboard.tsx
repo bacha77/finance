@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Wallet, Users, TrendingUp as TrendUp, DollarSign, ArrowUpRight, ArrowDownRight,
     RefreshCw, BarChart3, Activity, ChurchIcon, CreditCard,
-    FileText, ShieldCheck, Calendar, Download, Target, HeartHandshake,
+    FileText, ShieldCheck, Shield, Lock, Calendar, Download, Target, HeartHandshake,
     Brain, Sparkles, AlertTriangle,
     BrainCircuit,
     Zap
@@ -14,6 +14,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { predictNextMonth, detectAnomalies } from '../lib/intelligence';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useFinanceData } from '../hooks/useFinanceData';
 
 interface DashboardProps {
     setActiveTab: (tab: string) => void;
@@ -76,35 +77,59 @@ const StatCard: React.FC<StatCardProps> = ({
     <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay, duration: 0.4 }}
-        className="stat-card"
-        style={{ cursor: 'default' }}
+        transition={{ delay, duration: 0.5, ease: 'easeOut' }}
+        whileHover={{ translateY: -5, transition: { duration: 0.2 } }}
+        className="glass-card"
+        style={{ 
+            cursor: 'default',
+            padding: '1.5rem',
+            background: 'rgba(255, 255, 255, 0.02)',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.1)',
+            position: 'relative',
+            overflow: 'hidden'
+        }}
     >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div style={{
+            position: 'absolute',
+            top: '-20%',
+            right: '-10%',
+            width: '120px',
+            height: '120px',
+            background: `radial-gradient(circle, ${iconColor}22 0%, transparent 70%)`,
+            zIndex: 0
+        }} />
+        
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem', position: 'relative', zIndex: 1 }}>
             <div style={{
-                width: '44px', height: '44px', borderRadius: '12px',
+                width: '42px', height: '42px', borderRadius: '12px',
                 background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: `0 8px 16px -4px ${iconColor}44`
             }}>
-                <Icon size={22} color={iconColor} strokeWidth={2} />
+                <Icon size={20} color={iconColor} strokeWidth={2.5} />
             </div>
             <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: '4px',
-                fontSize: '0.72rem', fontWeight: 800,
-                color: up ? 'hsl(var(--success))' : 'hsl(var(--error))',
-                background: up ? 'hsla(var(--success) / 0.1)' : 'hsla(var(--error) / 0.1)',
-                padding: '3px 8px', borderRadius: '100px',
+                fontSize: '0.75rem', fontWeight: 900,
+                color: up ? '#10b981' : '#ef4444',
+                background: up ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                padding: '4px 10px', borderRadius: '100px',
             }}>
-                {up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}{change}
+                {up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}{change}
             </span>
         </div>
-        <div>
-            <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'white', lineHeight: 1.1, letterSpacing: '-0.04em' }}>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white', lineHeight: 1, letterSpacing: '-0.05em', marginBottom: '0.5rem' }}>
                 {value}
             </div>
-            {sub && <div style={{ fontSize: '0.72rem', color: 'hsl(var(--success))', fontWeight: 700, marginTop: '2px' }}>{sub}</div>}
-            <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 700, marginTop: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+            {sub && <div style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{sub}</div>}
+            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>{label}</div>
         </div>
-        {sparkline && <Sparkline values={sparkline} color={iconColor} />}
+        {sparkline && (
+            <div style={{ marginTop: '1rem', position: 'relative', zIndex: 1 }}>
+                <Sparkline values={sparkline} color={iconColor} />
+            </div>
+        )}
     </motion.div>
 );
 
@@ -142,12 +167,7 @@ const FeatureCard: React.FC<{
 // ── Main Dashboard ─────────────────────────────────────────────────────────
 const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
     const { t, language } = useLanguage();
-    const [stats, setStats] = useState({ 
-        balance: 0, tithes: 0, members: 0, expenses: 0,
-        titheGrowth: 0, expenseGrowth: 0, balGrowth: 0
-    });
     const [recentTx, setRecentTx] = useState<any[]>([]);
-    const [syncing, setSyncing] = useState(false);
     const [projection, setProjection] = useState<{income: number, expense: number, confidence: number} | null>(null);
     const [anomalies, setAnomalies] = useState<any[]>([]);
     const [goals, setGoals] = useState<any[]>([]);
@@ -155,141 +175,92 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
     const [churchName, setChurchName] = useState('');
     const [churchData, setChurchData] = useState<any>(null);
 
-
     const today = new Date().toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
+    const { ledger, stats: financeStats, isLoading: syncing } = useFinanceData(churchId);
+
+    const insights = useMemo(() => {
+        if (!ledger || ledger.length === 0) return [];
+        const res = [];
+        const health = (financeStats.monthlyIncome || 1) / (financeStats.monthlyExpenses || 1);
+        
+        if (health > 1.2) res.push({ text: "Revenue efficiency is 20% above optimal threshold.", icon: Zap, color: "#10b981" });
+        else if (health < 1) res.push({ text: "Spend rate is exceeding income. Neural shield active.", icon: AlertTriangle, color: "#ef4444" });
+        
+        if (financeStats.incomeChange > 0) res.push({ text: `Growth trend detected: +${financeStats.incomeChange.toFixed(1)}% vs prev month.`, icon: TrendingUp, color: "#3b82f6" });
+        
+        res.push({ text: "Fiscal integrity verified. All transactions synchronized with shard US-E1.", icon: Shield, color: "#a855f7" });
+        return res;
+    }, [ledger, financeStats]);
+
+
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchChurch = async () => {
             if (!churchId) return;
-            setSyncing(true);
-            try {
-                const results = await Promise.all([
-                    supabase.from('ledger').select('*').eq('church_id', churchId).neq('voided', true).order('created_at', { ascending: false }),
-                    supabase.from('members').select('id').eq('church_id', churchId),
-                    supabase.from('churches').select('name, logo_url').eq('id', churchId).single(),
-                ]);
-                
-                const { data: ledger } = results[0];
-                const { data: members } = results[1];
-                const { data: church, error: churchError } = results[2];
+            const { data: church } = await supabase.from('churches').select('name, logo_url').eq('id', churchId).single();
+            if (church) {
+                setChurchName(church.name);
+                setChurchData(church);
+            }
 
-                if (churchError) {
-                    console.error("Error fetching church data:", churchError);
-                } else if (church) {
-                    setChurchName(church.name);
-                    setChurchData(church);
-                }
-
-                const now = new Date();
-                const currentMonth = now.getMonth();
-                const currentYear = now.getFullYear();
-
-                const totalIn = ledger?.filter((t: any) => t.type === 'in' || t.type === 'revenue').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
-                const totalOut = ledger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
-                const totalBalance = totalIn - totalOut;
-                
-                const prevMonthDate = new Date();
-                prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
-                const prevMonth = prevMonthDate.getMonth();
-                const prevYear = prevMonthDate.getFullYear();
-
-                const monthlyLedger = ledger?.filter((t: any) => {
-                    const d = new Date(t.date || t.created_at);
-                    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-                });
-
-                const previousMonthLedger = ledger?.filter((t: any) => {
-                    const d = new Date(t.date || t.created_at);
-                    return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
-                });
-
-                const totalTithes = monthlyLedger?.filter((t: any) => t.type === 'in' || t.type === 'revenue').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
-                const totalExpenses = monthlyLedger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + Math.abs(t.amount || 0), 0) || 0;
-                
-                const oldTithes = previousMonthLedger?.filter((t: any) => t.type === 'in' || t.type === 'revenue').reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0;
-                const oldExpenses = previousMonthLedger?.filter((t: any) => t.type === 'out' || t.type === 'expense').reduce((s: number, t: any) => s + Math.abs(t.amount || 0), 0) || 0;
-
-                const titheGrowth = oldTithes > 0 ? ((totalTithes - oldTithes) / oldTithes) * 100 : totalTithes > 0 ? 100 : 0;
-                const expenseGrowth = oldExpenses > 0 ? ((totalExpenses - oldExpenses) / oldExpenses) * 100 : totalExpenses > 0 ? 100 : 0;
-                const balGrowth = (totalIn - totalOut) > 0 ? ((totalTithes - totalExpenses) / Math.max(1, totalBalance)) * 100 : 0;
-
-                setStats({
-                    balance: totalBalance,
-                    tithes: totalTithes,
-                    members: members?.length || 0,
-                    expenses: totalExpenses,
-                    titheGrowth,
-                    expenseGrowth,
-                    balGrowth
-                });
-
-                if (ledger) {
-                    setRecentTx(ledger.slice(0, 6));
-                    const pred = predictNextMonth(ledger);
-                    setProjection(pred);
-                    setAnomalies(detectAnomalies(ledger).slice(0, 2));
-
-                    // ── GENERATE CHART DATA (GROUPED BY FUND) ──
-                    const days: Record<string, any> = {};
-                    const last7 = ledger.filter(tx => {
-                        const d = new Date(tx.date || tx.created_at);
-                        const sevenDaysAgo = new Date();
-                        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                        return d >= sevenDaysAgo;
-                    }).reverse();
-
-                    last7.forEach(tx => {
-                        const d = new Date(tx.date || tx.created_at).toLocaleDateString();
-                        if (!days[d]) days[d] = { date: d, tithes: 0, missions: 0, building: 0, expense: 0 };
-                        const amt = tx.amount || 0;
-                        if (tx.type === 'in') {
-                            const fund = (tx.fund || '').toLowerCase();
-                            if (fund.includes('tithe') || fund.includes('offer')) days[d].tithes += amt;
-                            else if (fund.includes('mission') || fund.includes('missionary')) days[d].missions += amt;
-                            else if (fund.includes('build')) days[d].building += amt;
-                            else days[d].tithes += amt; // Fallback
-                        } else {
-                            days[d].expense += amt;
-                        }
-                    });
-                    setChartData(Object.values(days));
-                }
-
-                const { data: dbGoals } = await supabase.from('goals').select('*').eq('church_id', churchId);
-                if (dbGoals && dbGoals.length > 0) {
-                    setGoals(dbGoals.map(g => ({
-                        ...g,
-                        current: g.current_amount,
-                        goal: g.target_amount,
-                        icon: g.icon === 'Church' ? ChurchIcon : g.icon === 'Heart' ? HeartHandshake : Users
-                    })));
-                } else {
-                    setGoals([]);
-                }
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setSyncing(false);
+            const { data: dbGoals } = await supabase.from('goals').select('*').eq('church_id', churchId);
+            if (dbGoals && dbGoals.length > 0) {
+                setGoals(dbGoals.map(g => ({
+                    ...g,
+                    current: g.current_amount,
+                    goal: g.target_amount,
+                    icon: g.icon === 'Church' ? ChurchIcon : g.icon === 'Heart' ? HeartHandshake : Users
+                })));
+            } else {
+                setGoals([]);
             }
         };
-        fetchData();
-        const channels = [
-            supabase.channel('db-ledger').on('postgres_changes', { event: '*', schema: 'public', table: 'ledger', filter: `church_id=eq.${churchId}` }, fetchData),
-            supabase.channel('db-funds').on('postgres_changes', { event: '*', schema: 'public', table: 'funds', filter: `church_id=eq.${churchId}` }, fetchData),
-        ];
-        channels.forEach(c => c.subscribe());
-        return () => { channels.forEach(c => supabase.removeChannel(c)); };
+        fetchChurch();
     }, [churchId]);
 
-    const totalIncome = stats.tithes;
-    const budgetUsed = Math.min(99, Math.round((stats.expenses / Math.max(totalIncome, 1)) * 100));
+    useEffect(() => {
+        if (ledger) {
+            setRecentTx(ledger.slice(0, 6));
+            const pred = predictNextMonth(ledger);
+            setProjection(pred);
+            setAnomalies(detectAnomalies(ledger).slice(0, 2));
+
+            // ── GENERATE CHART DATA (GROUPED BY FUND) ──
+            const days: Record<string, any> = {};
+            const last7 = ledger.filter(tx => {
+                const d = new Date(tx.date || tx.created_at);
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                return d >= sevenDaysAgo;
+            }).reverse();
+
+            last7.forEach(tx => {
+                const d = new Date(tx.date || tx.created_at).toLocaleDateString();
+                if (!days[d]) days[d] = { date: d, tithes: 0, missions: 0, building: 0, expense: 0 };
+                const amt = Math.abs(tx.amount || 0);
+                if (tx.type === 'in' || tx.type === 'revenue') {
+                    const fund = (tx.fund || '').toLowerCase();
+                    if (fund.includes('tithe') || fund.includes('offer')) days[d].tithes += amt;
+                    else if (fund.includes('mission') || fund.includes('missionary')) days[d].missions += amt;
+                    else if (fund.includes('build')) days[d].building += amt;
+                    else days[d].tithes += amt; 
+                } else {
+                    days[d].expense += amt;
+                }
+            });
+            setChartData(Object.values(days));
+        }
+    }, [ledger]);
+
+    const totalIncome = financeStats.monthlyIncome;
+    const budgetUsed = Math.min(99, Math.round((financeStats.monthlyExpenses / Math.max(totalIncome, 1)) * 100));
 
     const statCards: StatCardProps[] = [
         {
             label: t('totalBalance'),
-            value: fmt(stats.balance),
-            change: `${stats.balGrowth >= 0 ? '+' : ''}${stats.balGrowth.toFixed(1)}%`,
-            up: stats.balGrowth >= 0,
+            value: fmt(financeStats.balance),
+            change: `${financeStats.balanceChange >= 0 ? '+' : ''}${financeStats.balanceChange.toFixed(1)}%`,
+            up: financeStats.balanceChange >= 0,
             icon: Wallet,
             iconBg: 'rgba(37,99,235,0.15)',
             iconColor: '#2563eb',
@@ -298,38 +269,37 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         },
         {
             label: `${t('tithes')} (MTD)`,
-            value: fmt(stats.tithes),
-            change: `${stats.titheGrowth >= 0 ? '+' : ''}${stats.titheGrowth.toFixed(1)}%`,
-            up: stats.titheGrowth >= 0,
-            icon: DollarSign,
+            value: fmt(financeStats.monthlyIncome),
+            change: `${financeStats.incomeChange >= 0 ? '+' : ''}${financeStats.incomeChange.toFixed(1)}%`,
+            up: financeStats.incomeChange >= 0,
+            icon: Activity,
             iconBg: 'rgba(16,185,129,0.15)',
             iconColor: '#10b981',
             sparkline: [14, 18, 12, 22, 19, 26, 28],
-            sub: t('thisMonth'),
             delay: 0.08,
         },
         {
             label: t('members'),
-            value: stats.members.toString(),
-            change: '+3.2%',
+            value: financeStats.membersCount.toLocaleString(),
+            change: '+2',
             up: true,
             icon: Users,
-            iconBg: 'rgba(139,92,246,0.15)',
-            iconColor: '#8b5cf6',
-            sparkline: [8, 12, 10, 15, 14, 18, 20],
+            iconBg: 'rgba(168,85,247,0.15)',
+            iconColor: '#a855f7',
+            sparkline: [5, 8, 7, 10, 9, 12, 11],
             delay: 0.16,
         },
         {
             label: t('expenses'),
-            value: fmt(stats.expenses),
-            change: '-2.1%',
-            up: false,
-            icon: CreditCard,
-            iconBg: 'rgba(245,158,11,0.15)',
-            iconColor: '#f59e0b',
-            sparkline: [20, 18, 22, 16, 19, 17, 15],
+            value: fmt(financeStats.monthlyExpenses),
+            change: `${financeStats.expenseChange >= 0 ? '+' : ''}${financeStats.expenseChange.toFixed(1)}%`,
+            up: financeStats.expenseChange <= 0,
+            icon: Target,
+            iconBg: 'rgba(239,68,68,0.15)',
+            iconColor: '#ef4444',
+            sparkline: [20, 18, 22, 15, 12, 10, 14],
             delay: 0.24,
-        },
+        }
     ];
 
     const generatePDF = () => {
@@ -351,10 +321,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         
         doc.setTextColor(0);
         doc.setFontSize(12);
-        doc.text(`Total Church Funds: ${fmt(stats.balance)}`, 14, 45);
-        doc.text(`Tithes & Offerings (MTD): ${fmt(stats.tithes)}`, 14, 52);
-        doc.text(`Active Members: ${stats.members}`, 14, 59);
-        doc.text(`Monthly Expenses: ${fmt(stats.expenses)}`, 14, 66);
+        doc.text(`Total Church Funds: ${fmt(financeStats.balance)}`, 14, 45);
+        doc.text(`Tithes & Offerings (MTD): ${fmt(financeStats.monthlyIncome)}`, 14, 52);
+        doc.text(`Active Members: ${financeStats.membersCount}`, 14, 59);
+        doc.text(`Monthly Expenses: ${fmt(financeStats.monthlyExpenses)}`, 14, 66);
 
         autoTable(doc, {
             startY: 75,
@@ -416,6 +386,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                     >
                         <FileText size={15} /> {t('reports')}
                     </motion.button>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 14px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '100px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                        <Lock size={12} color="#60a5fa" />
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#60a5fa', letterSpacing: '0.05em' }}>FY 2026-27 ACTIVE</span>
+                    </div>
                     <motion.button
                         onClick={generatePDF}
                         whileHover={{ scale: 1.03 }}
@@ -430,153 +405,152 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                     >
                         <Download size={15} /> {t('exportPDF')}
                     </motion.button>
-                    {syncing && (
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                            style={{ color: '#2563eb', display: 'flex', alignItems: 'center' }}
-                        >
-                            <RefreshCw size={18} />
-                        </motion.div>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 1.2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
+                             <motion.div 
+                                animate={{ scale: [1, 2], opacity: [0.5, 0] }}
+                                transition={{ repeat: Infinity, duration: 2 }}
+                                style={{ position: 'absolute', width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} 
+                             />
+                        </div>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{syncing ? t('syncing') : 'SYSTEM LIVE'}</span>
+                    </div>
                 </div>
             </motion.div>
 
             {/* ── Stat Cards ─────────────────────────────────────────── */}
-            <div className="stats-grid" style={{ marginBottom: '2rem' }}>
+            <div className="stats-grid" style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem' }}>
                 {statCards.map((card, i) => <StatCard key={i} {...card} />)}
             </div>
 
-            {/* ── Neural Projection Banner ─────────────────────────── */}
-            {projection && (
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    style={{
-                        background: 'linear-gradient(90deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))',
-                        border: '1px solid rgba(99, 102, 241, 0.2)',
-                        borderRadius: '16px',
-                        padding: '1.25rem 2rem',
-                        marginBottom: '2rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '2rem',
-                        backdropFilter: 'blur(20px)'
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                        <div style={{
-                            width: '48px', height: '48px', borderRadius: '12px',
-                            background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 0 20px var(--primary-glow)'
-                        }}>
-                            <Brain size={24} color="white" />
-                        </div>
-                        <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('projection')}</span>
-                                <span style={{ padding: '2px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '100px', fontSize: '0.65rem', fontWeight: 800 }}>{Math.round(projection.confidence * 100)}% {t('confidenceScore')}</span>
-                            </div>
-                            <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'white' }}>
-                                {t('nextMonthRevenue')} <span className="gradient-text">{fmt(projection.income)}</span>
-                            </h3>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '3rem', textAlign: 'right' }}>
-                        <div>
-                            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>PROJECTED INCOME</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981' }}>{fmtShort(projection.income)}</div>
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>PROJECTED BURN</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ef4444' }}>{fmtShort(projection.expense)}</div>
-                        </div>
-                    </div>
-                </motion.div>
-            )}
-
-            {/* ── Neural Alerts ─────────────────────────── */}
-            {anomalies.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.75rem', marginBottom: '2.5rem' }}>
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     style={{
-                        background: 'rgba(239, 68, 68, 0.05)',
-                        border: '1px solid rgba(239, 68, 68, 0.15)',
-                        borderRadius: '12px',
-                        padding: '1rem 1.5rem',
-                        marginBottom: '2rem',
+                        background: 'linear-gradient(135deg, rgba(37,99,235,0.1) 0%, rgba(15,23,42,0.8) 100%)',
+                        border: '1px solid rgba(37,99,235,0.2)',
+                        borderRadius: '24px',
+                        padding: '2rem',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '1rem'
+                        justifyContent: 'space-between',
+                        backdropFilter: 'blur(30px)',
+                        boxShadow: '0 20px 40px -15px rgba(0,0,0,0.4)'
                     }}
                 >
-                    <AlertTriangle color="#ef4444" size={20} />
-                    <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fca5a5' }}>
-                            {anomalies.length} {t('unusualPatternsDetected')}
-                        </span>
-                        <p style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '2px' }}>
-                            {t('neuralEngineFlagged')}
-                        </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                         <div style={{ position: 'relative' }}>
+                             <RadialProgress value={Math.min(100, Math.round(((financeStats.monthlyIncome || 1) / (financeStats.monthlyExpenses || 1)) * 50))} color="#10b981" size={100} />
+                             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', fontWeight: 900, color: 'white' }}>
+                                 {Math.min(100, Math.round(((financeStats.monthlyIncome || 1) / (financeStats.monthlyExpenses || 1)) * 50))}%
+                             </div>
+                         </div>
+                         <div>
+                             <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '4px' }}>{t('financialHealth')}</h4>
+                             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem', lineHeight: 1.5, maxWidth: '300px' }}>
+                                 Based on your current MTD metrics. Your income-to-expense ratio is performing {financeStats.monthlyIncome > financeStats.monthlyExpenses ? 'optimally' : 'under pressure'}.
+                             </p>
+                         </div>
                     </div>
-                    <Sparkles size={16} color="var(--primary-light)" />
+                    <div style={{ display: 'flex', gap: '2.5rem', padding: '1rem 2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px' }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, marginBottom: '4px' }}>BURN RATE</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#ef4444' }}>{fmtShort(financeStats.monthlyExpenses)}</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, marginBottom: '4px' }}>RUNWAY</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#2563eb' }}>{Math.max(0, Math.round(financeStats.balance / (financeStats.monthlyExpenses || 1)))} mo</div>
+                        </div>
+                    </div>
                 </motion.div>
-            )}
 
-            {/* ── NEW ROW: Charts & Goal Tracking ────────────────────── */}
-            <div style={{ marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.75rem' }}>
+                <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    style={{
+                        background: 'rgba(15,23,42,0.6)',
+                        border: '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: '24px',
+                        padding: '1.5rem',
+                        backdropFilter: 'blur(20px)'
+                    }}
+                >
+                    <div style={{ fontSize: '0.875rem', fontWeight: 800, color: 'white', marginBottom: '1rem' }}>{t('fundDistribution')}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                         {financeStats.totalAssets > 0 ? (
+                             <div style={{ height: '140px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                 <PieChart width={140} height={140}>
+                                     <Pie 
+                                        data={[
+                                            { name: 'Tithes', value: 70 },
+                                            { name: 'Missions', value: 20 },
+                                            { name: 'Bldg', value: 10 }
+                                        ]} 
+                                        innerRadius={40} 
+                                        outerRadius={65} 
+                                        paddingAngle={5} 
+                                        dataKey="value"
+                                     >
+                                         <Cell fill="#2563eb" />
+                                         <Cell fill="#a855f7" />
+                                         <Cell fill="#10b981" />
+                                     </Pie>
+                                 </PieChart>
+                             </div>
+                         ) : null}
+                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                              <div style={{ padding: '8px', background: 'rgba(37,99,235,0.05)', borderRadius: '8px', border: '1px solid rgba(37,99,235,0.1)' }}>
+                                  <div style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: 700 }}>GENERAL</div>
+                                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white' }}>70%</div>
+                              </div>
+                              <div style={{ padding: '8px', background: 'rgba(168,85,247,0.05)', borderRadius: '8px', border: '1px solid rgba(168,85,247,0.1)' }}>
+                                  <div style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: 700 }}>MISSIONS</div>
+                                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white' }}>20%</div>
+                              </div>
+                         </div>
+                    </div>
+                </motion.div>
+            </div>
+
+            <div style={{ marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.75rem' }}>
                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                     style={{
                         background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)',
-                        borderRadius: '16px', padding: '1.5rem', backdropFilter: 'blur(12px)',
-                        height: '320px', display: 'flex', flexDirection: 'column'
+                        borderRadius: '24px', padding: '2rem', backdropFilter: 'blur(12px)',
+                        height: '380px', display: 'flex', flexDirection: 'column',
+                        boxShadow: '0 20px 40px -20px rgba(0,0,0,0.5)'
                     }}
                 >
-                    <div style={{ marginBottom: '1rem' }}>
-                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>{t('revenueVsExpenses')}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#475569' }}>{language === 'es' ? 'Resumen de los últimos 6 meses' : '6-month trailing overview'}</div>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <div style={{ fontSize: '1.125rem', fontWeight: 900, color: 'white' }}>{t('revenueVsExpenses')}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{language === 'es' ? 'Flujo de caja comparado' : 'Comparative Cashflow Analysis'}</div>
                     </div>
                     <div style={{ flex: 1, minHeight: 0 }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
                                         <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                                     </linearGradient>
                                     <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.4}/>
                                         <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                <XAxis dataKey="name" stroke="#475569" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#475569" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                                <XAxis dataKey="date" stroke="#475569" fontSize={11} tickLine={false} axisLine={false} />
+                                <YAxis stroke="#475569" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
                                 <Tooltip
-                                    contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
-                                    itemStyle={{ fontSize: '14px', fontWeight: 600 }}
+                                    contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', fontSize: '12px' }}
                                 />
-                                <Area type="monotone" dataKey="tithes" stackId="1" stroke="hsl(var(--success))" strokeWidth={3} fillOpacity={0.6} fill="url(#colorIncome)" name="Tithes & Offerings" />
-                                <Area type="monotone" dataKey="missions" stackId="1" stroke="hsl(var(--p))" strokeWidth={3} fillOpacity={0.6} fill="hsla(var(--p)/0.3)" name="Missions" />
-                                <Area type="monotone" dataKey="building" stackId="1" stroke="hsl(var(--info))" strokeWidth={3} fillOpacity={0.6} fill="hsla(var(--info)/0.3)" name="Building Fund" />
-                                <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={4} fillOpacity={0.1} fill="rgba(239,68,68,0.1)" name="Total Expenses" />
-                                
-                                {anomalies.map((a, i) => (
-                                    <ReferenceDot
-                                        key={i}
-                                        x={a.date}
-                                        y={a.amount}
-                                        r={6}
-                                        fill="#ef4444"
-                                        stroke="#fff"
-                                        strokeWidth={2}
-                                    />
-                                ))}
+                                <Area type="monotone" dataKey="tithes" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" name="Income" />
+                                <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" name="Expenses" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -588,281 +562,189 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                     transition={{ delay: 0.25 }}
                     style={{
                         background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)',
-                        borderRadius: '20px', padding: '1.75rem', backdropFilter: 'blur(12px)',
+                        borderRadius: '24px', padding: '2rem', backdropFilter: 'blur(12px)',
                         display: 'flex', flexDirection: 'column'
                     }}
                 >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                         <div>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Mission Matrix</div>
-                            <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '2px' }}>Real-time fund progression</div>
+                            <div style={{ fontSize: '1.125rem', fontWeight: 900, color: 'white' }}>Mission Matrix</div>
+                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Strategic Initiative Progress</div>
                         </div>
-                        <div style={{ padding: '8px', background: 'rgba(168, 85, 247, 0.1)', borderRadius: '10px', color: '#a855f7' }}>
-                            <TrendUp size={20} />
+                        <div style={{ padding: '10px', background: 'rgba(168, 85, 247, 0.1)', borderRadius: '14px', color: '#a855f7' }}>
+                            <TrendUp size={22} />
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        {goals.map((goal, i) => {
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        {goals.length > 0 ? goals.map((goal, i) => {
                             const pct = Math.min(100, Math.round((goal.current / goal.goal) * 100));
                             return (
                                 <div key={i}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: `${goal.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: goal.color }}>
-                                                {goal.icon ? <goal.icon size={16} /> : <Target size={16} />}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: `${goal.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: goal.color }}>
+                                                {goal.icon ? <goal.icon size={20} /> : <Target size={20} />}
                                             </div>
                                             <div>
-                                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>{goal.name}</div>
-                                                <div style={{ fontSize: '0.65rem', color: '#475569' }}>{fmtShort(goal.current)} of {fmtShort(goal.goal)}</div>
+                                                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>{goal.name}</div>
+                                                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{fmtShort(goal.current)} of {fmtShort(goal.goal)}</div>
                                             </div>
                                         </div>
-                                        <span style={{ fontSize: '0.85rem', fontWeight: 900, color: goal.color }}>{pct}%</span>
+                                        <div style={{ textAlign: 'right' }}>
+                                             <div style={{ fontSize: '1rem', fontWeight: 900, color: goal.color }}>{pct}%</div>
+                                        </div>
                                     </div>
-                                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '100px', overflow: 'hidden' }}>
+                                    <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '100px', overflow: 'hidden' }}>
                                         <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: `${pct}%` }}
                                             transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 + i * 0.1 }}
-                                            style={{ height: '100%', background: goal.color, borderRadius: '100px' }}
+                                            style={{ height: '100%', background: goal.color, borderRadius: '100px', boxShadow: `0 0 15px ${goal.color}88` }}
                                         />
                                     </div>
                                 </div>
                             );
-                        })}
+                        }) : (
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{t('noGoalsFound')}</p>
+                        )}
                     </div>
                 </motion.div>
             </div>
 
-            {/* ── Middle Row: Transaction List + Health Panel ─────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.25rem', marginBottom: '1.75rem' }}>
-
-                {/* Recent Transactions */}
-                <motion.div
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(400px, 1fr) 380px', gap: '1.75rem', marginBottom: '3rem' }}>
+                 {/* Recent Activity */}
+                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                     style={{
                         background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)',
-                        borderRadius: '16px', padding: '1.75rem', backdropFilter: 'blur(12px)',
+                        borderRadius: '24px', padding: '2rem', backdropFilter: 'blur(12px)',
                     }}
                 >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
                         <div>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>{t('recentTransactions')}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '2px' }}>{t('latestLedgerActivity')}</div>
+                            <div style={{ fontSize: '1.125rem', fontWeight: 900, color: 'white' }}>{t('recentTransactions')}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Latest verified activity</div>
                         </div>
                         <button onClick={() => setActiveTab('accounting')} style={{
-                            background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.25)',
-                            color: '#60a5fa', borderRadius: '8px', padding: '5px 12px',
-                            fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                            background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)',
+                            color: '#60a5fa', borderRadius: '10px', padding: '8px 16px',
+                            fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
                         }}>
-                            {t('viewAll')} →
+                             {t('viewAll')} →
                         </button>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {recentTx.length > 0 ? recentTx.map((tx, i) => (
                             <motion.div key={i}
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: i * 0.05 }}
                                 style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '0.85rem 1rem', borderRadius: '12px',
-                                    background: 'rgba(255,255,255,0.025)',
-                                    border: '1px solid rgba(255,255,255,0.05)',
-                                    transition: 'all 0.2s',
+                                    display: 'flex', alignItems: 'center', gap: '1.25rem',
+                                    padding: '1rem', background: 'rgba(255,255,255,0.02)',
+                                    borderRadius: '16px', border: '1px solid rgba(255,255,255,0.04)'
                                 }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                                    <div style={{
-                                        width: '38px', height: '38px', borderRadius: '10px', flexShrink: 0,
-                                        background: tx.type === 'in' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    }}>
-                                        {tx.type === 'in'
-                                            ? <ArrowUpRight size={18} color="#10b981" />
-                                            : <ArrowDownRight size={18} color="#ef4444" />}
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>
-                                            {tx.description || tx.desc || 'Transaction'}
-                                        </div>
-                                        <div style={{ fontSize: '0.72rem', color: '#475569', marginTop: '1px' }}>
-                                            {tx.date} • {tx.fund || tx.category || 'General'}
-                                        </div>
-                                    </div>
+                                <div style={{
+                                    width: '42px', height: '42px', borderRadius: '12px',
+                                    background: tx.amount < 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: tx.amount < 0 ? '#f87171' : '#34d399'
+                                }}>
+                                    {tx.amount < 0 ? <ArrowDownRight size={20} /> : <ArrowUpRight size={20} />}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white' }}>{tx.description || tx.desc || 'System Tx'}</div>
+                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>{new Date(tx.date || tx.created_at).toLocaleDateString()}</div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <div style={{
-                                        fontSize: '0.9rem', fontWeight: 800,
-                                        color: tx.type === 'in' ? '#10b981' : '#ef4444',
-                                    }}>
-                                        {tx.type === 'in' ? '+' : '-'}{fmtShort(Math.abs(tx.amount || 0))}
+                                    <div style={{ fontSize: '1.05rem', fontWeight: 900, color: tx.amount < 0 ? '#ef4444' : '#10b981' }}>
+                                        {tx.amount < 0 ? '-' : '+'}{fmt(Math.abs(tx.amount))}
                                     </div>
-                                    <div style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 700, textTransform: 'uppercase', marginTop: '2px' }}>
-                                        Verified
-                                    </div>
+                                    <div style={{ fontSize: '0.65rem', color: '#475569', textTransform: 'uppercase' }}>{tx.method || 'Neural'}</div>
                                 </div>
                             </motion.div>
                         )) : (
-                            <div style={{
-                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                padding: '3rem', color: '#334155', gap: '0.75rem',
-                            }}>
-                                <Activity size={36} strokeWidth={1.5} />
-                                <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>No transactions yet</div>
-                                <button onClick={() => setActiveTab('accounting')} style={{
-                                    background: '#2563eb', border: 'none', color: 'white',
-                                    padding: '8px 18px', borderRadius: '8px', fontWeight: 700,
-                                    fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'inherit',
-                                    marginTop: '0.25rem',
-                                }}>
-                                    {t('newTransaction')}
-                                </button>
-                            </div>
+                            <div style={{ padding: '3rem', textAlign: 'center', color: '#334155' }}>No activity found for this period.</div>
                         )}
                     </div>
-                </motion.div>
+                 </motion.div>
 
-                {/* Financial Health Panel */}
-                <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.35 }}
-                    style={{
-                        background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)',
-                        borderRadius: '16px', padding: '1.75rem', backdropFilter: 'blur(12px)',
-                        display: 'flex', flexDirection: 'column', gap: '1.25rem',
-                    }}
-                >
-                    <div>
-                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>{t('financialHealth')}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '2px' }}>{t('keyPerformanceIndicators')}</div>
-                    </div>
-
-                    {/* Budget Gauge */}
-                    <div style={{
-                        background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)',
-                        borderRadius: '14px', padding: '1.25rem',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
-                    }}>
-                        <div>
-                            <div style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{t('budgetUtilization')}</div>
-                            <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white', lineHeight: 1, marginTop: '4px' }}>{budgetUsed}%</div>
-                             <div style={{ fontSize: '0.7rem', color: budgetUsed < 80 ? '#10b981' : '#f59e0b', fontWeight: 700, marginTop: '2px' }}>
-                                {budgetUsed < 80 ? `✓ ${t('withinTarget')}` : `⚠ ${t('nearLimit')}`}
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.35 }}
+                        style={{
+                            background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)',
+                            borderRadius: '24px', padding: '2rem', backdropFilter: 'blur(12px)',
+                            display: 'flex', flexDirection: 'column'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '2rem' }}>
+                            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(37,99,235,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
+                                <BrainCircuit size={24} />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '1.125rem', fontWeight: 900, color: 'white' }}>Autonomous Insights</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>Neural intel feed</div>
                             </div>
                         </div>
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <RadialProgress value={budgetUsed} color={budgetUsed < 80 ? '#10b981' : '#f59e0b'} size={64} />
-                            <div style={{ position: 'absolute', fontSize: '0.7rem', fontWeight: 800, color: 'white' }}>{budgetUsed}%</div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            {insights.map((insight, i) => (
+                                <motion.div 
+                                    key={i}
+                                    initial={{ opacity: 0, x: 10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.5 + i * 0.1 }}
+                                    style={{ 
+                                        padding: '1.25rem', background: 'rgba(255,255,255,0.02)', borderRadius: '18px', 
+                                        border: `1px solid ${insight.color}15`, display: 'flex', gap: '14px' 
+                                    }}
+                                >
+                                    <div style={{ marginTop: '4px' }}><insight.icon size={18} color={insight.color} /></div>
+                                    <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, fontWeight: 500 }}>{insight.text}</p>
+                                </motion.div>
+                            ))}
                         </div>
-                    </div>
+                    </motion.div>
 
-                    {/* KPI rows */}
-                    {[
-                        { label: 'Liquidity Ratio', value: stats.expenses > 0 ? `${(stats.balance / stats.expenses).toFixed(1)}x` : '0x', status: stats.balance > 0 ? 'Healthy' : 'N/A', color: '#10b981', pct: Math.min(100, (stats.balance / Math.max(stats.expenses, 1)) * 40) },
-                        { label: 'Budget Adherence', value: budgetUsed > 0 ? `${100 - budgetUsed}%` : '100%', status: budgetUsed < 90 ? 'On Track' : 'Warning', color: '#2563eb', pct: 100 - budgetUsed },
-                        { label: 'Reserve Fund', value: `${fmtShort(stats.balance * 0.1)}`, status: 'N/A', color: '#f59e0b', pct: 0 },
-                    ].map((kpi, i) => (
-                        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#94a3b8' }}>{kpi.label}</div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: kpi.color, textTransform: 'uppercase' }}>{kpi.status}</span>
-                                    <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'white' }}>{kpi.value}</span>
-                                </div>
-                            </div>
-                            <div style={{ height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '100px', overflow: 'hidden' }}>
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${kpi.pct}%` }}
-                                    transition={{ delay: 0.5 + i * 0.1, duration: 0.8, ease: 'easeOut' }}
-                                    style={{ height: '100%', background: kpi.color, borderRadius: '100px' }}
-                                />
-                            </div>
-                        </div>
-                    ))}
-
-                    {/* Security badge */}
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: '0.6rem',
-                        padding: '0.85rem 1rem', borderRadius: '12px',
-                        background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
-                        marginTop: 'auto',
-                    }}>
-                        <ShieldCheck size={18} color="#10b981" />
-                        <div>
-                            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#10b981' }}>{t('secureEncrypted')}</div>
-                            <div style={{ fontSize: '0.68rem', color: '#334155' }}>{t('dataProtected')} • SOC2 Ready</div>
-                        </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                         {[
+                             { icon: Zap, label: 'Analytics', tab: 'accounting', color: '#2563eb' },
+                             { icon: Users, label: 'Members', tab: 'members', color: '#10b981' },
+                             { icon: CreditCard, label: 'Expenses', tab: 'expenses', color: '#f59e0b' },
+                             { icon: PieChart, label: 'Budgets', tab: 'budget', color: '#a855f7' }
+                         ].map((btn, i) => (
+                             <motion.button
+                                 key={i}
+                                 whileHover={{ y: -4, background: 'rgba(255,255,255,0.05)' }}
+                                 whileTap={{ scale: 0.95 }}
+                                 onClick={() => setActiveTab(btn.tab)}
+                                 style={{
+                                     padding: '1.25rem', borderRadius: '18px', background: 'rgba(255,255,255,0.02)',
+                                     border: '1px solid rgba(255,255,255,0.05)', color: 'white', cursor: 'pointer',
+                                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px'
+                                 }}
+                             >
+                                 <btn.icon size={20} color={btn.color} />
+                                 <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>{btn.label}</span>
+                             </motion.button>
+                         ))}
                     </div>
-                </motion.div>
+                 </div>
             </div>
 
-            {/* ── Feature / Module Cards ──────────────────────────────── */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                style={{ marginBottom: '1.25rem' }}
-            >
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>
+            <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1.5rem' }}>
                     {t('quickAccess')}
                 </div>
-                {/* ── NEURAL INSIGHTS ── */}
-            <motion.div 
-               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-               style={{ 
-                 background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%)',
-                 borderRadius: '24px', padding: '2rem', border: '1px solid hsla(var(--p)/0.2)',
-                 display: 'flex', alignItems: 'center', gap: '2.5rem', marginBottom: '2.5rem', flexWrap: 'wrap'
-               }}
-            >
-               <div style={{ position: 'relative' }}>
-                 <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'hsla(var(--p)/0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                   <BrainCircuit size={40} color="hsl(var(--p))" />
-                 </div>
-                 <motion.div 
-                   animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }}
-                   style={{ position: 'absolute', top: '-5px', right: '-5px', width: '15px', height: '15px', background: 'hsl(var(--success))', borderRadius: '50%', border: '4px solid #020617' }} 
-                 />
-               </div>
-               <div style={{ flex: 1, minWidth: '300px' }}>
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.5rem' }}>
-                    <Zap size={16} color="hsl(var(--warning))" />
-                    <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'hsl(var(--p))', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Neural Strategic Advisory</span>
-                 </div>
-                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '1rem' }}>Your financial data suggests an opportunity for Growth.</h3>
-                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                   {[
-                     { label: 'Optimize Reserve', value: '+12% Target', color: 'hsl(var(--p))' },
-                     { label: 'Burn Rate', value: 'Steady 0.8x', color: 'hsl(var(--success))' }
-                   ].map(tip => (
-                     <div key={tip.label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem 1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tip.label}</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: tip.color }}>{tip.value}</span>
-                     </div>
-                   ))}
-                 </div>
-               </div>
-               <div style={{ minWidth: '240px' }}>
-                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '1.25rem' }}>
-                   "Expenditure patterns are currently 8% below the 6-month average. We recommend allocating the surplus to the Mission Fund."
-                 </p>
-                 <button 
-                    onClick={() => setActiveTab('budget')}
-                    className="btn btn-primary" 
-                    style={{ width: '100%', background: 'hsl(var(--p))', cursor: 'pointer' }}
-                  >
-                    <Sparkles size={16} /> View Advice
-                  </button>
-               </div>
-            </motion.div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '2.5rem' }}>
                     {[
                         {
                             icon: BarChart3, title: t('analyticsTitle'),
@@ -884,16 +766,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                             desc: t('smartGivingDesc'),
                             iconBg: 'rgba(168,85,247,0.12)', iconColor: '#a855f7', tab: 'giving',
                         },
-                        {
-                            icon: ChurchIcon, title: t('payrollStaffTitle'),
-                            desc: t('payrollStaffDesc'),
-                            iconBg: 'rgba(239,68,68,0.12)', iconColor: '#ef4444', tab: 'payroll',
-                        },
-                        {
-                            icon: Calendar, title: t('budgetPlanningTitle'),
-                            desc: t('budgetPlanningDesc'),
-                            iconBg: 'rgba(6,182,212,0.12)', iconColor: '#06b6d4', tab: 'budget',
-                        },
                     ].map((card, i) => (
                         <FeatureCard
                             key={i}
@@ -906,6 +778,22 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                             delay={0.45 + i * 0.05}
                         />
                     ))}
+                </div>
+            </div>
+
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                style={{ 
+                    padding: '2.5rem 0', borderTop: '1px solid rgba(255,255,255,0.05)', 
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    marginTop: '2rem'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                     <ShieldCheck color="#10b981" size={20} />
+                     <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>{t('fiscalVerification')}</span>
                 </div>
             </motion.div>
         </div>

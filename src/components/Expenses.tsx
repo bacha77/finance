@@ -169,7 +169,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
 
     const handleAddExpense = async (e: React.FormEvent) => {
         e.preventDefault();
-        const amt = parseFloat(amount);
+        const amt = Math.abs(parseFloat(amount));
         if (isNaN(amt)) return;
 
         // Find General Fund to deduct from
@@ -212,14 +212,6 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
                     .from('ledger')
                     .insert([expenseData]);
                 if (error) throw error;
-
-                // ── UPDATE FUND BALANCE ──
-                if (gf) {
-                    await supabase
-                        .from('funds')
-                        .update({ balance: gf.balance - amt })
-                        .eq('id', gf.id);
-                }
             }
 
             // Refresh list

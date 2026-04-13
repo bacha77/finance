@@ -188,15 +188,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                 const firstError = results.find(r => r.error);
                 if (firstError?.error) throw firstError.error;
 
-                // Update Fund balance
-                if (activeFund) {
-                    const { error: fundErr } = await supabase
-                        .from('funds')
-                        .update({ balance: activeFund.balance - totalNet })
-                        .eq('id', activeFund.id)
-                        .eq('church_id', churchId);
-                    if (fundErr) throw fundErr;
-                }
+                // Fund balance is now handled by database trigger
             }
 
             setStaff(newStaff);

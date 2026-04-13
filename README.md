@@ -1,73 +1,29 @@
-# React + TypeScript + Vite
+# Storehouse Finance Platform
+## Mission-Critical Ecclesiastical Financial Stewardship
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Storehouse Finance is a high-end, neural-inspired financial operating system specifically engineered for the unique stewardship needs of modern churches and ministerial organizations.
 
-Currently, two official plugins are available:
+### 🛡️ Core Pillars
+- **Neural Dashboard**: Real-time financial health, surplus velocity, and AI-driven strategic insights.
+- **Unified Stewardship Ledger**: A single source of truth (SSOT) architecture ensuring 100% data authenticity across all reports.
+- **Fund Accounting**: Multi-fund visibility (Tithes, Missions, Restricted) with automated balance synchronization via Supabase triggers.
+- **Autonomous Insights**: Predictive analytics for revenue trends and expenditure efficiency.
+- **Executive Reporting**: Board-ready, PDF-exportable financial statements with integrated forensic audit logs.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 🚀 Technical Stack
+- **Frontend**: React + TypeScript + Vite + Framer Motion (Glassmorphism UI)
+- **Backend/DB**: Supabase (PostgreSQL) with Row-Level Security (RLS) and real-time CDC channels.
+- **Logic**: Centralized React Hooks (`useFinanceData`) for atomic data consistency.
+- **Intelligence**: Integrated anomaly detection and financial health scoring.
 
-## React Compiler
+### 🛠️ Strategic Setup
+1. **Clone the repository**: `git clone [repository-url]`
+2. **Install dependencies**: `npm install`
+3. **Configure Environment**: Create a `.env` file with your `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+4. **Launch Workstation**: `npm run dev`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 📋 Institutional Verification
+This platform is verified by **Fiscal Proximal Shard-E1** protocols, ensuring all disbursements and receipts maintain the highest level of ecclesiastical integrity.
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+**Storehouse Finance** — *Stewardship with Intelligence.*

@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useFinanceData } from '../hooks/useFinanceData';
 
 interface BudgetAllocation {
     deptId: string;
@@ -40,52 +41,32 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId }) => {
     const [budgets, setBudgets] = useState<BudgetYear[]>([]);
     const [activeYear, setActiveYear] = useState(new Date().getFullYear());
     const [departments, setDepartments] = useState<any[]>([]);
-    const [ledger, setLedger] = useState<any[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const { ledger, isLoading: isFinanceLoading, refresh } = useFinanceData(churchId);
 
     useEffect(() => {
-        const fetchData = async () => {
+        if (!isFinanceLoading) setIsLoading(false);
+    }, [isFinanceLoading]);
+
+    useEffect(() => {
+        const fetchDepts = async () => {
             if (!churchId) return;
-            setIsLoading(true);
-            try {
-                // Fetch Departments first
-                const { data: deptData } = await supabase.from('departments').select('*').eq('church_id', churchId);
-                if (deptData && deptData.length > 0) setDepartments(deptData);
+            const { data: deptData } = await supabase.from('departments').select('*').eq('church_id', churchId);
+            if (deptData) setDepartments(deptData);
 
-                // Fetch Ledger
-                const { data: ledgerData } = await supabase.from('ledger').select('*').eq('church_id', churchId);
-                if (ledgerData) setLedger(ledgerData);
-
-                // Fetch Budgets
-                const { data: budgetData } = await supabase
-                    .from('budgets')
-                    .select('*')
-                    .eq('church_id', churchId);
-
-                setBudgets(budgetData ? budgetData.map(b => ({
-                    year: b.year,
-                    totalBudget: b.total_budget,
-                    allocations: b.allocations || []
-                })) : []);
-
-            } catch (err) {
-                console.error('Error fetching budget data:', err);
-            } finally {
-                setIsLoading(false);
-            }
+            const { data: budgetData } = await supabase.from('budgets').select('*').eq('church_id', churchId);
+            setBudgets(budgetData ? budgetData.map(b => ({
+                year: b.year,
+                totalBudget: b.total_budget,
+                allocations: b.allocations || []
+            })) : []);
         };
-
-        fetchData();
-        const ledgerChannel = supabase.channel('budget-ledger-sync')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger', filter: `church_id=eq.${churchId}` }, fetchData)
-            .subscribe();
-        
-        return () => {
-            supabase.removeChannel(ledgerChannel);
-        };
+        fetchDepts();
     }, [churchId]);
+
 
     useEffect(() => {
         const syncBudgets = async () => {
