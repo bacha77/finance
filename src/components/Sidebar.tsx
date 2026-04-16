@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, Clock } from 'lucide-react';
+import { getTrialStatus } from '../lib/trialConfig';
 
 const NavItem = ({ id, item, isActive, setActiveTab, isMobile, setOpen }: any) => {
   const controls = useDragControls();
@@ -300,6 +301,37 @@ const Sidebar: React.FC<SidebarProps> = ({
             <LogOut size={16} />
           </button>
         </div>
+
+        {/* Trial Status Section */}
+        {church && church.plan === 'trial' && (
+          <div style={{ 
+            padding: '1rem', borderRadius: '16px', background: 'hsla(var(--p)/0.05)', 
+            border: '1px solid hsla(var(--p)/0.2)', marginBottom: '0.5rem' 
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={16} color="hsl(var(--p))" />
+                <span style={{ fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'hsl(var(--p))' }}>Free Trial</span>
+              </div>
+              <div style={{ 
+                padding: '2px 8px', borderRadius: '20px', background: 'hsl(var(--p))', 
+                color: 'white', fontSize: '0.6rem', fontWeight: 900 
+              }}>
+                {getTrialStatus(church).daysRemaining}D LEFT
+              </div>
+            </div>
+            <div style={{ height: '4px', width: '100%', background: 'hsla(var(--p)/0.1)', borderRadius: '10px', overflow: 'hidden' }}>
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${(getTrialStatus(church).daysRemaining / 30) * 100}%` }}
+                style={{ height: '100%', background: 'hsl(var(--p))' }}
+              />
+            </div>
+            <p style={{ fontSize: '0.65rem', color: 'hsl(var(--text-muted))', marginTop: '10px', lineHeight: '1.4' }}>
+              You have {getTrialStatus(church).daysRemaining} days left in your institutional trial.
+            </p>
+          </div>
+        )}
 
         {/* Shard Status */}
         <div style={{ 
