@@ -86,3 +86,45 @@ DROP POLICY IF EXISTS "Church members see their ledger only" ON public.ledger;
 CREATE POLICY "Church members see their ledger only"
     ON public.ledger FOR ALL
     USING ( (SELECT public.get_my_church_id()) IS NULL OR church_id = public.get_my_church_id() );
+
+-- ============================================================
+-- ☢️ NUCLEAR RESET (Run this in Supabase SQL Editor if button fails)
+-- WARNING: This will PERMANENTLY delete all data for the specified church.
+-- ============================================================
+/*
+DO $$ 
+DECLARE
+    target_church_name TEXT := 'philadelphie SDA CHurch'; -- <--- CHANGE THIS TO YOUR CHURCH NAME
+    cid UUID;
+BEGIN
+    SELECT id INTO cid FROM public.churches WHERE name = target_church_name LIMIT 1;
+
+    IF cid IS NULL THEN
+        RAISE NOTICE 'Church not found. No action taken.';
+    ELSE
+        RAISE NOTICE 'Resetting Data for Church: % (ID: %)', target_church_name, cid;
+
+        -- 1. Disable triggers to prevent 'Fiscal Lock' crashes
+        ALTER TABLE public.ledger DISABLE TRIGGER ALL;
+        ALTER TABLE public.members DISABLE TRIGGER ALL;
+        ALTER TABLE public.funds DISABLE TRIGGER ALL;
+
+        -- 2. Wipe data for this church
+        DELETE FROM public.ledger WHERE church_id = cid;
+        DELETE FROM public.members WHERE church_id = cid;
+        DELETE FROM public.expenses WHERE church_id = cid;
+        DELETE FROM public.payroll WHERE church_id = cid;
+        DELETE FROM public.budget_settings WHERE church_id = cid;
+        
+        -- 3. Reset all fund balances to zero
+        UPDATE public.funds SET balance = 0 WHERE church_id = cid;
+
+        -- 4. Re-enable triggers
+        ALTER TABLE public.ledger ENABLE TRIGGER ALL;
+        ALTER TABLE public.members ENABLE TRIGGER ALL;
+        ALTER TABLE public.funds ENABLE TRIGGER ALL;
+        
+        RAISE NOTICE 'Nuclear Reset Successful.';
+    END IF;
+END $$;
+*/

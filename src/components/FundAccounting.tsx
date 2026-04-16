@@ -9,7 +9,8 @@ import {
     Shield,
     CheckCircle,
     AlertCircle,
-    RefreshCw
+    RefreshCw,
+    Edit2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -463,7 +464,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                                 <td style={{ textAlign: 'right' }}>
                                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                                         <button onClick={() => setSelectedTxForAudit(tx)} style={{ background: 'var(--glass-light)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }} title="Audit Trail"><Shield size={12} /></button>
-                                                        <button onClick={() => handleEditTransaction(tx)} style={{ background: 'var(--glass-light)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }} title="Edit"><Plus size={12} style={{ transform: 'rotate(45deg)' }} /></button>
+                                                        <button onClick={() => handleEditTransaction(tx)} style={{ background: 'var(--glass-light)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }} title="Edit Record"><Edit2 size={12} /></button>
                                                         <button onClick={async () => tx.id && await handleDeleteTransaction(tx.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }} title="Void"><Trash2 size={12} /></button>
                                                     </div>
                                                 </td>
@@ -506,8 +507,8 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => setShowNewTxModal(false)}>
                         <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 10, opacity: 0 }} className="glass-card" style={{ width: '520px', padding: '3rem' }} onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                                <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white' }}>{t('recordDeposit')}</h2>
-                                <button onClick={() => setShowNewTxModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+                                <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white' }}>{editingTx ? 'Edit Transaction' : t('recordDeposit')}</h2>
+                                <button onClick={() => { setShowNewTxModal(false); setEditingTx(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
                             </div>
                             <form onSubmit={handleAddTransaction}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
@@ -527,8 +528,8 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                     </div>
                                 ))}
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                                    <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowNewTxModal(false)}>{t('cancel')}</button>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{t('recordDeposit')}</button>
+                                    <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setShowNewTxModal(false); setEditingTx(null); }}>{t('cancel')}</button>
+                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingTx ? 'Confirm Changes' : t('recordDeposit')}</button>
                                 </div>
                             </form>
                         </motion.div>
