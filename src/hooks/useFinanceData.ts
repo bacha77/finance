@@ -6,9 +6,9 @@ export interface FinanceStats {
     monthlyIncome: number;
     monthlyExpenses: number;
     membersCount: number;
-    incomeChange: number;
-    expenseChange: number;
-    balanceChange: number;
+    incomeChange: number | null;
+    expenseChange: number | null;
+    balanceChange: number | null;
     totalAssets: number;
 }
 
@@ -99,11 +99,13 @@ export const useFinanceData = (churchId: string | null) => {
             .filter(t => t.type === 'out' || t.type === 'expense')
             .reduce((s, t) => s + Math.abs(t.amount || 0), 0);
 
-        // 5. Growth Rates
-        const incomeChange = prevIncome > 0 ? ((monthlyIncome - prevIncome) / prevIncome) * 100 : monthlyIncome > 0 ? 100 : 0;
-        const expenseChange = prevExpenses > 0 ? ((monthlyExpenses - prevExpenses) / prevExpenses) * 100 : monthlyExpenses > 0 ? 100 : 0;
+        // 5. Growth Rates (Compare against previous month)
+        const incomeChange = prevIncome > 0 ? ((monthlyIncome - prevIncome) / prevIncome) * 100 : null;
+        const expenseChange = prevExpenses > 0 ? ((monthlyExpenses - prevExpenses) / prevExpenses) * 100 : null;
         
-        const balanceChange = (monthlyIncome - monthlyExpenses) > 0 ? ((monthlyIncome - monthlyExpenses) / Math.max(1, totalBalance)) * 100 : 0;
+        const currentSurplus = monthlyIncome - monthlyExpenses;
+        const prevSurplus = prevIncome - prevExpenses;
+        const balanceChange = prevSurplus !== 0 ? ((currentSurplus - prevSurplus) / Math.abs(prevSurplus)) * 100 : null;
 
         return {
             balance: totalBalance,

@@ -72,8 +72,8 @@ interface StatCardProps {
     label: string;
     value: string;
     sub?: string;
-    change: string;
-    up: boolean;
+    change: string | null;
+    up?: boolean;
     icon: React.ElementType;
     iconBg: string;
     iconColor: string;
@@ -117,15 +117,17 @@ const StatCard: React.FC<StatCardProps> = ({
             }}>
                 <Icon size={20} color={iconColor} strokeWidth={2.5} />
             </div>
-            <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                fontSize: '0.75rem', fontWeight: 900,
-                color: up ? '#10b981' : '#ef4444',
-                background: up ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                padding: '4px 10px', borderRadius: '100px',
-            }}>
-                {up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}{change}
-            </span>
+            {change && (
+                <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    fontSize: '0.75rem', fontWeight: 900,
+                    color: up ? '#10b981' : '#ef4444',
+                    background: up ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    padding: '4px 10px', borderRadius: '100px',
+                }}>
+                    {up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}{change}
+                </span>
+            )}
         </div>
         <div style={{ position: 'relative', zIndex: 1 }}>
             <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white', lineHeight: 1, letterSpacing: '-0.05em', marginBottom: '0.5rem' }}>
@@ -196,7 +198,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         if (health > 1.2) res.push({ text: "Revenue efficiency is 20% above optimal threshold.", icon: Zap, color: "#10b981" });
         else if (health < 1) res.push({ text: "Spend rate is exceeding income. Neural shield active.", icon: AlertTriangle, color: "#ef4444" });
         
-        if (financeStats.incomeChange > 0) res.push({ text: `Growth trend detected: +${financeStats.incomeChange.toFixed(1)}% vs prev month.`, icon: TrendUp, color: "#3b82f6" });
+        if (financeStats.incomeChange !== null && financeStats.incomeChange > 0) res.push({ text: `Growth trend detected: +${financeStats.incomeChange.toFixed(1)}% vs prev month.`, icon: TrendUp, color: "#3b82f6" });
         
         res.push({ text: "Fiscal integrity verified. All transactions synchronized with shard US-E1.", icon: Shield, color: "#a855f7" });
         return res;
@@ -262,8 +264,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         {
             label: t('totalBalance'),
             value: fmt(financeStats.balance),
-            change: `${financeStats.balanceChange >= 0 ? '+' : ''}${financeStats.balanceChange.toFixed(1)}%`,
-            up: financeStats.balanceChange >= 0,
+            change: financeStats.balanceChange !== null ? `${financeStats.balanceChange >= 0 ? '+' : ''}${financeStats.balanceChange.toFixed(1)}%` : null,
+            up: financeStats.balanceChange !== null ? financeStats.balanceChange >= 0 : undefined,
             icon: Wallet,
             iconBg: 'rgba(37,99,235,0.15)',
             iconColor: '#2563eb',
@@ -273,8 +275,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         {
             label: t('monthlyCollections'),
             value: fmt(financeStats.monthlyIncome),
-            change: `${financeStats.incomeChange >= 0 ? '+' : ''}${financeStats.incomeChange.toFixed(1)}%`,
-            up: financeStats.incomeChange >= 0,
+            change: financeStats.incomeChange !== null ? `${financeStats.incomeChange >= 0 ? '+' : ''}${financeStats.incomeChange.toFixed(1)}%` : null,
+            up: financeStats.incomeChange !== null ? financeStats.incomeChange >= 0 : undefined,
             icon: Activity,
             iconBg: 'rgba(16,185,129,0.15)',
             iconColor: '#10b981',
@@ -295,8 +297,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         {
             label: t('expenses'),
             value: fmt(financeStats.monthlyExpenses),
-            change: `${financeStats.expenseChange >= 0 ? '+' : ''}${financeStats.expenseChange.toFixed(1)}%`,
-            up: financeStats.expenseChange <= 0,
+            change: financeStats.expenseChange !== null ? `${financeStats.expenseChange >= 0 ? '+' : ''}${financeStats.expenseChange.toFixed(1)}%` : null,
+            up: financeStats.expenseChange !== null ? financeStats.expenseChange <= 0 : undefined,
             icon: Target,
             iconBg: 'rgba(239,68,68,0.15)',
             iconColor: '#ef4444',
