@@ -165,7 +165,11 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
         const safeReset = async (promise: Promise<any>, description: string) => {
             const { error } = await promise;
             if (error) {
-                console.warn(`Safe Reset: Component "${description}" failed. This is often normal if the component is not in use or the schema is simplified.`, error);
+                console.warn(`Safe Reset: Component "${description}" failed.`, error);
+                // Check for the trigger error that crashes delete operations
+                if (error.message?.includes('record "new" is not assigned yet')) {
+                    throw new Error("Critical Reset Error: Database triggers are crashing during deletion. Please run the 'fix_system_reset.sql' migration in your Supabase SQL editor to fix this.");
+                }
             }
             return error;
         };
@@ -188,34 +192,25 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
         await safeReset(supabase.from('members').delete().eq('church_id', cid), "Congregation Records");
         await safeReset(supabase.from('staff').delete().eq('church_id', cid), "Staff Records");
         
-        if (errLedger || errFunds) {
-            console.error('Critical reset components failed:', { errLedger, errFunds });
-            const errMsg = errLedger?.message || errFunds?.message || "Unknown permission error";
-            throw new Error(`Hard Reset failed for core financial components: ${errMsg}. Ensure you have owner-level permissions.`);
+        if (errLedger) {
+            console.error('Core reset failed:', { errLedger });
+            const errMsg = errLedger?.message || "Unknown error";
+            throw new Error(`Hard Reset failed: ${errMsg}. This typically happens if database triggers are misconfigured.`);
         }
         
-        // Purge Local Storage to prevent stale data hydration
+        // Purge Local Storage
         const keysToPurge = [
-            'sanctuary_funds',
-            'sanctuary_ledger',
-            'sanctuary_members',
-            'sanctuary_departments',
-            'sanctuary_payroll_staff',
-            'sanctuary_budgets',
-            'sanctuary_expense_categories',
-            'sanctuary_sidebar_collapsed',
-            'stardust_ui_state'
+            'sanctuary_funds', 'sanctuary_ledger', 'sanctuary_members', 
+            'sanctuary_departments', 'sanctuary_payroll_staff', 'sanctuary_budgets'
         ];
         keysToPurge.forEach(key => localStorage.removeItem(key));
         
-        alert("Board Cleared Successfully. The workspace has been reset to its Day One state.");
+        alert("Board Cleared Successfully. All transactions and records have been reset to zero.");
         setActiveSection('grid');
         setShowResetConfirm(false);
-        
-        // Force full application synchronization
         window.location.reload();
     } catch (err: any) {
-        console.error('Reset system error:', err);
+        console.error('Reset error:', err);
         alert(err.message || "Failed to reset data. Ensure you have owner-level permissions.");
     } finally {
         setIsResetting(false);
