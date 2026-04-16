@@ -12,13 +12,14 @@ import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { sendResendEmail } from '../lib/resend';
 import { useFinanceData } from '../hooks/useFinanceData';
+import AuditLogs from './AuditLogs';
 import {
     XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
     ResponsiveContainer, AreaChart, Area, PieChart as RePieChart, Pie, Cell,
     Legend
 } from 'recharts';
 
-type ActiveTab = 'overview' | 'analytics' | 'automated' | 'vault';
+type ActiveTab = 'overview' | 'analytics' | 'automated' | 'vault' | 'transparency';
 type StatementType = 'pnl' | 'balance' | 'cashflow' | 'board' | 'ledger' | null;
 
 interface Member {
@@ -447,6 +448,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                     <TabButton id="analytics" label="Deep scan" icon={LineChart} />
                     <TabButton id="automated" label="Automated" icon={Cpu} />
                     <TabButton id="vault" label="Secure Vault" icon={Lock} />
+                    <TabButton id="transparency" label="Forensic Audit" icon={Shield} />
                 </div>
             </header>
 
@@ -582,6 +584,12 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                 </tbody>
                             </table>
                         </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'transparency' && (
+                    <motion.div key="transparency" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                        <AuditLogs churchId={churchId} />
                     </motion.div>
                 )}
             </AnimatePresence>

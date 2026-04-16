@@ -54,12 +54,20 @@ function App() {
   const [supportModalOpen, setSupportModalOpen] = React.useState(false);
 
   const [activeTab, setActiveTabState] = React.useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlTab = params.get('tab');
+    if (urlTab) return urlTab;
     return localStorage.getItem('sanctuary_active_tab') || 'dashboard';
   });
 
   const setActiveTab = (tab: string) => {
     setActiveTabState(tab);
     localStorage.setItem('sanctuary_active_tab', tab);
+    
+    // Sync to Browser History
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.pushState({ tab }, '', url.toString());
   };
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -74,9 +82,37 @@ function App() {
     };
 
     window.addEventListener('resize', handleResize);
+
+    // Initial load sync - clear search if it was a deep link or persistence
+    const currentTab = localStorage.getItem('sanctuary_active_tab') || 'dashboard';
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get('tab')) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', currentTab);
+        window.history.replaceState({ tab: currentTab }, '', url.toString());
+    }
+
     return () => {
       window.removeEventListener('resize', handleResize);
     };
+  }, []);
+
+  // Handle Browser Back/Forward buttons
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state && e.state.tab) {
+        setActiveTabState(e.state.tab);
+        localStorage.setItem('sanctuary_active_tab', e.state.tab);
+      } else {
+        // Fallback for direct URL entries
+        const params = new URLSearchParams(window.location.search);
+        const urlTab = params.get('tab');
+        if (urlTab) setActiveTabState(urlTab);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   useEffect(() => {

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import { logActivity } from '../lib/audit';
 import { PAYPAL_CLIENT_ID } from '../lib/subscriptionConfig';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 
@@ -83,15 +84,34 @@ const SmartGiving: React.FC = () => {
             };
 
 
-            const { error: txError } = await supabase.from('ledger').insert([newTx]);
+            const { error: txError, data: resTx } = await supabase.from('ledger').insert([newTx]).select().single();
             if (txError) throw txError;
+
+            // Forensic Logging
+            await logActivity({
+                tableName: 'ledger',
+                recordId: resTx?.id || 'new',
+                action: 'CREATE',
+                newData: newTx,
+                churchId: churchId!
+            });
 
             // Update fund balance
             if (selectedFund && churchId) {
-                const { data: currentFund } = await supabase.from('funds').select('balance').eq('id', selectedFund.id).single();
-                if (currentFund) {
-                    await supabase.from('funds').update({ balance: currentFund.balance + amt }).eq('id', selectedFund.id);
-                }
+            const { data: currentFund } = await supabase.from('funds').select('balance').eq('id', selectedFund.id).single();
+            if (currentFund) {
+                await supabase.from('funds').update({ balance: currentFund.balance + amt }).eq('id', selectedFund.id);
+                
+                // Forensic Logging for Fund Balance Change
+                await logActivity({
+                    tableName: 'funds',
+                    recordId: selectedFund.id,
+                    action: 'UPDATE',
+                    oldData: { balance: currentFund.balance },
+                    newData: { balance: currentFund.balance + amt },
+                    churchId: churchId!
+                });
+            }
             }
 
             setShowSuccess(true);

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import { logActivity } from '../lib/audit';
 import Tesseract from 'tesseract.js';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -206,12 +207,35 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
                     .from('ledger')
                     .update(expenseData)
                     .eq('id', editingExpenseId);
+                
                 if (error) throw error;
+                
+                // Forensic Logging
+                await logActivity({
+                    tableName: 'ledger',
+                    recordId: editingExpenseId,
+                    action: 'UPDATE',
+                    oldData: expenses.find(e => e.id === editingExpenseId),
+                    newData: expenseData,
+                    churchId: churchId
+                });
             } else {
-                const { error } = await supabase
+                const { data: newTx, error } = await supabase
                     .from('ledger')
-                    .insert([expenseData]);
+                    .insert([expenseData])
+                    .select()
+                    .single();
+                
                 if (error) throw error;
+
+                // Forensic Logging
+                await logActivity({
+                    tableName: 'ledger',
+                    recordId: newTx?.id || 'new',
+                    action: 'CREATE',
+                    newData: expenseData,
+                    churchId: churchId
+                });
             }
 
             // Refresh list
@@ -269,6 +293,16 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
                 .eq('id', id);
             
             if (error) throw error;
+            
+            // Forensic Logging
+            await logActivity({
+                tableName: 'ledger',
+                recordId: id,
+                action: 'VOID',
+                oldData: expenses.find(e => e.id === id),
+                churchId: churchId
+            });
+
             setExpenses(expenses.filter(e => e.id !== id));
         } catch (err) {
             console.error('Error voiding expense:', err);

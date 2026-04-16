@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import { logActivity } from '../lib/audit';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface Fund {
@@ -274,6 +275,28 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                     })));
 
                 if (ledgerError) throw ledgerError;
+
+                // Forensic Logging
+                for (const tx of newTxs) {
+                    await logActivity({
+                        tableName: 'ledger',
+                        recordId: 'new', // Supabase will assign real ID on server
+                        action: 'CREATE',
+                        newData: tx,
+                        churchId: churchId
+                    });
+                }
+            }
+
+            if (editingTx?.id) {
+                await logActivity({
+                    tableName: 'ledger',
+                    recordId: editingTx.id,
+                    action: 'UPDATE',
+                    oldData: editingTx,
+                    newData: newTxs[0],
+                    churchId: churchId
+                });
             }
 
             setShowNewTxModal(false);
@@ -319,6 +342,15 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
             
             if (error) throw error;
             
+            // Forensic Logging
+            await logActivity({
+                tableName: 'ledger',
+                recordId: id,
+                action: 'VOID',
+                oldData: ledger.find(tx => tx.id === id),
+                churchId: churchId
+            });
+
             // Local state cleanup
             setLedger(prev => prev.filter(tx => tx.id !== id));
             alert('Transaction voided successfully.');
