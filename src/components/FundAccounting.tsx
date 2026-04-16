@@ -11,7 +11,8 @@ import {
     CheckCircle,
     AlertCircle,
     RefreshCw,
-    Edit2
+    Edit2,
+    Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -62,6 +63,8 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
     const [selectedTxForAudit, setSelectedTxForAudit] = useState<Transaction | null>(null);
     const [showReconcile, setShowReconcile] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [bankItems, setBankItems] = useState<any[]>([]);
+    const [matchingRecords, setMatchingRecords] = useState<Record<string, Transaction>>({});
 
     const [funds, setFunds] = useState<Fund[]>([]);
     const [showNewFundModal, setShowNewFundModal] = useState(false);
@@ -200,6 +203,73 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
             amount: tx.amount.toString() 
         }]);
         setShowNewTxModal(true);
+    };
+
+    const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target?.result as string;
+            const lines = text.split('\n');
+            const newBankItems: any[] = [];
+            
+            // Basic CSV Parser (Expected: Date, Description, Amount)
+            lines.slice(1).forEach(line => {
+                const cols = line.split(',');
+                if (cols.length >= 3) {
+                    const amount = parseFloat(cols[2]?.replace(/["$]/g, ''));
+                    if (!isNaN(amount)) {
+                        newBankItems.push({
+                            id: Math.random().toString(36).substring(7),
+                            date: cols[0],
+                            desc: cols[1]?.replace(/"/g, ''),
+                            amount: amount,
+                            matched: false
+                        });
+                    }
+                }
+            });
+
+            setBankItems(newBankItems);
+            
+            // Auto-matching logic: Match by amount and proximity in date (within 3 days)
+            const matches: Record<string, Transaction> = {};
+            newBankItems.forEach(item => {
+                const potentialMatch = ledger.find(tx => 
+                    Math.abs(tx.amount) === Math.abs(item.amount) &&
+                    (tx.date === item.date || Math.abs(new Date(tx.date).getTime() - new Date(item.date).getTime()) < 86400000 * 3)
+                );
+                if (potentialMatch) matches[item.id] = potentialMatch;
+            });
+            setMatchingRecords(matches);
+        };
+        reader.readAsText(file);
+    };
+
+    const handleConfirmMatch = async (bankId: string) => {
+        const item = bankItems.find(i => i.id === bankId);
+        const match = matchingRecords[bankId];
+        if (!item || !match) return;
+
+        try {
+            // Update ledger record to mark it as reconciled
+            await supabase.from('ledger').update({ reconciled: true }).eq('id', match.id);
+            setBankItems(prev => prev.map(i => i.id === bankId ? { ...i, matched: true } : i));
+            
+            // Log this reconciliation action for audit trail
+            await logActivity({
+                tableName: 'ledger',
+                recordId: match.id!,
+                action: 'UPDATE',
+                oldData: { ...match, reconciled: false },
+                newData: { ...match, reconciled: true },
+                churchId: churchId
+            });
+        } catch (err) {
+            console.error('Reconciliation failed:', err);
+        }
     };
 
     const handleAddTransaction = async (e: React.FormEvent) => {
@@ -399,36 +469,74 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                 <p style={{ color: 'var(--text-muted)' }}>{t('bankReconDesc')}</p>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button className="btn btn-ghost" onClick={() => setIsSyncing(true)}>
-                                    <RefreshCw size={18} className={isSyncing ? 'spin' : ''} /> {t('refreshFeed')}
+                                <input 
+                                    type="file" 
+                                    id="bank-csv" 
+                                    hidden 
+                                    accept=".csv" 
+                                    onChange={handleCSVUpload} 
+                                />
+                                <button className="btn btn-ghost" onClick={() => document.getElementById('bank-csv')?.click()}>
+                                    <Download size={18} /> {t('importStatement') || 'Import CSV'}
                                 </button>
-                                <button className="btn btn-primary">{t('processMatches')}</button>
+                                <button className="btn btn-primary" onClick={() => setBankItems([])}>{t('clearFeed') || 'Clear Feed'}</button>
                             </div>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                             <div style={{ borderRight: '1px solid var(--border)', paddingRight: '2rem' }}>
                                 <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1.5rem', letterSpacing: '0.1em' }}>{t('bankStatementItems')}</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {[
-                                        { date: 'Mar 08', desc: 'CHECK DEP 1002', amount: 450.00, matched: false },
-                                        { date: 'Mar 07', desc: 'ONLINE TRANSFER TITHE', amount: 1250.00, matched: true },
-                                    ].map((item, i) => (
-                                        <div key={i} style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: item.matched ? '1px solid var(--success)' : '1px solid var(--border)', position: 'relative' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto' }}>
+                                    {bankItems.length === 0 && (
+                                        <div style={{ padding: '3rem', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: '16px' }}>
+                                            <Download size={32} color="var(--text-muted)" style={{ marginBottom: '1rem' }} />
+                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Upload a CSV from your bank to begin.</p>
+                                        </div>
+                                    )}
+                                    {bankItems.map((item, i) => (
+                                        <div key={i} style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: item.matched ? '1px solid var(--success)' : (matchingRecords[item.id] ? '1px solid var(--primary)' : '1px solid var(--border)'), position: 'relative' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>{item.date}</span>
                                                 <span style={{ fontWeight: 800, color: item.amount > 0 ? 'var(--success)' : 'white' }}>${Math.abs(item.amount).toLocaleString()}</span>
                                             </div>
                                             <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white' }}>{item.desc}</p>
+                                            {item.matched && (
+                                                <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--success)', fontSize: '0.75rem', fontWeight: 800 }}>
+                                                    <CheckCircle size={14} /> RECONCILED
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
                             </div>
                             <div>
                                 <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1.5rem', letterSpacing: '0.1em' }}>{t('ledgerRecommendations')}</h3>
-                                <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px dashed var(--border)', textAlign: 'center' }}>
-                                    <AlertCircle size={24} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
-                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('noDirectMatch')}</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    {Object.keys(matchingRecords).filter(bid => !bankItems.find(i => i.id === bid)?.matched).map(bankId => {
+                                        const match = matchingRecords[bankId];
+                                        const bankItem = bankItems.find(i => i.id === bankId);
+                                        return (
+                                            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} key={bankId} style={{ padding: '1.5rem', background: 'hsla(var(--p)/0.05)', borderRadius: '16px', border: '1px solid var(--primary)' }}>
+                                                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                                                    <div style={{ background: 'var(--primary)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 900 }}>MATCH FOUND</div>
+                                                    <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>Suggested for: <span style={{ color: 'var(--text-muted)' }}>{bankItem?.desc}</span></p>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div>
+                                                        <p style={{ fontWeight: 800, color: 'white' }}>{match.description}</p>
+                                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{match.date} • {match.category}</p>
+                                                    </div>
+                                                    <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }} onClick={() => handleConfirmMatch(bankId)}>Confirm Link</button>
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })}
+                                    {Object.keys(matchingRecords).length === 0 && (
+                                        <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px dashed var(--border)', textAlign: 'center' }}>
+                                            <AlertCircle size={24} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('noDirectMatch')}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
