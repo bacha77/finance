@@ -68,6 +68,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
     const [matchingRecords, setMatchingRecords] = useState<Record<string, Transaction>>({});
     const [pdfProcessing, setPdfProcessing] = useState(false);
     const [linkingBankId, setLinkingBankId] = useState<string | null>(null);
+    const [recordingBankItem, setRecordingBankItem] = useState<any | null>(null);
 
     const [funds, setFunds] = useState<Fund[]>([]);
     const [showNewFundModal, setShowNewFundModal] = useState(false);
@@ -314,6 +315,68 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
         setMatchingRecords(matches);
     };
 
+    const handleQuickRecord = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!recordingBankItem || !churchId) return;
+
+        const formData = new FormData(e.target as HTMLFormElement);
+        const fundId = formData.get('fund') as string;
+        const deptId = formData.get('dept') as string;
+        const memberName = formData.get('member') as string;
+        const category = formData.get('category') as string;
+
+        const fund = funds.find(f => f.id === fundId);
+        
+        const newTransaction = {
+            church_id: churchId,
+            date: recordingBankItem.date,
+            description: recordingBankItem.desc,
+            amount: recordingBankItem.amount,
+            type: recordingBankItem.amount > 0 ? 'in' : 'out',
+            fund: fund?.name || 'General',
+            fund_id: fundId,
+            department: (availableDepts as any[]).find((d: any) => d.id === deptId)?.name || 'General',
+            category: category,
+            member: memberName || null,
+            reconciled: true,
+            method: 'Zelle/Bank',
+            audit_trail: [{
+                timestamp: new Date().toISOString(),
+                user: 'System Admin',
+                action: 'CREATE',
+                details: 'Created via Bank Statement Intelligent Recording'
+            }]
+        };
+
+        try {
+            const { data, error } = await supabase.from('ledger').insert(newTransaction).select().single();
+            if (error) throw error;
+
+            setLedger([data, ...ledger]);
+            setBankItems(prev => prev.map(i => i.id === recordingBankItem.id ? { ...i, matched: true } : i));
+            
+            await logActivity({
+                tableName: 'ledger',
+                recordId: data.id,
+                action: 'CREATE',
+                newData: data,
+                churchId: churchId
+            });
+
+            setRecordingBankItem(null);
+        } catch (err) {
+            console.error('Quick record failed:', err);
+        }
+    };
+
+    const extractZelleName = (desc: string) => {
+        if (!desc) return '';
+        // Handle "Zelle Payment From NAME..."
+        const match = desc.match(/Zelle Payment From ([\w\s]+?)(?=\s\d|$)/i);
+        if (match) return match[1].trim();
+        return '';
+    };
+
     const handleConfirmMatch = async (bankId: string) => {
         const item = bankItems.find(i => i.id === bankId);
         const match = matchingRecords[bankId];
@@ -321,7 +384,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
 
         try {
             // Update ledger record to mark it as reconciled
-            await supabase.from('ledger').update({ reconciled: true }).eq('id', match.id);
+            await supabase.from('ledger').update({ reconciled: true }).eq('id', match.id!);
             setBankItems(prev => prev.map(i => i.id === bankId ? { ...i, matched: true } : i));
             
             // Log this reconciliation action for audit trail
@@ -568,17 +631,30 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                             <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white' }}>{item.desc}</p>
                                             
                                             {!item.matched && !matchingRecords[item.id] && (
-                                                <button 
-                                                    className="btn" 
-                                                    style={{ 
-                                                        marginTop: '1rem', width: '100%', fontSize: '0.75rem', padding: '10px',
-                                                        background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', color: '#60a5fa',
-                                                        fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                                                    }}
-                                                    onClick={() => setLinkingBankId(item.id)}
-                                                >
-                                                    <Plus size={14} /> LINK MANUALLY
-                                                </button>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button 
+                                                        className="btn" 
+                                                        style={{ 
+                                                            marginTop: '1rem', flex: 1, fontSize: '0.75rem', padding: '10px',
+                                                            background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', color: '#60a5fa',
+                                                            fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                                                        }}
+                                                        onClick={() => setLinkingBankId(item.id)}
+                                                    >
+                                                        LINK
+                                                    </button>
+                                                    <button 
+                                                        className="btn" 
+                                                        style={{ 
+                                                            marginTop: '1rem', flex: 1, fontSize: '0.75rem', padding: '10px',
+                                                            background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', color: '#34d399',
+                                                            fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                                                        }}
+                                                        onClick={() => setRecordingBankItem(item)}
+                                                    >
+                                                        RECORD NEW
+                                                    </button>
+                                                </div>
                                             )}
 
                                             {item.matched && (
@@ -862,6 +938,75 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No unreconciled transactions found.</div>
                                         )}
                                     </div>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
+                {createPortal(
+                    <AnimatePresence>
+                        {recordingBankItem && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" style={{ zIndex: 3000 }} onClick={() => setRecordingBankItem(null)}>
+                                <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="glass-card" style={{ maxWidth: '500px', width: '90%', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                                        <h3 style={{ fontSize: '1.5rem', fontWeight: 900 }}>Intelligent Recording</h3>
+                                        <button className="btn glass" onClick={() => setRecordingBankItem(null)}><X size={18} /></button>
+                                    </div>
+                                    
+                                    <div style={{ padding: '1.25rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '16px', marginBottom: '2rem', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                                        <div style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>Bank Transaction Scan</div>
+                                        <div style={{ fontWeight: 800, color: 'white' }}>{recordingBankItem.desc}</div>
+                                        <div style={{ color: 'white', fontWeight: 900, marginTop: '4px', fontSize: '1.2rem' }}>${recordingBankItem.amount.toLocaleString()} ({recordingBankItem.date})</div>
+                                    </div>
+
+                                    <form onSubmit={handleQuickRecord}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                                            <div className="input-group">
+                                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>ASSIGN MEMBER</label>
+                                                <select name="member" defaultValue={extractZelleName(recordingBankItem.desc)} className="glass-input" style={{ width: '100%' }}>
+                                                    <option value="">No Member Linked</option>
+                                                    {members.map((m: any, i: number) => (
+                                                        <option key={i} value={m.name}>{m.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div className="input-group">
+                                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>ALLOCATE TO FUND</label>
+                                                <select name="fund" required className="glass-input" style={{ width: '100%' }}>
+                                                    {funds.map(f => (
+                                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div className="input-group">
+                                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>DEPARTMENT</label>
+                                                <select name="dept" required className="glass-input" style={{ width: '100%' }}>
+                                                    {(availableDepts as any[]).map((d: any) => (
+                                                        <option key={d.id} value={d.id}>{d.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div className="input-group">
+                                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>CATEGORY</label>
+                                                <select name="category" required className="glass-input" style={{ width: '100%' }}>
+                                                    <option value="Tithe">Tithe</option>
+                                                    <option value="Offering">Offering</option>
+                                                    <option value="Building">Building</option>
+                                                    <option value="Missions">Missions</option>
+                                                    <option value="Utilities">Utilities</option>
+                                                    <option value="Hospitality">Hospitality</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '50px', fontSize: '1rem' }}>
+                                            Confirm & Record to Ledger
+                                        </button>
+                                    </form>
                                 </motion.div>
                             </motion.div>
                         )}
