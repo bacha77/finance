@@ -257,22 +257,23 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                 const textContent = await page.getTextContent();
                 const textItems = textContent.items.map((item: any) => item.str);
                 
-                // Heuristic: Look for date-like strings and currency-like strings in the same proximity
-                // This is a simplified pattern matcher for bank statements
+                // Heuristic: Look for date-like strings (MM/DD) and currency-like strings ($X,XXX.XX)
                 for (let j = 0; j < textItems.length; j++) {
                     const item = textItems[j];
-                    const dateMatch = item.match(/(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})|([A-Za-z]{3}\s\d{1,2})/);
+                    // Matches MM/DD, MM/DD/YYYY, or "Mar 15"
+                    const dateMatch = item.match(/(\d{1,2}[\/-]\d{1,2}([\/-]\d{2,4})?)|([A-Za-z]{3}\s\d{1,2})/);
                     if (dateMatch) {
-                        // Look ahead for an amount
-                        for (let k = j + 1; k < Math.min(j + 10, textItems.length); k++) {
-                            const amountMatch = textItems[k].match(/(-?\d+\.\d{2})/);
+                        // Look ahead for an amount ($ or just numbers with decimals)
+                        for (let k = j + 1; k < Math.min(j + 15, textItems.length); k++) {
+                            const amountStr = textItems[k].replace(/[$,]/g, '');
+                            const amountMatch = amountStr.match(/(-?\d+\.\d{2})/);
                             if (amountMatch) {
                                 extractedItems.push({
                                     date: dateMatch[0],
                                     desc: textItems.slice(j + 1, k).join(' ').trim() || 'Bank Transaction',
                                     amount: parseFloat(amountMatch[0])
                                 });
-                                j = k; // Skip to after amount
+                                j = k; // Skip forward
                                 break;
                             }
                         }
