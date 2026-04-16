@@ -49,6 +49,7 @@ interface Transaction {
     method?: string;
     notes?: string;
     audit_trail: AuditLog[];
+    reconciled?: boolean;
     church_id?: string;
     created_at?: string;
 }
@@ -66,6 +67,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
     const [bankItems, setBankItems] = useState<any[]>([]);
     const [matchingRecords, setMatchingRecords] = useState<Record<string, Transaction>>({});
     const [pdfProcessing, setPdfProcessing] = useState(false);
+    const [linkingBankId, setLinkingBankId] = useState<string | null>(null);
 
     const [funds, setFunds] = useState<Fund[]>([]);
     const [showNewFundModal, setShowNewFundModal] = useState(false);
@@ -563,6 +565,17 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                                 <span style={{ fontWeight: 800, color: item.amount > 0 ? 'var(--success)' : 'white' }}>${Math.abs(item.amount).toLocaleString()}</span>
                                             </div>
                                             <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white' }}>{item.desc}</p>
+                                            
+                                            {!item.matched && !matchingRecords[item.id] && (
+                                                <button 
+                                                    className="btn glass" 
+                                                    style={{ marginTop: '1rem', width: '100%', fontSize: '0.7rem', padding: '6px' }}
+                                                    onClick={() => setLinkingBankId(item.id)}
+                                                >
+                                                    <Plus size={12} /> Link Manually
+                                                </button>
+                                            )}
+
                                             {item.matched && (
                                                 <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--success)', fontSize: '0.75rem', fontWeight: 800 }}>
                                                     <CheckCircle size={14} /> RECONCILED
@@ -800,6 +813,50 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                         ))}
                                     </div>
                                     <button onClick={() => setSelectedTxForAudit(null)} className="btn btn-primary" style={{ width: '100%', marginTop: '2rem' }}>{t('close')}</button>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
+                {createPortal(
+                    <AnimatePresence>
+                        {linkingBankId && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" style={{ zIndex: 3000 }} onClick={() => setLinkingBankId(null)}>
+                                <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="glass-card" style={{ maxWidth: '500px', width: '90%', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+                                        <h3 style={{ fontSize: '1.5rem', fontWeight: 900 }}>Manual Link</h3>
+                                        <button className="btn glass" onClick={() => setLinkingBankId(null)}><X size={18} /></button>
+                                    </div>
+                                    <div style={{ padding: '1.25rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '16px', marginBottom: '2rem', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                                        <div style={{ fontSize: '0.65rem', color: '#60a5fa', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>Bank Transaction</div>
+                                        <div style={{ fontWeight: 800, color: 'white' }}>{bankItems.find(i => i.id === linkingBankId)?.desc}</div>
+                                        <div style={{ color: 'white', fontWeight: 900, marginTop: '4px', fontSize: '1.2rem' }}>${bankItems.find(i => i.id === linkingBankId)?.amount.toLocaleString()}</div>
+                                    </div>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Select the ledger entry to link with this statement line:</p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '350px', overflowY: 'auto', paddingRight: '8px' }}>
+                                        {ledger.filter(tx => !tx.reconciled).slice(0, 15).map(tx => (
+                                            <button 
+                                                key={tx.id} 
+                                                className="btn glass" 
+                                                style={{ width: '100%', justifyContent: 'space-between', textAlign: 'left', padding: '1.25rem', borderRadius: '14px' }}
+                                                onClick={() => {
+                                                    setMatchingRecords(prev => ({ ...prev, [linkingBankId!]: tx }));
+                                                    handleConfirmMatch(linkingBankId!);
+                                                    setLinkingBankId(null);
+                                                }}
+                                            >
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{tx.description || t('noDescription')}</div>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>{tx.date} • {tx.fund}</div>
+                                                </div>
+                                                <div style={{ fontWeight: 900, color: '#10b981' }}>${Math.abs(tx.amount).toLocaleString()}</div>
+                                            </button>
+                                        ))}
+                                        {ledger.filter(tx => !tx.reconciled).length === 0 && (
+                                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No unreconciled transactions found.</div>
+                                        )}
+                                    </div>
                                 </motion.div>
                             </motion.div>
                         )}
