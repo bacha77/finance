@@ -22,8 +22,16 @@ interface DashboardProps {
     churchId: string;
 }
 
+interface Fund {
+    id: string;
+    name: string;
+    balance: number;
+    color?: string;
+}
+
 const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 const fmtShort = (v: number) => fmt(v); // Remove K-rounding to maintain precision sync
+const COLORS = ['#2563eb', '#a855f7', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#8b5cf6'];
 
 // ── Mini Sparkline (CSS bar chart) ────────────────────────────────────────
 const Sparkline: React.FC<{ values: number[]; color: string }> = ({ values, color }) => {
@@ -178,7 +186,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
 
     const today = new Date().toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    const { ledger, stats: financeStats, isLoading: syncing } = useFinanceData(churchId);
+    const { ledger, funds, stats: financeStats, isLoading: syncing } = useFinanceData(churchId);
 
     const insights = useMemo(() => {
         if (!ledger || ledger.length === 0) return [];
@@ -237,14 +245,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
 
             last7.forEach(tx => {
                 const d = new Date(tx.date || tx.created_at).toLocaleDateString();
-                if (!days[d]) days[d] = { date: d, tithes: 0, missions: 0, building: 0, expense: 0 };
+                if (!days[d]) days[d] = { date: d, income: 0, missions: 0, building: 0, expense: 0 };
                 const amt = Math.abs(tx.amount || 0);
                 if (tx.type === 'in' || tx.type === 'revenue') {
-                    const fund = (tx.fund || '').toLowerCase();
-                    if (fund.includes('tithe') || fund.includes('offer')) days[d].tithes += amt;
-                    else if (fund.includes('mission') || fund.includes('missionary')) days[d].missions += amt;
-                    else if (fund.includes('build')) days[d].building += amt;
-                    else days[d].tithes += amt; 
+                    days[d].income += amt;
                 } else {
                     days[d].expense += amt;
                 }
@@ -267,7 +271,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
             delay: 0,
         },
         {
-            label: `${t('tithes')} (MTD)`,
+            label: t('monthlyCollections'),
             value: fmt(financeStats.monthlyIncome),
             change: `${financeStats.incomeChange >= 0 ? '+' : ''}${financeStats.incomeChange.toFixed(1)}%`,
             up: financeStats.incomeChange >= 0,
@@ -321,7 +325,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         doc.setTextColor(0);
         doc.setFontSize(12);
         doc.text(`Total Church Funds: ${fmt(financeStats.balance)}`, 14, 45);
-        doc.text(`Tithes & Offerings (MTD): ${fmt(financeStats.monthlyIncome)}`, 14, 52);
+        doc.text(`${t('monthlyCollections')}: ${fmt(financeStats.monthlyIncome)}`, 14, 52);
         doc.text(`Active Members: ${financeStats.membersCount}`, 14, 59);
         doc.text(`Monthly Expenses: ${fmt(financeStats.monthlyExpenses)}`, 14, 66);
 
@@ -478,39 +482,35 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                     }}
                 >
                     <div style={{ fontSize: '0.875rem', fontWeight: 800, color: 'white', marginBottom: '1rem' }}>{t('fundDistribution')}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                         {financeStats.totalAssets > 0 ? (
-                             <div style={{ height: '140px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                 <PieChart width={140} height={140}>
-                                     <Pie 
-                                        data={[
-                                            { name: 'Tithes', value: 70 },
-                                            { name: 'Missions', value: 20 },
-                                            { name: 'Bldg', value: 10 }
-                                        ]} 
-                                        innerRadius={40} 
-                                        outerRadius={65} 
-                                        paddingAngle={5} 
-                                        dataKey="value"
-                                     >
-                                         <Cell fill="#2563eb" />
-                                         <Cell fill="#a855f7" />
-                                         <Cell fill="#10b981" />
-                                     </Pie>
-                                 </PieChart>
-                             </div>
-                         ) : null}
-                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                              <div style={{ padding: '8px', background: 'rgba(37,99,235,0.05)', borderRadius: '8px', border: '1px solid rgba(37,99,235,0.1)' }}>
-                                  <div style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: 700 }}>GENERAL</div>
-                                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white' }}>70%</div>
+                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          {financeStats.totalAssets > 0 ? (
+                              <div style={{ height: '140px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <PieChart width={140} height={140}>
+                                      <Pie 
+                                         data={funds.map((f: Fund) => ({ name: f.name, value: f.balance })).filter((f: any) => f.value > 0).slice(0, 5)} 
+                                         innerRadius={40} 
+                                         outerRadius={65} 
+                                         paddingAngle={5} 
+                                         dataKey="value"
+                                      >
+                                          {funds.map((f: Fund, i: number) => (
+                                              <Cell key={i} fill={f.color || COLORS[i % COLORS.length]} />
+                                          ))}
+                                      </Pie>
+                                  </PieChart>
                               </div>
-                              <div style={{ padding: '8px', background: 'rgba(168,85,247,0.05)', borderRadius: '8px', border: '1px solid rgba(168,85,247,0.1)' }}>
-                                  <div style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: 700 }}>MISSIONS</div>
-                                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white' }}>20%</div>
-                              </div>
-                         </div>
-                    </div>
+                          ) : null}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                               {funds.slice(0, 4).map((f: Fund, i: number) => (
+                                   <div key={i} style={{ padding: '8px', background: `${f.color || '#2563eb'}10`, borderRadius: '8px', border: `1px solid ${f.color || '#2563eb'}20` }}>
+                                       <div style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>{f.name.substring(0, 10)}</div>
+                                       <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white' }}>
+                                           {financeStats.totalAssets > 0 ? Math.round((f.balance / financeStats.totalAssets) * 100) : 0}%
+                                       </div>
+                                   </div>
+                               ))}
+                          </div>
+                     </div>
                 </motion.div>
             </div>
 
@@ -549,7 +549,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                                 <Tooltip
                                     contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', fontSize: '12px' }}
                                 />
-                                <Area type="monotone" dataKey="tithes" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" name="Income" />
+                                <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" name="Income" />
                                 <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" name="Expenses" />
                             </AreaChart>
                         </ResponsiveContainer>
