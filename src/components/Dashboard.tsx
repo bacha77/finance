@@ -8,7 +8,7 @@ import {
     Zap,
     PieChart as PieIcon
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import jsPDF from 'jspdf';
@@ -185,6 +185,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
     const [chartData, setChartData] = useState<any[]>([]);
     const [churchName, setChurchName] = useState('');
     const [churchData, setChurchData] = useState<any>(null);
+    const [aiInsights, setAiInsights] = useState<any[]>([]);
 
     const today = new Date().toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -204,6 +205,52 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         return res;
     }, [ledger, financeStats]);
 
+
+    const generateAIInsights = () => {
+        if (!financeStats?.budgetUtilization) return;
+        const insights: any[] = [];
+        
+        financeStats.budgetUtilization.forEach((dept: any) => {
+            if (dept.percentage > 75) {
+                const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+                const dayOfMonth = new Date().getDate();
+                const velocity = dept.percentage / dayOfMonth; 
+                const predictedEnd = velocity * daysInMonth;
+
+                if (predictedEnd > 100) {
+                    insights.push({
+                        type: 'danger',
+                        title: `Budget Depletion Alert: ${dept.name}`,
+                        message: `Velocity scan predicts ${predictedEnd.toFixed(0)}% utilization by month-end. Recommend emergency reallocation.`,
+                        impact: 'High'
+                    });
+                } else if (dept.percentage > 85) {
+                    insights.push({
+                        type: 'warning',
+                        title: `Critical Ceiling: ${dept.name}`,
+                        message: `Spend velocity is accelerating. Only $${(dept.budget - dept.spent).toLocaleString()} remaining in fiscal bucket.`,
+                        impact: 'Medium'
+                    });
+                }
+            }
+        });
+
+        if (financeStats.monthlyIncome < financeStats.monthlyExpenses) {
+            insights.push({
+                type: 'warning',
+                title: 'Operational Gap Detected',
+                message: 'Monthly burn rate exceeds revenue intake. Scan indicates reliance on reserve liquidity.',
+                impact: 'Critical'
+            });
+        }
+        setAiInsights(insights);
+    };
+
+    useEffect(() => {
+        if (!syncing && financeStats) {
+            generateAIInsights();
+        }
+    }, [syncing, financeStats]);
 
     useEffect(() => {
         const fetchChurch = async () => {
@@ -425,10 +472,40 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                 </div>
             </motion.div>
 
-            {/* ── Stat Cards ─────────────────────────────────────────── */}
             <div className="stats-grid" style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem' }}>
                 {statCards.map((card, i) => <StatCard key={i} {...card} />)}
             </div>
+
+            <AnimatePresence>
+                {aiInsights.length > 0 && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        style={{ marginBottom: '2.5rem' }}
+                    >
+                        <div className="glass-card" style={{ borderLeft: '4px solid #6366f1', background: 'linear-gradient(90deg, rgba(99, 102, 241, 0.05) 0%, transparent 100%)', padding: '1.5rem 2rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
+                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#6366f1', boxShadow: '0 0 10px #6366f1' }} />
+                                <h3 style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em', color: '#818cf8' }}>
+                                    Neural Strategic Foresight Hub
+                                </h3>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                                {aiInsights.map((insight, i) => (
+                                    <div key={i} style={{ padding: '1.25rem', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'white' }}>{insight.title}</span>
+                                            <span style={{ fontSize: '0.6rem', padding: '3px 8px', borderRadius: '4px', background: insight.type === 'danger' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: insight.type === 'danger' ? '#f87171' : '#fbbf24', fontWeight: 900, textTransform: 'uppercase' }}>{insight.impact} IMPACT</span>
+                                        </div>
+                                        <p style={{ fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.5 }}>{insight.message}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.75rem', marginBottom: '2.5rem' }}>
                 <motion.div

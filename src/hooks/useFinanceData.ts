@@ -10,6 +10,7 @@ export interface FinanceStats {
     expenseChange: number | null;
     balanceChange: number | null;
     totalAssets: number;
+    budgetUtilization: { name: string, spent: number, budget: number, percentage: number }[];
 }
 
 export const useFinanceData = (churchId: string | null) => {
@@ -115,7 +116,13 @@ export const useFinanceData = (churchId: string | null) => {
             incomeChange,
             expenseChange,
             balanceChange,
-            totalAssets
+            totalAssets,
+            budgetUtilization: funds.map(f => ({
+                name: f.name,
+                spent: Math.abs(ledger.filter(t => t.fund_id === f.id && (t.type === 'out' || t.type === 'expense')).reduce((s, t) => s + Math.abs(t.amount || 0), 0)),
+                budget: f.budget_amount || 1000, // Default fallback if no budget set
+                percentage: ((Math.abs(ledger.filter(t => t.fund_id === f.id && (t.type === 'out' || t.type === 'expense')).reduce((s, t) => s + Math.abs(t.amount || 0), 0))) / (f.budget_amount || 1000)) * 100
+            }))
         };
     }, [ledger, funds, members]);
 
