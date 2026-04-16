@@ -18,6 +18,7 @@ import autoTable from 'jspdf-autotable';
 import { predictNextMonth, detectAnomalies } from '../lib/intelligence';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useFinanceData } from '../hooks/useFinanceData';
+import { checkAndSendTrialReminder } from '../lib/reminderService';
 
 interface DashboardProps {
     setActiveTab: (tab: string) => void;
@@ -257,10 +258,18 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
     useEffect(() => {
         const fetchChurch = async () => {
             if (!churchId) return;
-            const { data: church } = await supabase.from('churches').select('name, logo_url, plan, created_at').eq('id', churchId).single();
+            const { data: church } = await supabase.from('churches').select('name, logo_url, plan, created_at, id').eq('id', churchId).single();
             if (church) {
                 setChurchName(church.name);
                 setChurchData(church);
+
+                // 🔥 FIRE TRIAL PULSE CHECK
+                if (church.plan === 'trial') {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user?.email) {
+                        checkAndSendTrialReminder(church, user.email);
+                    }
+                }
             }
 
             const { data: dbGoals } = await supabase.from('goals').select('*').eq('church_id', churchId);

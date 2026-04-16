@@ -198,7 +198,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* ── QUICK ACTION HUB ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', padding: '0 0.25rem', marginTop: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', padding: '0 0.25rem', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
           <button 
             onClick={() => setActiveTab('accounting')}
             style={{ 
@@ -222,6 +222,35 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span style={{ fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>+ Member</span>
           </button>
         </div>
+
+        {/* Trial Status Section (REPOSITIONED TO TOP) */}
+        {church && getTrialStatus(church).isTrialMember && (
+          <div style={{ 
+            padding: '1.25rem', borderRadius: '20px', background: 'hsla(var(--p)/0.06)', 
+            border: '1px solid hsla(var(--p)/0.2)', marginBottom: '2rem',
+            boxShadow: '0 8px 16px -4px hsla(var(--p)/0.1)' 
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={16} color="hsl(var(--p))" />
+                <span style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', color: 'hsl(var(--p))', letterSpacing: '0.05em' }}>Trial active</span>
+              </div>
+              <div style={{ 
+                padding: '4px 10px', borderRadius: '100px', background: 'hsl(var(--p))', 
+                color: 'white', fontSize: '0.65rem', fontWeight: 900 
+              }}>
+                {getTrialStatus(church).daysRemaining}D LEFT
+              </div>
+            </div>
+            <div style={{ height: '6px', width: '100%', background: 'hsla(var(--p)/0.15)', borderRadius: '100px', overflow: 'hidden' }}>
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${(getTrialStatus(church).daysRemaining / 30) * 100}%` }}
+                style={{ height: '100%', background: 'hsl(var(--p))' }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── NAVIGATION ── */}
@@ -301,37 +330,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             <LogOut size={16} />
           </button>
         </div>
-
-        {/* Trial Status Section */}
-        {church && getTrialStatus(church).isTrialMember && (
-          <div style={{ 
-            padding: '1rem', borderRadius: '16px', background: 'hsla(var(--p)/0.05)', 
-            border: '1px solid hsla(var(--p)/0.2)', marginBottom: '0.5rem' 
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Clock size={16} color="hsl(var(--p))" />
-                <span style={{ fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'hsl(var(--p))' }}>Free Trial</span>
-              </div>
-              <div style={{ 
-                padding: '2px 8px', borderRadius: '20px', background: 'hsl(var(--p))', 
-                color: 'white', fontSize: '0.6rem', fontWeight: 900 
-              }}>
-                {getTrialStatus(church).daysRemaining}D LEFT
-              </div>
-            </div>
-            <div style={{ height: '4px', width: '100%', background: 'hsla(var(--p)/0.1)', borderRadius: '10px', overflow: 'hidden' }}>
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${(getTrialStatus(church).daysRemaining / 30) * 100}%` }}
-                style={{ height: '100%', background: 'hsl(var(--p))' }}
-              />
-            </div>
-            <p style={{ fontSize: '0.65rem', color: 'hsl(var(--text-muted))', marginTop: '10px', lineHeight: '1.4' }}>
-              You have {getTrialStatus(church).daysRemaining} days left in your institutional trial.
-            </p>
-          </div>
-        )}
 
         {/* Shard Status */}
         <div style={{ 
