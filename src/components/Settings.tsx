@@ -162,7 +162,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
         const cid = churchData.id;
         
         // Helper to ignore "column/table missing" errors
-        const safeReset = async (promise: Promise<any>, description: string) => {
+        const safeReset = async (promise: any, description: string) => {
             const { error } = await promise;
             if (error) {
                 console.warn(`Safe Reset: Component "${description}" failed.`, error);
@@ -179,7 +179,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
 
         // 2. Core Financials (Critical)
         const errLedger = await safeReset(supabase.from('ledger').delete().eq('church_id', cid), "Ledger History");
-        const errFunds = await safeReset(supabase.from('funds').update({ balance: 0 }).eq('church_id', cid), "Fund Balances");
+        await safeReset(supabase.from('funds').update({ balance: 0 }).eq('church_id', cid), "Fund Balances");
         
         // 3. Extended Data
         await safeReset(supabase.from('payroll').delete().eq('church_id', cid), "Payroll History");

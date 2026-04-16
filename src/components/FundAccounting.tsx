@@ -54,7 +54,7 @@ interface FundAccountingProps {
 }
 
 const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [showNewTxModal, setShowNewTxModal] = useState(false);
     const [selectedTxForAudit, setSelectedTxForAudit] = useState<Transaction | null>(null);
     const [showReconcile, setShowReconcile] = useState(false);

@@ -103,8 +103,6 @@ export const useFinanceData = (churchId: string | null) => {
         const incomeChange = prevIncome > 0 ? ((monthlyIncome - prevIncome) / prevIncome) * 100 : monthlyIncome > 0 ? 100 : 0;
         const expenseChange = prevExpenses > 0 ? ((monthlyExpenses - prevExpenses) / prevExpenses) * 100 : monthlyExpenses > 0 ? 100 : 0;
         
-        const prevBalance = prevIncome - prevExpenses;
-        const currentBalance = monthlyIncome - monthlyExpenses;
         const balanceChange = (monthlyIncome - monthlyExpenses) > 0 ? ((monthlyIncome - monthlyExpenses) / Math.max(1, totalBalance)) * 100 : 0;
 
         return {

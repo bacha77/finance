@@ -45,7 +45,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    const { ledger, isLoading: isFinanceLoading, refresh } = useFinanceData(churchId);
+    const { ledger, isLoading: isFinanceLoading } = useFinanceData(churchId);
 
     useEffect(() => {
         if (!isFinanceLoading) setIsLoading(false);

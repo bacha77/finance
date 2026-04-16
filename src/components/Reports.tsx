@@ -21,29 +21,6 @@ import {
 type ActiveTab = 'overview' | 'analytics' | 'automated' | 'vault';
 type StatementType = 'pnl' | 'balance' | 'cashflow' | 'board' | 'ledger' | null;
 
-interface LedgerEntry {
-    id: string;
-    type: 'in' | 'out' | 'revenue' | 'expense';
-    amount: number;
-    category?: string;
-    cat?: string;
-    description?: string;
-    desc?: string;
-    date: string;
-    department?: string;
-    dept?: string;
-    fund?: string;
-    church_id?: string;
-    created_at?: string;
-}
-
-interface Fund {
-    id: string;
-    name: string;
-    balance: number;
-    category: string;
-}
-
 interface Member {
     id: string;
     name: string;
@@ -77,7 +54,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
     const [isDispatching, setIsDispatching] = useState(false);
     const [searchVault, setSearchVault] = useState('');
 
-    const { ledger, funds, members: membersData, stats, isLoading: isFinanceLoading, refresh } = useFinanceData(churchId);
+    const { ledger, funds, stats, isLoading: isFinanceLoading, refresh } = useFinanceData(churchId);
 
     useEffect(() => {
         const fetchMeta = async () => {

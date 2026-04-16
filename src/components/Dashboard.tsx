@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-    Wallet, Users, TrendingUp as TrendUp, DollarSign, ArrowUpRight, ArrowDownRight,
-    RefreshCw, BarChart3, Activity, ChurchIcon, CreditCard,
-    FileText, ShieldCheck, Shield, Lock, Calendar, Download, Target, HeartHandshake,
-    Brain, Sparkles, AlertTriangle,
+    Wallet, Users, TrendingUp as TrendUp, ArrowUpRight, ArrowDownRight,
+    BarChart3, Activity, ChurchIcon, CreditCard,
+    FileText, ShieldCheck, Shield, Lock, Download, Target, HeartHandshake,
+    AlertTriangle,
     BrainCircuit,
     Zap,
     PieChart as PieIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { predictNextMonth, detectAnomalies } from '../lib/intelligence';
@@ -169,8 +169,8 @@ const FeatureCard: React.FC<{
 const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
     const { t, language } = useLanguage();
     const [recentTx, setRecentTx] = useState<any[]>([]);
-    const [projection, setProjection] = useState<{income: number, expense: number, confidence: number} | null>(null);
-    const [anomalies, setAnomalies] = useState<any[]>([]);
+    const [, setProjection] = useState<{income: number, expense: number, confidence: number} | null>(null);
+    const [, setAnomalies] = useState<any[]>([]);
     const [goals, setGoals] = useState<any[]>([]);
     const [chartData, setChartData] = useState<any[]>([]);
     const [churchName, setChurchName] = useState('');
@@ -188,7 +188,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         if (health > 1.2) res.push({ text: "Revenue efficiency is 20% above optimal threshold.", icon: Zap, color: "#10b981" });
         else if (health < 1) res.push({ text: "Spend rate is exceeding income. Neural shield active.", icon: AlertTriangle, color: "#ef4444" });
         
-        if (financeStats.incomeChange > 0) res.push({ text: `Growth trend detected: +${financeStats.incomeChange.toFixed(1)}% vs prev month.`, icon: TrendingUp, color: "#3b82f6" });
+        if (financeStats.incomeChange > 0) res.push({ text: `Growth trend detected: +${financeStats.incomeChange.toFixed(1)}% vs prev month.`, icon: TrendUp, color: "#3b82f6" });
         
         res.push({ text: "Fiscal integrity verified. All transactions synchronized with shard US-E1.", icon: Shield, color: "#a855f7" });
         return res;
@@ -253,8 +253,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
         }
     }, [ledger]);
 
-    const totalIncome = financeStats.monthlyIncome;
-    const budgetUsed = Math.min(99, Math.round((financeStats.monthlyExpenses / Math.max(totalIncome, 1)) * 100));
 
     const statCards: StatCardProps[] = [
         {
