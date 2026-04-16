@@ -69,6 +69,9 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
     const [pdfProcessing, setPdfProcessing] = useState(false);
     const [linkingBankId, setLinkingBankId] = useState<string | null>(null);
     const [recordingBankItem, setRecordingBankItem] = useState<any | null>(null);
+    const [quickAllocations, setQuickAllocations] = useState([{ fundId: '', deptId: '', category: 'Tithe', amount: '' }]);
+    const [isNewMember, setIsNewMember] = useState(false);
+    const [newMemberName, setNewMemberName] = useState('');
 
     const [funds, setFunds] = useState<Fund[]>([]);
     const [showNewFundModal, setShowNewFundModal] = useState(false);
@@ -315,54 +318,102 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
         setMatchingRecords(matches);
     };
 
+    const autoDetectInfo = (desc: string) => {
+        const d = desc.toLowerCase();
+        let method = 'Zelle/Bank';
+        let category = 'Offering';
+        let checkNumber = '';
+
+        if (d.includes('check')) {
+            method = 'Check';
+            const checkMatch = desc.match(/check\s*#?\s*(\d+)/i);
+            if (checkMatch) checkNumber = `Check #${checkMatch[1]}`;
+        } else if (d.includes('bill pay')) {
+            method = 'Bank Transfer';
+            category = 'Utilities';
+        } else if (d.includes('zelle')) {
+            method = 'Zelle';
+        }
+
+        // Common Vendor recognition
+        if (d.includes('fpl') || d.includes('utility') || d.includes('water') || d.includes('electric') || d.includes('waste')) {
+            category = 'Utilities';
+        } else if (d.includes('insurance')) {
+            category = 'Insurance';
+        } else if (d.includes('janitorial') || d.includes('clean')) {
+            category = 'Hospitality';
+        }
+
+        return { method, category, checkNumber };
+    };
+
+    useEffect(() => {
+        if (recordingBankItem) {
+            const info = autoDetectInfo(recordingBankItem.desc);
+            setQuickAllocations([{ 
+                fundId: funds[0]?.id || '', 
+                deptId: availableDepts[0]?.id || '', 
+                category: recordingBankItem.amount > 0 ? (info.category || 'Tithe') : info.category, 
+                amount: Math.abs(recordingBankItem.amount).toString() 
+            }]);
+            const zName = extractZelleName(recordingBankItem.desc);
+            const exists = members.find(m => m.name.toLowerCase() === zName.toLowerCase());
+            setIsNewMember(!exists && !!zName);
+            setNewMemberName(zName);
+        }
+    }, [recordingBankItem, members, funds, availableDepts]);
+
     const handleQuickRecord = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!recordingBankItem || !churchId) return;
 
-        const formData = new FormData(e.target as HTMLFormElement);
-        const fundId = formData.get('fund') as string;
-        const deptId = formData.get('dept') as string;
-        const memberName = formData.get('member') as string;
-        const category = formData.get('category') as string;
-
-        const fund = funds.find(f => f.id === fundId);
-        
-        const newTransaction = {
-            church_id: churchId,
-            date: recordingBankItem.date,
-            description: recordingBankItem.desc,
-            amount: recordingBankItem.amount,
-            type: recordingBankItem.amount > 0 ? 'in' : 'out',
-            fund: fund?.name || 'General',
-            fund_id: fundId,
-            department: (availableDepts as any[]).find((d: any) => d.id === deptId)?.name || 'General',
-            category: category,
-            member: memberName || null,
-            reconciled: true,
-            method: 'Zelle/Bank',
-            audit_trail: [{
-                timestamp: new Date().toISOString(),
-                user: 'System Admin',
-                action: 'CREATE',
-                details: 'Created via Bank Statement Intelligent Recording'
-            }]
-        };
+        const info = autoDetectInfo(recordingBankItem.desc);
+        const totalAllocated = quickAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+        if (Math.abs(totalAllocated - Math.abs(recordingBankItem.amount)) > 0.01) {
+            alert(`Total allocated ($${totalAllocated}) must match the bank amount ($${Math.abs(recordingBankItem.amount)})`);
+            return;
+        }
 
         try {
-            const { data, error } = await supabase.from('ledger').insert(newTransaction).select().single();
+            // 1. Handle Member Creation if new
+            let finalMemberName = isNewMember ? newMemberName : (e.target as any).member?.value;
+            if (isNewMember && newMemberName) {
+                const { data: memberData } = await supabase.from('members').insert({ 
+                    name: newMemberName, 
+                    church_id: churchId,
+                    status: 'Active'
+                }).select().single();
+                if (memberData) setAvailableMembers([...members, memberData]);
+            }
+
+            // 2. Create Multi-Allocation Ledger Entries
+            const insertions = quickAllocations.map(alloc => ({
+                church_id: churchId,
+                date: recordingBankItem.date,
+                description: info.checkNumber ? `${recordingBankItem.desc} (${info.checkNumber})` : recordingBankItem.desc,
+                amount: recordingBankItem.amount > 0 ? parseFloat(alloc.amount) : -parseFloat(alloc.amount),
+                type: recordingBankItem.amount > 0 ? 'in' : 'out',
+                fund: funds.find(f => f.id === alloc.fundId)?.name || 'General',
+                fund_id: alloc.fundId,
+                department: (availableDepts as any[]).find((d: any) => d.id === alloc.deptId)?.name || 'General',
+                category: alloc.category || info.category,
+                member: finalMemberName || null,
+                reconciled: true,
+                method: info.method,
+                audit_trail: [{
+                    timestamp: new Date().toISOString(),
+                    user: 'System Admin',
+                    action: 'CREATE',
+                    details: 'Recorded via AI Intelligent Hub (Auto-Detected Method/Category)'
+                }]
+            }));
+
+            const { data, error } = await supabase.from('ledger').insert(insertions).select();
             if (error) throw error;
 
-            setLedger([data, ...ledger]);
+            setLedger([...(data || []), ...ledger]);
             setBankItems(prev => prev.map(i => i.id === recordingBankItem.id ? { ...i, matched: true } : i));
             
-            await logActivity({
-                tableName: 'ledger',
-                recordId: data.id,
-                action: 'CREATE',
-                newData: data,
-                churchId: churchId
-            });
-
             setRecordingBankItem(null);
         } catch (err) {
             console.error('Quick record failed:', err);
@@ -954,57 +1005,113 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                         <button className="btn glass" onClick={() => setRecordingBankItem(null)}><X size={18} /></button>
                                     </div>
                                     
-                                    <div style={{ padding: '1.25rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '16px', marginBottom: '2rem', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                                    <div style={{ padding: '1.25rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '16px', marginBottom: '1.5rem', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
                                         <div style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>Bank Transaction Scan</div>
                                         <div style={{ fontWeight: 800, color: 'white' }}>{recordingBankItem.desc}</div>
                                         <div style={{ color: 'white', fontWeight: 900, marginTop: '4px', fontSize: '1.2rem' }}>${recordingBankItem.amount.toLocaleString()} ({recordingBankItem.date})</div>
                                     </div>
 
                                     <form onSubmit={handleQuickRecord}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                                            <div className="input-group">
-                                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>ASSIGN MEMBER</label>
+                                        <div style={{ marginBottom: '1.5rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>CHURCH MEMBER</label>
+                                                <button type="button" onClick={() => setIsNewMember(!isNewMember)} style={{ fontSize: '0.65rem', color: 'var(--primary-light)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
+                                                    {isNewMember ? 'Select Existing' : '+ Register New'}
+                                                </button>
+                                            </div>
+                                            {isNewMember ? (
+                                                <input 
+                                                    value={newMemberName} 
+                                                    onChange={e => setNewMemberName(e.target.value)}
+                                                    className="glass-input" 
+                                                    style={{ width: '100%' }} 
+                                                    placeholder="Member Full Name"
+                                                />
+                                            ) : (
                                                 <select name="member" defaultValue={extractZelleName(recordingBankItem.desc)} className="glass-input" style={{ width: '100%' }}>
                                                     <option value="">No Member Linked</option>
                                                     {members.map((m: any, i: number) => (
                                                         <option key={i} value={m.name}>{m.name}</option>
                                                     ))}
                                                 </select>
-                                            </div>
+                                            )}
+                                        </div>
 
-                                            <div className="input-group">
-                                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>ALLOCATE TO FUND</label>
-                                                <select name="fund" required className="glass-input" style={{ width: '100%' }}>
-                                                    {funds.map(f => (
-                                                        <option key={f.id} value={f.id}>{f.name}</option>
-                                                    ))}
-                                                </select>
+                                        <div style={{ maxHeight: '250px', overflowY: 'auto', marginBottom: '1.5rem', paddingRight: '4px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>SPLIT ALLOCATIONS</label>
+                                                <button type="button" onClick={() => setQuickAllocations([...quickAllocations, { fundId: funds[0]?.id || '', deptId: availableDepts[0]?.id || '', category: 'Tithe', amount: '' }])} style={{ background: 'none', border: 'none', color: '#34d399', cursor: 'pointer' }}><Plus size={14} /></button>
                                             </div>
+                                            
+                                            {quickAllocations.map((alloc, idx) => (
+                                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 90px 30px', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
+                                                    <select 
+                                                        value={alloc.fundId} 
+                                                        onChange={e => {
+                                                            const n = [...quickAllocations];
+                                                            n[idx].fundId = e.target.value;
+                                                            setQuickAllocations(n);
+                                                        }}
+                                                        className="glass-input" style={{ fontSize: '0.7rem' }}
+                                                    >
+                                                        {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                                    </select>
+                                                    <select 
+                                                        value={alloc.category} 
+                                                        onChange={e => {
+                                                            const n = [...quickAllocations];
+                                                            n[idx].category = e.target.value;
+                                                            setQuickAllocations(n);
+                                                        }}
+                                                        className="glass-input" style={{ fontSize: '0.7rem' }}
+                                                    >
+                                                        <option value="Tithe">Tithe</option>
+                                                        <option value="Offering">Offering</option>
+                                                        <option value="Building">Building</option>
+                                                        <option value="Missions">Missions</option>
+                                                        <option value="Utilities">Utilities</option>
+                                                        <option value="Hospitality">Hospitality</option>
+                                                    </select>
+                                                    <input 
+                                                        type="number" 
+                                                        placeholder="0.00" 
+                                                        value={alloc.amount} 
+                                                        onChange={e => {
+                                                            const n = [...quickAllocations];
+                                                            n[idx].amount = e.target.value;
+                                                            setQuickAllocations(n);
+                                                        }}
+                                                        className="glass-input" style={{ textAlign: 'right', fontSize: '0.75rem' }}
+                                                    />
+                                                    {quickAllocations.length > 1 && (
+                                                        <button type="button" onClick={() => setQuickAllocations(quickAllocations.filter((_, i) => i !== idx))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><X size={14} /></button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
 
-                                            <div className="input-group">
-                                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>DEPARTMENT</label>
-                                                <select name="dept" required className="glass-input" style={{ width: '100%' }}>
-                                                    {(availableDepts as any[]).map((d: any) => (
-                                                        <option key={d.id} value={d.id}>{d.name}</option>
-                                                    ))}
-                                                </select>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--border)' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>ALLOCATED</div>
+                                                <div style={{ fontSize: '1rem', fontWeight: 900, color: Math.abs(quickAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0) - Math.abs(recordingBankItem.amount)) < 0.01 ? '#10b981' : '#f87171' }}>
+                                                    ${quickAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                </div>
                                             </div>
-
-                                            <div className="input-group">
-                                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>CATEGORY</label>
-                                                <select name="category" required className="glass-input" style={{ width: '100%' }}>
-                                                    <option value="Tithe">Tithe</option>
-                                                    <option value="Offering">Offering</option>
-                                                    <option value="Building">Building</option>
-                                                    <option value="Missions">Missions</option>
-                                                    <option value="Utilities">Utilities</option>
-                                                    <option value="Hospitality">Hospitality</option>
-                                                </select>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>STATEMENT TOTAL</div>
+                                                <div style={{ fontSize: '1rem', fontWeight: 900, color: 'white' }}>
+                                                    ${Math.abs(recordingBankItem.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '50px', fontSize: '1rem' }}>
-                                            Confirm & Record to Ledger
+                                        <button 
+                                            type="submit" 
+                                            disabled={Math.abs(quickAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0) - Math.abs(recordingBankItem.amount)) > 0.01}
+                                            className="btn btn-primary" 
+                                            style={{ width: '100%', height: '50px', fontSize: '1rem', opacity: Math.abs(quickAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0) - Math.abs(recordingBankItem.amount)) > 0.01 ? 0.5 : 1 }}
+                                        >
+                                            Confirm & Global Sync
                                         </button>
                                     </form>
                                 </motion.div>
