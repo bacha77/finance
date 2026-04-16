@@ -1178,20 +1178,20 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
         )}
       </AnimatePresence>
 
-      {/* Hard Reset Confirmation Modal */}
-      <AnimatePresence>
-        {showResetConfirm && createPortal(
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="modal-backdrop"
-            style={{ backgroundColor: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)', zIndex: 10000 }}
-          >
+      {createPortal(
+        <AnimatePresence>
+          {showResetConfirm && (
             <motion.div
-              initial={{ scale: 0.9, y: 30 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 30 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="modal-backdrop"
+              style={{ backgroundColor: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)', zIndex: 10000 }}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 30 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 30 }}
               onViewportEnter={() => {
                 setResetCountdown(5);
                 const timer = setInterval(() => {
@@ -1276,10 +1276,11 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
                 </button>
               </div>
             </motion.div>
-          </motion.div>,
-          document.body
+          </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
     </div>
   );
 };

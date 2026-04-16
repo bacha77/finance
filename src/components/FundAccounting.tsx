@@ -479,87 +479,97 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                 )}
             </AnimatePresence>
 
-            <AnimatePresence>
-                {showNewFundModal && createPortal(
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => setShowNewFundModal(false)}>
-                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-card" style={{ width: '400px', padding: '2rem' }} onClick={e => e.stopPropagation()}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1.5rem', color: 'white' }}>{t('createFund')}</h2>
-                            <form onSubmit={async (e) => {
-                                e.preventDefault();
-                                try {
-                                    const name = (e.target as any).fundName.value;
-                                    const { data, error: _error } = await supabase.from('funds').insert({ name, church_id: churchId, balance: 0, status: 'Active', color: '#6366f1' }).select().single();
-                                    if (data) setFunds([...funds, data]);
-                                    if (_error) console.error(_error);
-                                    setShowNewFundModal(false);
-                                } catch (err) {}
-                            }}>
-                                <input name="fundName" required className="glass-input" style={{ width: '100%', marginBottom: '1.5rem' }} placeholder="Fund Name" />
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowNewFundModal(false)}>{t('cancel')}</button>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{t('create')}</button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </motion.div>,
-                    document.body
-                )}
-
-                {showNewTxModal && createPortal(
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => { setShowNewTxModal(false); setEditingTx(null); }}>
-                        <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 10, opacity: 0 }} className="glass-card" style={{ width: '520px', padding: '3rem' }} onClick={e => e.stopPropagation()}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                                <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white' }}>{editingTx ? 'Edit Transaction' : t('recordDeposit')}</h2>
-                                <button onClick={() => { setShowNewTxModal(false); setEditingTx(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
-                            </div>
-                            <form onSubmit={handleAddTransaction}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                                    <select value={txMember} onChange={e => setTxMember(e.target.value)} className="glass-input">
-                                        <option value="">{t('member')}</option>
-                                        {members.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
-                                    </select>
-                                    <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className="glass-input" />
-                                </div>
-                                {allocations.map((alloc, idx) => (
-                                    <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                        <select value={alloc.fundId} onChange={e => handleAllocationChange(idx, 'fundId', e.target.value)} className="glass-input" style={{ flex: 1 }}>
-                                            <option value="">{t('fund')}</option>
-                                            {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                                        </select>
-                                        <input type="number" placeholder="0.00" value={alloc.amount} onChange={e => handleAllocationChange(idx, 'amount', e.target.value)} className="glass-input" style={{ width: '100px' }} />
-                                    </div>
-                                ))}
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                                    <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setShowNewTxModal(false); setEditingTx(null); }}>{t('cancel')}</button>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingTx ? 'Confirm Changes' : t('recordDeposit')}</button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </motion.div>,
-                    document.body
-                )}
-
-                {selectedTxForAudit && createPortal(
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => setSelectedTxForAudit(null)}>
-                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-card" style={{ width: '540px', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
-                            <h3 style={{ marginBottom: '1.5rem' }}>{t('auditTrail')}</h3>
-                            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                {selectedTxForAudit.audit_trail?.map((log, i) => (
-                                    <div key={i} style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                                            <span style={{ fontWeight: 800 }}>{log.action}</span>
-                                            <span style={{ color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                {createPortal(
+                    <AnimatePresence>
+                        {showNewFundModal && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => setShowNewFundModal(false)}>
+                                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-card" style={{ width: '400px', padding: '2rem' }} onClick={e => e.stopPropagation()}>
+                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1.5rem', color: 'white' }}>{t('createFund')}</h2>
+                                    <form onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        try {
+                                            const name = (e.target as any).fundName.value;
+                                            const { data, error: _error } = await supabase.from('funds').insert({ name, church_id: churchId, balance: 0, status: 'Active', color: '#6366f1' }).select().single();
+                                            if (data) setFunds([...funds, data]);
+                                            if (_error) console.error(_error);
+                                            setShowNewFundModal(false);
+                                        } catch (err) {}
+                                    }}>
+                                        <input name="fundName" required className="glass-input" style={{ width: '100%', marginBottom: '1.5rem' }} placeholder="Fund Name" />
+                                        <div style={{ display: 'flex', gap: '1rem' }}>
+                                            <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowNewFundModal(false)}>{t('cancel')}</button>
+                                            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{t('create')}</button>
                                         </div>
-                                        <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>{log.details}</p>
-                                    </div>
-                                ))}
-                            </div>
-                            <button onClick={() => setSelectedTxForAudit(null)} className="btn btn-primary" style={{ width: '100%', marginTop: '2rem' }}>{t('close')}</button>
-                        </motion.div>
-                    </motion.div>,
+                                    </form>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>,
                     document.body
                 )}
-            </AnimatePresence>
+
+                {createPortal(
+                    <AnimatePresence>
+                        {showNewTxModal && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => { setShowNewTxModal(false); setEditingTx(null); }}>
+                                <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 10, opacity: 0 }} className="glass-card" style={{ width: '520px', padding: '3rem' }} onClick={e => e.stopPropagation()}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                                        <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white' }}>{editingTx ? 'Edit Transaction' : t('recordDeposit')}</h2>
+                                        <button onClick={() => { setShowNewTxModal(false); setEditingTx(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+                                    </div>
+                                    <form onSubmit={handleAddTransaction}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                            <select value={txMember} onChange={e => setTxMember(e.target.value)} className="glass-input">
+                                                <option value="">{t('member')}</option>
+                                                {members.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
+                                            </select>
+                                            <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className="glass-input" />
+                                        </div>
+                                        {allocations.map((alloc, idx) => (
+                                            <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                                <select value={alloc.fundId} onChange={e => handleAllocationChange(idx, 'fundId', e.target.value)} className="glass-input" style={{ flex: 1 }}>
+                                                    <option value="">{t('fund')}</option>
+                                                    {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                                </select>
+                                                <input type="number" placeholder="0.00" value={alloc.amount} onChange={e => handleAllocationChange(idx, 'amount', e.target.value)} className="glass-input" style={{ width: '100px' }} />
+                                            </div>
+                                        ))}
+                                        <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                                            <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setShowNewTxModal(false); setEditingTx(null); }}>{t('cancel')}</button>
+                                            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingTx ? 'Confirm Changes' : t('recordDeposit')}</button>
+                                        </div>
+                                    </form>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
+
+                {createPortal(
+                    <AnimatePresence>
+                        {selectedTxForAudit && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => setSelectedTxForAudit(null)}>
+                                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-card" style={{ width: '540px', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
+                                    <h3 style={{ marginBottom: '1.5rem' }}>{t('auditTrail')}</h3>
+                                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                        {selectedTxForAudit.audit_trail?.map((log, i) => (
+                                            <div key={i} style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                                                    <span style={{ fontWeight: 800 }}>{log.action}</span>
+                                                    <span style={{ color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                                                </div>
+                                                <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>{log.details}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button onClick={() => setSelectedTxForAudit(null)} className="btn btn-primary" style={{ width: '100%', marginTop: '2rem' }}>{t('close')}</button>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
         </div>
     );
 };
