@@ -82,6 +82,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
     const [invoiceMonth, setInvoiceMonth] = useState(new Date().getMonth());
     const [invoiceYear, setInvoiceYear] = useState(new Date().getFullYear());
+    const [isAnnual, setIsAnnual] = useState(false);
     const [ledger, setLedger] = useState<any[]>([]);
     const [isSending, setIsSending] = useState(false);
     const [sendSuccess, setSendSuccess] = useState(false);
@@ -195,10 +196,13 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
     const getMemberDonations = (memberName: string) => {
         return ledger.filter(tx => {
             const txDate = new Date(tx.date);
+            const matchesTime = isAnnual 
+                ? txDate.getFullYear() === invoiceYear 
+                : (txDate.getMonth() === invoiceMonth && txDate.getFullYear() === invoiceYear);
+                
             return (
                 tx.member === memberName &&
-                txDate.getMonth() === invoiceMonth &&
-                txDate.getFullYear() === invoiceYear &&
+                matchesTime &&
                 tx.type === 'in'
             );
         });
@@ -239,12 +243,13 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
 
         doc.setFontSize(16);
         doc.setTextColor(30, 41, 59);
-        doc.text(t('contributionStatement'), 14, 55);
+        doc.text(isAnnual ? 'ANNUAL TAX CERTIFICATION' : t('contributionStatement'), 14, 55);
         
         doc.setFontSize(10);
         doc.setTextColor(100);
         const currentMonth = t(`month${invoiceMonth}`);
-        doc.text(`${t('statementPeriod')}: ${currentMonth} ${invoiceYear}`, 14, 62);
+        const periodLabel = isAnnual ? `Fiscal Year ${invoiceYear}` : `${currentMonth} ${invoiceYear}`;
+        doc.text(`${t('statementPeriod')}: ${periodLabel}`, 14, 62);
         doc.text(`${t('statementDate')}: ${new Date().toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US')}`, 140, 62);
         
         // Donor Card
@@ -280,10 +285,12 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
         
         doc.setFontSize(10);
         doc.setTextColor(100);
-        const message = t('statementOfficialReceipt')
-            .replace('{churchName}', churchInfo?.name || (language === 'es' ? 'la iglesia' : 'the church'))
-            .replace('{month}', currentMonth)
-            .replace('{year}', invoiceYear.toString());
+        const message = isAnnual
+            ? `This official document certifies that the donor listed above has contributed the total amount specified to ${churchInfo?.name || 'the church'} during the fiscal year ${invoiceYear}. No goods or services were provided in exchange for these contributions.`
+            : t('statementOfficialReceipt')
+                .replace('{churchName}', churchInfo?.name || (language === 'es' ? 'la iglesia' : 'the church'))
+                .replace('{month}', currentMonth)
+                .replace('{year}', invoiceYear.toString());
         doc.text(doc.splitTextToSize(message, 170), 14, finalY + 20);
 
         // Signature Section
@@ -1056,15 +1063,31 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right', flex: '1 1 min-content' }}>
-                                    <h1 style={{ fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '1rem', whiteSpace: 'nowrap' }}>Contribution Statement</h1>
-                                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                                        <select
-                                            value={invoiceMonth}
-                                            onChange={(e) => setInvoiceMonth(parseInt(e.target.value))}
-                                            style={{ padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', fontWeight: 700 }}
+                                    <h1 style={{ fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '1rem', whiteSpace: 'nowrap' }}>
+                                        {isAnnual ? 'Annual Tax Receipt' : 'Contribution Statement'}
+                                    </h1>
+                                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                        <button 
+                                            onClick={() => setIsAnnual(!isAnnual)}
+                                            style={{ 
+                                                padding: '8px 16px', borderRadius: '8px', 
+                                                background: isAnnual ? '#4f46e5' : '#f1f5f9', 
+                                                color: isAnnual ? 'white' : '#64748b',
+                                                border: 'none', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
                                         >
-                                            {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
-                                        </select>
+                                            {isAnnual ? 'ANNUAL MODE' : 'SWITCH TO ANNUAL'}
+                                        </button>
+                                        {!isAnnual && (
+                                            <select
+                                                value={invoiceMonth}
+                                                onChange={(e) => setInvoiceMonth(parseInt(e.target.value))}
+                                                style={{ padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', fontWeight: 700 }}
+                                            >
+                                                {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
+                                            </select>
+                                        )}
                                         <select
                                             value={invoiceYear}
                                             onChange={(e) => setInvoiceYear(parseInt(e.target.value))}
@@ -1128,7 +1151,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                 <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)' }} />
                                 <h4 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>{t('churchMessage')}</h4>
                                 <p style={{ fontSize: '1.25rem', lineHeight: 1.6, opacity: 0.9, fontWeight: 500, letterSpacing: '-0.01em' }}>
-                                    Dear {selectedMember.name}, thank you for your faithful stewardship this month. Your total contribution of <strong style={{ fontWeight: 800, borderBottom: '2px solid rgba(255,255,255,0.3)', paddingBottom: '2px' }}>${getMemberDonations(selectedMember.name).reduce((sum, tx) => sum + tx.amount, 0).toLocaleString()}</strong> helps us continue our mission of providing spiritual nourishment and community outreach. Your generosity empowers our ministries and transforms lives through faith.
+                                    Dear {selectedMember.name}, thank you for your faithful stewardship {isAnnual ? `during the ${invoiceYear} fiscal year` : 'this month'}. Your total contribution of <strong style={{ fontWeight: 800, borderBottom: '2px solid rgba(255,255,255,0.3)', paddingBottom: '2px' }}>${getMemberDonations(selectedMember.name).reduce((sum, tx) => sum + tx.amount, 0).toLocaleString()}</strong> helps us continue our mission of providing spiritual nourishment and community outreach. Your generosity empowers our ministries and transforms lives through faith.
                                 </p>
                                 <div style={{ marginTop: '2.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                     <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
