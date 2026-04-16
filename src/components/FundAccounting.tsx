@@ -72,6 +72,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
     const [quickAllocations, setQuickAllocations] = useState([{ fundId: '', deptId: '', category: 'Tithe', amount: '' }]);
     const [isNewMember, setIsNewMember] = useState(false);
     const [newMemberName, setNewMemberName] = useState('');
+    const [isRecording, setIsRecording] = useState(false);
 
     const [funds, setFunds] = useState<Fund[]>([]);
     const [showNewFundModal, setShowNewFundModal] = useState(false);
@@ -374,16 +375,18 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
             return;
         }
 
+        setIsRecording(true);
         try {
             // 1. Handle Member Creation if new
-            let finalMemberName = isNewMember ? newMemberName : (e.target as any).member?.value;
+            let finalMemberName = isNewMember ? newMemberName : (e.currentTarget as any).member?.value;
             if (isNewMember && newMemberName) {
-                const { data: memberData } = await supabase.from('members').insert({ 
+                const { data: memberData, error: mErr } = await supabase.from('members').insert({ 
                     name: newMemberName, 
                     church_id: churchId,
                     status: 'Active'
                 }).select().single();
-                if (memberData) setAvailableMembers([...members, memberData]);
+                if (mErr) throw mErr;
+                if (memberData) setAvailableMembers(prev => [...prev, memberData]);
             }
 
             // 2. Create Multi-Allocation Ledger Entries
@@ -411,12 +414,16 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
             const { data, error } = await supabase.from('ledger').insert(insertions).select();
             if (error) throw error;
 
-            setLedger([...(data || []), ...ledger]);
+            setLedger(prev => [...(data || []), ...prev]);
             setBankItems(prev => prev.map(i => i.id === recordingBankItem.id ? { ...i, matched: true } : i));
             
             setRecordingBankItem(null);
-        } catch (err) {
+            alert('Transaction successfully recorded to ledger.');
+        } catch (err: any) {
             console.error('Quick record failed:', err);
+            alert(`Error recording transaction: ${err.message || 'Unknown error'}`);
+        } finally {
+            setIsRecording(false);
         }
     };
 
@@ -1107,11 +1114,11 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
 
                                         <button 
                                             type="submit" 
-                                            disabled={Math.abs(quickAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0) - Math.abs(recordingBankItem.amount)) > 0.01}
+                                            disabled={isRecording || Math.abs(quickAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0) - Math.abs(recordingBankItem.amount)) > 0.01}
                                             className="btn btn-primary" 
-                                            style={{ width: '100%', height: '50px', fontSize: '1rem', opacity: Math.abs(quickAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0) - Math.abs(recordingBankItem.amount)) > 0.01 ? 0.5 : 1 }}
+                                            style={{ width: '100%', height: '50px', fontSize: '1rem', opacity: (isRecording || Math.abs(quickAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0) - Math.abs(recordingBankItem.amount)) > 0.01) ? 0.5 : 1 }}
                                         >
-                                            Confirm & Global Sync
+                                            {isRecording ? 'SYCHRONIZING...' : 'Confirm & Global Sync'}
                                         </button>
                                     </form>
                                 </motion.div>
