@@ -568,11 +568,15 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                             
                                             {!item.matched && !matchingRecords[item.id] && (
                                                 <button 
-                                                    className="btn glass" 
-                                                    style={{ marginTop: '1rem', width: '100%', fontSize: '0.7rem', padding: '6px' }}
+                                                    className="btn" 
+                                                    style={{ 
+                                                        marginTop: '1rem', width: '100%', fontSize: '0.75rem', padding: '10px',
+                                                        background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', color: '#60a5fa',
+                                                        fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                                                    }}
                                                     onClick={() => setLinkingBankId(item.id)}
                                                 >
-                                                    <Plus size={12} /> Link Manually
+                                                    <Plus size={14} /> LINK MANUALLY
                                                 </button>
                                             )}
 
