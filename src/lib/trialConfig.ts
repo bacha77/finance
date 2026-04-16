@@ -100,16 +100,24 @@ export const PLANS: Plan[] = [
  * Given a church record with plan + created_at, return whether the trial
  * is still active and how many days remain.
  */
-export function getTrialStatus(church: { plan: PlanId; created_at: string }) {
-    if (church.plan !== 'trial') return { isTrialActive: false, daysRemaining: 0, isExpired: false };
-
+export function getTrialStatus(church: { plan?: PlanId; created_at: string }) {
+    // Treat as trial if explicitly labeled 'trial' OR if plan is missing (legacy support)
+    const isTrialCandidate = !church.plan || church.plan === 'trial';
+    
     const created = new Date(church.created_at);
     const now = new Date();
     const msElapsed = now.getTime() - created.getTime();
     const daysElapsed = Math.floor(msElapsed / (1000 * 60 * 60 * 24));
     const daysRemaining = Math.max(0, TRIAL_CONFIG.TRIAL_DAYS - daysElapsed);
     const isExpired = daysRemaining === 0;
-    return { isTrialActive: !isExpired, daysRemaining, isExpired };
+
+    // Only show trial status if they are actually a trial candidate and not expired (or just expired)
+    return { 
+        isTrialActive: isTrialCandidate && !isExpired, 
+        daysRemaining, 
+        isExpired: isTrialCandidate && isExpired,
+        isTrialMember: isTrialCandidate 
+    };
 }
 
 /**

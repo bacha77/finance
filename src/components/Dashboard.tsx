@@ -446,7 +446,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                         <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#60a5fa', letterSpacing: '0.05em' }}>FY 2026-27 ACTIVE</span>
                     </div>
 
-                    {churchData && churchData.plan === 'trial' && (
+                    {churchData && getTrialStatus(churchData).isTrialMember && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '100px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
                             <Clock size={12} color="#10b981" />
                             <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#10b981', letterSpacing: '0.05em', textTransform: 'uppercase' }}>

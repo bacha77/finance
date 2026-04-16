@@ -303,7 +303,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Trial Status Section */}
-        {church && church.plan === 'trial' && (
+        {church && getTrialStatus(church).isTrialMember && (
           <div style={{ 
             padding: '1rem', borderRadius: '16px', background: 'hsla(var(--p)/0.05)', 
             border: '1px solid hsla(var(--p)/0.2)', marginBottom: '0.5rem' 
