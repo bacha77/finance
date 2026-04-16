@@ -44,16 +44,22 @@ export const useFinanceData = (churchId: string | null) => {
     };
 
     useEffect(() => {
+        if (!churchId) return;
         fetchData();
 
-        const channels = [
-            supabase.channel('finance-ledger').on('postgres_changes', { event: '*', schema: 'public', table: 'ledger', filter: `church_id=eq.${churchId}` }, fetchData),
-            supabase.channel('finance-funds').on('postgres_changes', { event: '*', schema: 'public', table: 'funds', filter: `church_id=eq.${churchId}` }, fetchData),
-            supabase.channel('finance-members').on('postgres_changes', { event: '*', schema: 'public', table: 'members', filter: `church_id=eq.${churchId}` }, fetchData),
-        ];
+        const channel = supabase
+            .channel('db-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger', filter: `church_id=eq.${churchId}` }, () => {
+                console.log('Ledger change detected, syncing dashboard...');
+                fetchData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'funds', filter: `church_id=eq.${churchId}` }, () => {
+                console.log('Fund balance change detected, syncing dashboard...');
+                fetchData();
+            })
+            .subscribe();
 
-        channels.forEach(c => c.subscribe());
-        return () => { channels.forEach(c => supabase.removeChannel(c)); };
+        return () => { supabase.removeChannel(channel); };
     }, [churchId]);
 
     const stats = useMemo((): FinanceStats => {
