@@ -65,6 +65,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [bankItems, setBankItems] = useState<any[]>([]);
     const [matchingRecords, setMatchingRecords] = useState<Record<string, Transaction>>({});
+    const [pdfProcessing, setPdfProcessing] = useState(false);
 
     const [funds, setFunds] = useState<Fund[]>([]);
     const [showNewFundModal, setShowNewFundModal] = useState(false);
@@ -205,47 +206,109 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
         setShowNewTxModal(true);
     };
 
-    const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        if (file.type === 'application/pdf') {
+            await handlePDFUpload(file);
+            return;
+        }
 
         const reader = new FileReader();
         reader.onload = (event) => {
             const text = event.target?.result as string;
             const lines = text.split('\n');
-            const newBankItems: any[] = [];
-            
-            // Basic CSV Parser (Expected: Date, Description, Amount)
-            lines.slice(1).forEach(line => {
+            processParsedData(lines.slice(1).map(line => {
                 const cols = line.split(',');
-                if (cols.length >= 3) {
-                    const amount = parseFloat(cols[2]?.replace(/["$]/g, ''));
-                    if (!isNaN(amount)) {
-                        newBankItems.push({
-                            id: Math.random().toString(36).substring(7),
-                            date: cols[0],
-                            desc: cols[1]?.replace(/"/g, ''),
-                            amount: amount,
-                            matched: false
-                        });
-                    }
-                }
-            });
-
-            setBankItems(newBankItems);
-            
-            // Auto-matching logic: Match by amount and proximity in date (within 3 days)
-            const matches: Record<string, Transaction> = {};
-            newBankItems.forEach(item => {
-                const potentialMatch = ledger.find(tx => 
-                    Math.abs(tx.amount) === Math.abs(item.amount) &&
-                    (tx.date === item.date || Math.abs(new Date(tx.date).getTime() - new Date(item.date).getTime()) < 86400000 * 3)
-                );
-                if (potentialMatch) matches[item.id] = potentialMatch;
-            });
-            setMatchingRecords(matches);
+                return {
+                    date: cols[0],
+                    desc: cols[1]?.replace(/"/g, ''),
+                    amount: parseFloat(cols[2]?.replace(/["$]/g, ''))
+                };
+            }));
         };
         reader.readAsText(file);
+    };
+
+    const handlePDFUpload = async (file: File) => {
+        setPdfProcessing(true);
+        try {
+            // Load PDF.js from CDN
+            const pdfjsLib = (window as any)['pdfjs-dist/build/pdf'];
+            if (!pdfjsLib) {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                document.head.appendChild(script);
+                await new Promise(resolve => script.onload = resolve);
+            }
+
+            const pdfjs = (window as any)['pdfjs-dist/build/pdf'];
+            pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjs.getDocument(arrayBuffer).promise;
+            const extractedItems: any[] = [];
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const textItems = textContent.items.map((item: any) => item.str);
+                
+                // Heuristic: Look for date-like strings and currency-like strings in the same proximity
+                // This is a simplified pattern matcher for bank statements
+                for (let j = 0; j < textItems.length; j++) {
+                    const item = textItems[j];
+                    const dateMatch = item.match(/(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})|([A-Za-z]{3}\s\d{1,2})/);
+                    if (dateMatch) {
+                        // Look ahead for an amount
+                        for (let k = j + 1; k < Math.min(j + 10, textItems.length); k++) {
+                            const amountMatch = textItems[k].match(/(-?\d+\.\d{2})/);
+                            if (amountMatch) {
+                                extractedItems.push({
+                                    date: dateMatch[0],
+                                    desc: textItems.slice(j + 1, k).join(' ').trim() || 'Bank Transaction',
+                                    amount: parseFloat(amountMatch[0])
+                                });
+                                j = k; // Skip to after amount
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            processParsedData(extractedItems);
+        } catch (err) {
+            console.error('PDF parsing failed:', err);
+            alert('Failed to parse PDF statement. Please ensure it is a text-based PDF (not a scan).');
+        } finally {
+            setPdfProcessing(true);
+            setTimeout(() => setPdfProcessing(false), 1000);
+        }
+    };
+
+    const processParsedData = (data: any[]) => {
+        const newBankItems = data.filter(d => !isNaN(d.amount)).map(d => ({
+            id: Math.random().toString(36).substring(7),
+            date: d.date,
+            desc: d.desc,
+            amount: d.amount,
+            matched: false
+        }));
+
+        setBankItems(newBankItems);
+        
+        // Auto-matching logic
+        const matches: Record<string, Transaction> = {};
+        newBankItems.forEach(item => {
+            const potentialMatch = ledger.find(tx => 
+                Math.abs(tx.amount) === Math.abs(item.amount) &&
+                (tx.date?.includes(item.date) || Math.abs(new Date(tx.date).getTime() - new Date(item.date).getTime()) < 86400000 * 5)
+            );
+            if (potentialMatch) matches[item.id] = potentialMatch;
+        });
+        setMatchingRecords(matches);
     };
 
     const handleConfirmMatch = async (bankId: string) => {
@@ -473,11 +536,11 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                     type="file" 
                                     id="bank-csv" 
                                     hidden 
-                                    accept=".csv" 
+                                    accept=".csv,.pdf" 
                                     onChange={handleCSVUpload} 
                                 />
                                 <button className="btn btn-ghost" onClick={() => document.getElementById('bank-csv')?.click()}>
-                                    <Download size={18} /> {t('importStatement') || 'Import CSV'}
+                                    <Download size={18} /> {pdfProcessing ? 'Scanning PDF Intelligence...' : 'Import Statement (PDF/CSV)'}
                                 </button>
                                 <button className="btn btn-primary" onClick={() => setBankItems([])}>{t('clearFeed') || 'Clear Feed'}</button>
                             </div>
