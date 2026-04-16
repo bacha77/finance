@@ -6,8 +6,10 @@ import {
     AlertTriangle,
     BrainCircuit,
     Zap,
-    PieChart as PieIcon
+    PieChart as PieIcon,
+    Clock
 } from 'lucide-react';
+import { getTrialStatus } from '../lib/trialConfig';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
@@ -255,7 +257,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
     useEffect(() => {
         const fetchChurch = async () => {
             if (!churchId) return;
-            const { data: church } = await supabase.from('churches').select('name, logo_url').eq('id', churchId).single();
+            const { data: church } = await supabase.from('churches').select('name, logo_url, plan, created_at').eq('id', churchId).single();
             if (church) {
                 setChurchName(church.name);
                 setChurchData(church);
@@ -443,6 +445,15 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                         <Lock size={12} color="#60a5fa" />
                         <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#60a5fa', letterSpacing: '0.05em' }}>FY 2026-27 ACTIVE</span>
                     </div>
+
+                    {churchData && churchData.plan === 'trial' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '100px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                            <Clock size={12} color="#10b981" />
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#10b981', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                                Trial: {getTrialStatus(churchData).daysRemaining} Days Left
+                            </span>
+                        </div>
+                    )}
                     <motion.button
                         onClick={generatePDF}
                         whileHover={{ scale: 1.03 }}
