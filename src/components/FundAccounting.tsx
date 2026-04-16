@@ -175,6 +175,16 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
         setAllocations(newAllocations);
     };
 
+    const addAllocation = () => {
+        setAllocations([...allocations, { deptId: '1', fundId: funds[0]?.id || '', amount: '' }]);
+    };
+
+    const removeAllocation = (index: number) => {
+        if (allocations.length > 1) {
+            setAllocations(allocations.filter((_, i) => i !== index));
+        }
+    };
+
     const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
     const handleEditTransaction = (tx: Transaction) => {
@@ -525,16 +535,39 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                             </select>
                                             <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className="glass-input" />
                                         </div>
-                                        {allocations.map((alloc, idx) => (
-                                            <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                                <select value={alloc.fundId} onChange={e => handleAllocationChange(idx, 'fundId', e.target.value)} className="glass-input" style={{ flex: 1 }}>
-                                                    <option value="">{t('fund')}</option>
-                                                    {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                                                </select>
-                                                <input type="number" placeholder="0.00" value={alloc.amount} onChange={e => handleAllocationChange(idx, 'amount', e.target.value)} className="glass-input" style={{ width: '100px' }} />
-                                            </div>
-                                        ))}
-                                        <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                                        <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '1rem', paddingRight: '4px' }}>
+                                            {allocations.map((alloc, idx) => (
+                                                <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.8rem', alignItems: 'center' }}>
+                                                    <select value={alloc.deptId} onChange={e => handleAllocationChange(idx, 'deptId', e.target.value)} className="glass-input" style={{ flex: 1, fontSize: '0.8rem' }}>
+                                                        <option value="">{t('department') || 'Dept'}</option>
+                                                        {availableDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                    </select>
+                                                    <select value={alloc.fundId} onChange={e => handleAllocationChange(idx, 'fundId', e.target.value)} className="glass-input" style={{ flex: 1, fontSize: '0.8rem' }}>
+                                                        <option value="">{t('fund')}</option>
+                                                        {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                                    </select>
+                                                    <input type="number" placeholder="0.00" value={alloc.amount} onChange={e => handleAllocationChange(idx, 'amount', e.target.value)} className="glass-input" style={{ width: '90px', textAlign: 'right' }} />
+                                                    {allocations.length > 1 && (
+                                                        <button type="button" onClick={() => removeAllocation(idx)} style={{ background: 'none', border: 'none', color: '#ef4444', padding: '4px', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {!editingTx && (
+                                            <button type="button" onClick={addAllocation} className="btn btn-ghost" style={{ width: '100%', border: '1px dashed var(--border)', fontSize: '0.8rem', height: '40px', marginBottom: '2rem' }}>
+                                                <Plus size={14} /> Add Line Item
+                                            </button>
+                                        )}
+
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--border)' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Deposit</span>
+                                            <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--primary-light)' }}>
+                                                ${allocations.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: '1rem' }}>
                                             <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setShowNewTxModal(false); setEditingTx(null); }}>{t('cancel')}</button>
                                             <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingTx ? 'Confirm Changes' : t('recordDeposit')}</button>
                                         </div>
