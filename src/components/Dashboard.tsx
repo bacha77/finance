@@ -503,9 +503,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                {funds.slice(0, 4).map((f: Fund, i: number) => (
                                    <div key={i} style={{ padding: '8px', background: `${f.color || '#2563eb'}10`, borderRadius: '8px', border: `1px solid ${f.color || '#2563eb'}20` }}>
-                                       <div style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>{f.name.substring(0, 10)}</div>
-                                       <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white' }}>
-                                           {financeStats.totalAssets > 0 ? Math.round((f.balance / financeStats.totalAssets) * 100) : 0}%
+                                       <div style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>{f.name}</div>
+                                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                                           <div style={{ fontSize: '0.9rem', fontWeight: 900, color: 'white' }}>{fmt(f.balance)}</div>
+                                           <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                                               ({financeStats.totalAssets > 0 ? Math.round((f.balance / financeStats.totalAssets) * 100) : 0}%)
+                                           </div>
                                        </div>
                                    </div>
                                ))}
