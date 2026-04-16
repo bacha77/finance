@@ -262,19 +262,28 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                 const textContent = await page.getTextContent();
                 const textItems = textContent.items.map((item: any) => item.str);
                 
+                // Find the statement year (e.g., 2026) from the top of the PDF
+                const pdfText = textItems.slice(0, 100).join(' ');
+                const yearMatch = pdfText.match(/20\d{2}/);
+                const statementYear = yearMatch ? yearMatch[0] : new Date().getFullYear().toString();
+
                 // Heuristic: Look for date-like strings (MM/DD) and currency-like strings ($X,XXX.XX)
                 for (let j = 0; j < textItems.length; j++) {
                     const item = textItems[j];
                     // Matches MM/DD, MM/DD/YYYY, or "Mar 15"
                     const dateMatch = item.match(/(\d{1,2}[\/-]\d{1,2}([\/-]\d{2,4})?)|([A-Za-z]{3}\s\d{1,2})/);
                     if (dateMatch) {
+                        let fullDate = dateMatch[0];
+                        if (fullDate.split(/[\/-]/).length === 2) {
+                            fullDate = `${fullDate}/${statementYear}`;
+                        }
                         // Look ahead for an amount ($ or just numbers with decimals)
                         for (let k = j + 1; k < Math.min(j + 15, textItems.length); k++) {
                             const amountStr = textItems[k].replace(/[$,]/g, '');
                             const amountMatch = amountStr.match(/(-?\d+\.\d{2})/);
                             if (amountMatch) {
                                 extractedItems.push({
-                                    date: dateMatch[0],
+                                    date: fullDate,
                                     desc: textItems.slice(j + 1, k).join(' ').trim() || 'Bank Transaction',
                                     amount: parseFloat(amountMatch[0])
                                 });
@@ -414,9 +423,23 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
             const { data, error } = await supabase.from('ledger').insert(insertions).select();
             if (error) throw error;
 
+            // 3. Update Fund Balances for each allocation
+            for (const alloc of quickAllocations) {
+                const targetFund = funds.find(f => f.id === alloc.fundId);
+                if (targetFund) {
+                    const amount = parseFloat(alloc.amount);
+                    const newBalance = recordingBankItem.amount > 0 ? targetFund.balance + amount : targetFund.balance - amount;
+                    await supabase.from('funds').update({ balance: newBalance }).eq('id', targetFund.id);
+                }
+            }
+
             setLedger(prev => [...(data || []), ...prev]);
             setBankItems(prev => prev.map(i => i.id === recordingBankItem.id ? { ...i, matched: true } : i));
             
+            // Refresh funds to show updated balances
+            const { data: updatedFunds } = await supabase.from('funds').select('*').eq('church_id', churchId);
+            if (updatedFunds) setFunds(updatedFunds);
+
             setRecordingBankItem(null);
             alert('Transaction successfully recorded to ledger.');
         } catch (err: any) {
