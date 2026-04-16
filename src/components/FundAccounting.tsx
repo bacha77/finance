@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
     Plus,
     Search,
@@ -479,7 +480,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
             </AnimatePresence>
 
             <AnimatePresence>
-                {showNewFundModal && (
+                {showNewFundModal && createPortal(
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => setShowNewFundModal(false)}>
                         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-card" style={{ width: '400px', padding: '2rem' }} onClick={e => e.stopPropagation()}>
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1.5rem', color: 'white' }}>{t('createFund')}</h2>
@@ -500,11 +501,12 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                 </div>
                             </form>
                         </motion.div>
-                    </motion.div>
+                    </motion.div>,
+                    document.body
                 )}
 
-                {showNewTxModal && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => setShowNewTxModal(false)}>
+                {showNewTxModal && createPortal(
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => { setShowNewTxModal(false); setEditingTx(null); }}>
                         <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 10, opacity: 0 }} className="glass-card" style={{ width: '520px', padding: '3rem' }} onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                                 <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white' }}>{editingTx ? 'Edit Transaction' : t('recordDeposit')}</h2>
@@ -533,10 +535,11 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                 </div>
                             </form>
                         </motion.div>
-                    </motion.div>
+                    </motion.div>,
+                    document.body
                 )}
 
-                {selectedTxForAudit && (
+                {selectedTxForAudit && createPortal(
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => setSelectedTxForAudit(null)}>
                         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-card" style={{ width: '540px', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
                             <h3 style={{ marginBottom: '1.5rem' }}>{t('auditTrail')}</h3>
@@ -553,7 +556,8 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                             </div>
                             <button onClick={() => setSelectedTxForAudit(null)} className="btn btn-primary" style={{ width: '100%', marginTop: '2rem' }}>{t('close')}</button>
                         </motion.div>
-                    </motion.div>
+                    </motion.div>,
+                    document.body
                 )}
             </AnimatePresence>
         </div>

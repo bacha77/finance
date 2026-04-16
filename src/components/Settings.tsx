@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Building2, 
   DollarSign, 
@@ -1179,17 +1180,13 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
 
       {/* Hard Reset Confirmation Modal */}
       <AnimatePresence>
-        {showResetConfirm && (
+        {showResetConfirm && createPortal(
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{
-              position: 'fixed', inset: 0,
-              backgroundColor: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              zIndex: 2000, padding: '1rem'
-            }}
+            className="modal-backdrop"
+            style={{ backgroundColor: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)', zIndex: 10000 }}
           >
             <motion.div
               initial={{ scale: 0.9, y: 30 }}
@@ -1279,7 +1276,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </motion.div>,
+          document.body
         )}
       </AnimatePresence>
     </div>
