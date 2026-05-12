@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import { sendResendEmail } from '../lib/resend';
 
 interface Profile {
     id: string;
@@ -38,6 +39,7 @@ interface TeamManagementProps {
 const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId }) => {
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [invites, setInvites] = useState<Invite[]>([]);
+    const [churchName, setChurchName] = useState('');
     const [loading, setLoading] = useState(true);
     const [showInviteModal, setShowInviteModal] = useState(false);
     
@@ -60,6 +62,14 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
             
             if (profileErr) throw profileErr;
             setProfiles(profileData || []);
+
+            // Fetch Church Name
+            const { data: church, error: churchErr } = await supabase
+                .from('churches')
+                .select('name')
+                .eq('id', churchId)
+                .single();
+            if (!churchErr) setChurchName(church.name);
 
             // Fetch Pending Invites
             const { data: inviteData, error: inviteErr } = await supabase
@@ -112,6 +122,38 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
                 }]);
 
             if (error) throw error;
+
+            // Send physical email invite
+            try {
+                const signupUrl = `${window.location.origin}${window.location.pathname}#/signup?email=${encodeURIComponent(inviteEmail)}`;
+                await sendResendEmail(
+                    inviteEmail.toLowerCase().trim(),
+                    `Invitation to manage ${churchName || 'the church'}`,
+                    `
+                    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
+                        <h2 style="color: #6366f1; font-weight: 800; font-size: 24px;">Storehouse Finance Invitation</h2>
+                        <p style="color: #475569; line-height: 1.6; font-size: 16px;">
+                            You have been invited to join the financial management team for <strong>${churchName || 'your church'}</strong> as an <strong>${inviteRole.toUpperCase()}</strong>.
+                        </p>
+                        <p style="color: #475569; line-height: 1.6; font-size: 16px;">
+                            By joining, you will be able to record transactions, view reports, and help manage the church stewardship.
+                        </p>
+                        <div style="margin: 32px 0; text-align: center;">
+                            <a href="${signupUrl}" style="background-color: #6366f1; color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+                                Create My Account & Password
+                            </a>
+                        </div>
+                        <p style="color: #94a3b8; font-size: 13px;">
+                            Note: Please ensure you sign up using the email address <strong>${inviteEmail}</strong> to gain access to the correct church records.
+                        </p>
+                    </div>
+                    `,
+                    churchName || 'Storehouse Finance'
+                );
+            } catch (emailErr) {
+                console.warn('Database invite created, but email failed to send:', emailErr);
+                // We still count it as success in the DB, but maybe notify the UI
+            }
 
             setInviteSuccess(true);
             setInviteEmail('');

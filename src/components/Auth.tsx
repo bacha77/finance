@@ -205,6 +205,18 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
 
     const pwStrength = getStrength(password);
 
+    // ── Invitation Detection ──
+    const [isInvited, setIsInvited] = useState(false);
+    React.useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const invitedEmail = params.get('email');
+        if (invitedEmail) {
+            setEmail(invitedEmail);
+            setMode('signup');
+            setIsInvited(true);
+        }
+    }, []);
+
     const reset = () => {
         setStep(0); setError(null);
         setEmail(''); setPassword(''); setConfirmPassword('');
@@ -259,21 +271,30 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
     };
 
     // ── Sign-up Step 0 → validate & advance ─────────────────────────────────
-    const handleStep0 = (e: React.FormEvent) => {
+    const handleStep0 = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
         if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
         if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
-        setStep(1);
+        
+        if (isInvited) {
+            // Fast track for invited users - create account immediately
+            handleSignUp(e);
+        } else {
+            setStep(1);
+        }
     };
 
     // ── Sign-up Step 1 → create account ─────────────────────────────────────
     const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!churchName.trim() || !pastorName.trim()) {
+        
+        // Validation bypass for invited users (their church link is handled by the invitation record)
+        if (!isInvited && (!churchName.trim() || !pastorName.trim())) {
             setError('Church name and pastor name are required.');
             return;
         }
+        
         setLoading(true); setError(null);
         try {
             const { error } = await supabase.auth.signUp({
@@ -663,7 +684,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                                         marginTop: '0.25rem',
                                     }}>
-                                    {t('nextChurchInfo')} <ChevronRight size={16} />
+                                    {isInvited ? (loading ? t('processing') : 'Join Church Team') : t('nextChurchInfo')} <ChevronRight size={16} />
                                 </button>
                             </form>
 
