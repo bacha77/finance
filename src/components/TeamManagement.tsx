@@ -49,6 +49,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
     const [isInviting, setIsInviting] = useState(false);
     const [inviteError, setInviteError] = useState<string | null>(null);
     const [inviteSuccess, setInviteSuccess] = useState(false);
+    const [cancellingId, setCancellingId] = useState<string | null>(null);
 
     const fetchData = async () => {
         if (!churchId) return;
@@ -172,16 +173,30 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
 
     const handleCancelInvite = async (inviteId: string) => {
         if (!confirm('Cancel this invitation?')) return;
+        setCancellingId(inviteId);
         try {
             const { error } = await supabase
                 .from('invites')
                 .delete()
                 .eq('id', inviteId);
-            if (error) throw error;
+            
+            if (error) {
+                alert(`Error: ${error.message}`);
+                throw error;
+            }
+            
             setInvites(prev => prev.filter(i => i.id !== inviteId));
         } catch (err) {
             console.error('Error cancelling invite:', err);
+        } finally {
+            setCancellingId(null);
         }
+    };
+
+    const copyInviteLink = (email: string) => {
+        const signupUrl = `${window.location.origin}${window.location.pathname}#/signup?email=${encodeURIComponent(email)}`;
+        navigator.clipboard.writeText(signupUrl);
+        alert('Invite link copied to clipboard! You can now send it manually.');
     };
 
     const handleRemoveMember = async (profileId: string) => {
@@ -340,13 +355,27 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
                                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sent {new Date(invite.created_at).toLocaleDateString()}</div>
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                             {getRoleBadge(invite.role)}
                                             <button 
-                                                onClick={() => handleCancelInvite(invite.id)}
-                                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700 }}
+                                                onClick={() => copyInviteLink(invite.email)}
+                                                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 800 }}
                                             >
-                                                Cancel Invite
+                                                Copy Link
+                                            </button>
+                                            <button 
+                                                onClick={() => handleCancelInvite(invite.id)}
+                                                disabled={cancellingId === invite.id}
+                                                style={{ 
+                                                    background: 'none', 
+                                                    border: 'none', 
+                                                    color: cancellingId === invite.id ? 'var(--text-muted)' : 'rgba(239, 68, 68, 0.8)', 
+                                                    cursor: cancellingId === invite.id ? 'default' : 'pointer', 
+                                                    fontSize: '0.75rem', 
+                                                    fontWeight: 800 
+                                                }}
+                                            >
+                                                {cancellingId === invite.id ? 'Cancelling...' : 'Cancel'}
                                             </button>
                                         </div>
                                     </div>
