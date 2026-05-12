@@ -177,7 +177,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
     const { language, setLanguage, t } = useLanguage();
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const [mode, setMode] = useState<'login' | 'signup' | 'verified' | 'reset'>('login');
-    const [step, setStep] = useState(0); 
+    const [step, setStep] = useState(0);
 
     // Account fields
     const [email, setEmail] = useState('');
@@ -252,7 +252,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
             });
             if (error) throw error;
             setSignedUpEmail(email);
-            setMode('verified'); 
+            setMode('verified');
         } catch (err: any) {
             setError(err.message || 'Reset failed. Please try again.');
         } finally { setLoading(false); }
@@ -325,10 +325,14 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
             fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
         }}>
             {/* Background glows */}
-            <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none',
-                background: 'radial-gradient(ellipse 80% 60% at 50% -20%, rgba(37,99,235,0.15) 0%, transparent 70%)' }} />
-            <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none',
-                background: 'radial-gradient(ellipse 60% 40% at 80% 60%, rgba(124,58,237,0.08) 0%, transparent 70%)' }} />
+            <div style={{
+                position: 'fixed', inset: 0, pointerEvents: 'none',
+                background: 'radial-gradient(ellipse 80% 60% at 50% -20%, rgba(37,99,235,0.15) 0%, transparent 70%)'
+            }} />
+            <div style={{
+                position: 'fixed', inset: 0, pointerEvents: 'none',
+                background: 'radial-gradient(ellipse 60% 40% at 80% 60%, rgba(124,58,237,0.08) 0%, transparent 70%)'
+            }} />
 
             <motion.div
                 initial={{ opacity: 0, y: 24 }}
@@ -356,7 +360,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                             style={{ height: '52px', width: 'auto', marginBottom: '0.5rem', filter: 'drop-shadow(0 0 16px rgba(37,99,235,0.4))' }}
                         />
                         <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}>
-                             <button
+                            <button
                                 onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
                                 style={{
                                     background: 'rgba(255,255,255,0.05)',
@@ -376,9 +380,9 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                     </div>
                     <p style={{ color: '#475569', fontSize: '0.82rem' }}>
                         {mode === 'login' ? t('welcomeBack') :
-                         mode === 'verified' ? (t('almostThere') || 'Almost there!') :
-                         mode === 'reset' ? (t('resetPassword') || 'Reset Password') :
-                         step === 0 ? t('createAccount') : t('tellUsAboutChurch')}
+                            mode === 'verified' ? (t('almostThere') || 'Almost there!') :
+                                mode === 'reset' ? (t('resetPassword') || 'Reset Password') :
+                                    step === 0 ? t('createAccount') : t('tellUsAboutChurch')}
                     </p>
                 </div>
 
@@ -481,19 +485,19 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                 </button>
                             </form>
 
-                             <button type="button" onClick={() => { setMode('signup'); reset(); setError(null); }}
-                                 style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.82rem', cursor: 'pointer', marginTop: '1.25rem', fontWeight: 600, width: '100%', textAlign: 'center', fontFamily: 'inherit' }}>
-                                 {t('dontHaveAccount')} <span style={{ color: '#60a5fa' }}>{t('createOneFree')}</span>
-                             </button>
+                            <button type="button" onClick={() => { setMode('signup'); reset(); setError(null); }}
+                                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.82rem', cursor: 'pointer', marginTop: '1.25rem', fontWeight: 600, width: '100%', textAlign: 'center', fontFamily: 'inherit' }}>
+                                {t('dontHaveAccount')} <span style={{ color: '#60a5fa' }}>{t('createOneFree')}</span>
+                            </button>
 
-                             <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center', gap: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.25rem' }}>
-                                 <button type="button" onClick={() => setLegalModal({ open: true, type: 'terms' })} style={{ background: 'none', border: 'none', color: '#475569', fontSize: '0.68rem', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                     {t('termsOfService')}
-                                 </button>
-                                 <button type="button" onClick={() => setLegalModal({ open: true, type: 'privacy' })} style={{ background: 'none', border: 'none', color: '#475569', fontSize: '0.68rem', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                     {t('privacyPolicy')}
-                                 </button>
-                             </div>
+                            <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center', gap: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.25rem' }}>
+                                <button type="button" onClick={() => setLegalModal({ open: true, type: 'terms' })} style={{ background: 'none', border: 'none', color: '#475569', fontSize: '0.68rem', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    {t('termsOfService')}
+                                </button>
+                                <button type="button" onClick={() => setLegalModal({ open: true, type: 'privacy' })} style={{ background: 'none', border: 'none', color: '#475569', fontSize: '0.68rem', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    {t('privacyPolicy')}
+                                </button>
+                            </div>
 
                             {isLocal && (
                                 <button
@@ -708,9 +712,9 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                     >
                                         <option value="" style={{ background: '#0f172a' }}>{t('selectDenomination')}</option>
                                         {['Baptist', 'Methodist', 'Pentecostal', 'Non-denominational', 'Catholic', 'Anglican / Episcopal',
-                                          'Lutheran', 'Presbyterian', 'Adventist', 'Church of Christ', 'AME / Black Church', 'Other'].map(d => (
-                                            <option key={d} value={d} style={{ background: '#0f172a' }}>{d}</option>
-                                        ))}
+                                            'Lutheran', 'Presbyterian', 'Adventist', 'Church of Christ', 'AME / Black Church', 'Other'].map(d => (
+                                                <option key={d} value={d} style={{ background: '#0f172a' }}>{d}</option>
+                                            ))}
                                     </select>
                                 </div>
 
@@ -749,9 +753,9 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                         {t('termsAgreement').split('{terms}').map((part, i) => (
                                             <React.Fragment key={i}>
                                                 {i > 0 && (
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={() => setLegalModal({ open: true, type: 'terms' })} 
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setLegalModal({ open: true, type: 'terms' })}
                                                         style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontWeight: 700, padding: 0, fontSize: 'inherit', fontFamily: 'inherit' }}
                                                     >
                                                         {t('termsOfService')}
@@ -760,9 +764,9 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                                 {part.split('{privacy}').map((subpart, j) => (
                                                     <React.Fragment key={j}>
                                                         {j > 0 && (
-                                                            <button 
-                                                                type="button" 
-                                                                onClick={() => setLegalModal({ open: true, type: 'privacy' })} 
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setLegalModal({ open: true, type: 'privacy' })}
                                                                 style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontWeight: 700, padding: 0, fontSize: 'inherit', fontFamily: 'inherit' }}
                                                             >
                                                                 {t('privacyPolicy')}
@@ -826,10 +830,10 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                     </div>
                 </div>
 
-                <LegalModal 
-                    isOpen={legalModal.open} 
-                    type={legalModal.type} 
-                    onClose={() => setLegalModal({ ...legalModal, open: false })} 
+                <LegalModal
+                    isOpen={legalModal.open}
+                    type={legalModal.type}
+                    onClose={() => setLegalModal({ ...legalModal, open: false })}
                 />
             </motion.div>
         </div>

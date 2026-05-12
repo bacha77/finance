@@ -23,8 +23,10 @@ import {
   AlertTriangle,
   RotateCcw,
   FileJson,
-  History
+  History,
+  Users
 } from 'lucide-react';
+import TeamManagement from './TeamManagement';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSubscriptionStatus } from '../lib/subscriptionConfig';
@@ -35,7 +37,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 interface SettingsProps {
   churchData?: any;
   onUpdateChurch?: (data: any) => Promise<void>;
-  initialSection?: 'grid' | 'user_profile' | 'identity' | 'financial' | 'billing' | 'security' | 'appearance' | 'notifications' | 'pricing';
+  initialSection?: 'grid' | 'user_profile' | 'identity' | 'financial' | 'billing' | 'security' | 'appearance' | 'notifications' | 'pricing' | 'team';
   profile?: any;
 }
 
@@ -158,6 +160,13 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
 
   const handleHardReset = async () => {
     if (!churchData?.id || resetConfirmText !== churchData.name) return;
+    
+    // Protection: Only the original church owner can wipe data
+    if (churchData.owner_id && churchData.owner_id !== profile?.id) {
+        alert("Permission Denied: Only the original Church Owner can perform a hard reset.");
+        return;
+    }
+    
     setIsResetting(true);
     try {
         const cid = churchData.id;
@@ -291,6 +300,14 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
       icon: RotateCcw,
       color: '#64748b',
       bg: 'rgba(100, 116, 139, 0.1)'
+    },
+    {
+      id: 'team',
+      title: 'Team & Permissions',
+      desc: 'Invite Assistant Treasurers and manage workspace access.',
+      icon: Users,
+      color: '#818cf8',
+      bg: 'rgba(129, 140, 248, 0.1)'
     }
   ];
 
@@ -993,6 +1010,13 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
       </div>
     </motion.div>
   );
+  
+  const renderTeam = () => (
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+      {renderSectionHeader('Team & Permissions', 'Manage who can access and manage your church records.')}
+      <TeamManagement churchId={churchData?.id} currentUserId={profile?.id} />
+    </motion.div>
+  );
 
   return (
     <div style={{ padding: '2.5rem', maxWidth: '1400px', margin: '0 auto' }}>
@@ -1030,6 +1054,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
           renderNotifications()
         ) : activeSection === 'pricing' ? (
           renderPricing()
+        ) : activeSection === 'team' ? (
+          renderTeam()
         ) : activeSection === 'maintenance' ? (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
             {renderSectionHeader('Maintenance', 'Manage system health and data lifecycle.')}

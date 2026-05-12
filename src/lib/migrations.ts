@@ -245,6 +245,62 @@ const MIGRATIONS: { name: string; sql: string }[] = [
             ALTER TABLE public.funds ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'Unrestricted';
             ALTER TABLE public.funds ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Active';
         `,
+    },
+    {
+        name: 'team_management_v1',
+        sql: `
+            -- Create Invites Table
+            CREATE TABLE IF NOT EXISTS public.invites (
+                id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                email       TEXT NOT NULL,
+                church_id   UUID REFERENCES public.churches(id) ON DELETE CASCADE,
+                role        TEXT DEFAULT 'admin',
+                invited_by  UUID REFERENCES auth.users(id),
+                created_at  TIMESTAMPTZ DEFAULT now(),
+                UNIQUE(email, church_id)
+            );
+
+            -- Enable RLS on Invites
+            ALTER TABLE public.invites ENABLE ROW LEVEL SECURITY;
+
+            -- Policies for Invites
+            DO $$ BEGIN
+                DROP POLICY IF EXISTS "Church admins can manage invites" ON public.invites;
+                CREATE POLICY "Church admins can manage invites" ON public.invites
+                FOR ALL USING ( church_id = public.get_my_church_id() );
+            EXCEPTION WHEN others THEN NULL; END $$;
+
+            -- Update handle_new_user to handle invites
+            CREATE OR REPLACE FUNCTION public.handle_new_user()
+            RETURNS TRIGGER AS $$
+            DECLARE
+                target_church_id UUID;
+                target_role TEXT;
+            BEGIN
+                -- Check if this email was invited to a specific church
+                SELECT church_id, role INTO target_church_id, target_role 
+                FROM public.invites 
+                WHERE email = new.email 
+                LIMIT 1;
+
+                INSERT INTO public.profiles (id, email, full_name, church_id, role)
+                VALUES (
+                    new.id, 
+                    new.email, 
+                    new.raw_user_meta_data->>'full_name', 
+                    target_church_id, 
+                    COALESCE(target_role, 'admin')
+                );
+                
+                -- Cleanup used invites
+                IF target_church_id IS NOT NULL THEN
+                    DELETE FROM public.invites WHERE email = new.email AND church_id = target_church_id;
+                END IF;
+
+                RETURN new;
+            END;
+            $$ LANGUAGE plpgsql SECURITY DEFINER;
+        `
     }
 ];
 

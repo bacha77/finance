@@ -22,7 +22,7 @@ import { supabase } from './lib/supabase';
 import { getSubscriptionStatus } from './lib/subscriptionConfig';
 import { runMigrations } from './lib/migrations';
 import type { SubscriptionStatus } from './lib/subscriptionConfig';
-import { 
+import {
   Search, Bell, ChevronDown, CheckCircle2, Command as CmdIcon,
   User, Settings as SettingsIcon, LogOut, BellRing, LayoutDashboard, Shield
 } from 'lucide-react';
@@ -63,7 +63,7 @@ function App() {
   const setActiveTab = (tab: string) => {
     setActiveTabState(tab);
     localStorage.setItem('sanctuary_active_tab', tab);
-    
+
     // Sync to Browser History
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tab);
@@ -87,9 +87,9 @@ function App() {
     const currentTab = localStorage.getItem('sanctuary_active_tab') || 'dashboard';
     const params = new URLSearchParams(window.location.search);
     if (!params.get('tab')) {
-        const url = new URL(window.location.href);
-        url.searchParams.set('tab', currentTab);
-        window.history.replaceState({ tab: currentTab }, '', url.toString());
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', currentTab);
+      window.history.replaceState({ tab: currentTab }, '', url.toString());
     }
 
     return () => {
@@ -143,28 +143,48 @@ function App() {
     return () => subscription.unsubscribe();
   }, [t]);
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const fetchProfile = async (userId: string) => {
     setProfileLoading(true);
-    const { data: adminRow } = await supabase.from('admins').select('user_id').eq('user_id', userId).maybeSingle();
-    if (adminRow) { setIsAdmin(true); setProfileLoading(false); return; }
+    setFetchError(null);
+
+    // Timeout guard: If profile takes > 8s, show latency warning
+    const timeout = setTimeout(() => {
+      if (profileLoading) {
+        setFetchError('latency');
+      }
+    }, 8000);
 
     try {
+      const { data: adminRow } = await supabase.from('admins').select('user_id').eq('user_id', userId).maybeSingle();
+      if (adminRow) { 
+        setIsAdmin(true); 
+        clearTimeout(timeout);
+        setProfileLoading(false); 
+        return; 
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*, churches(*)')
         .eq('id', userId)
         .maybeSingle();
 
-      if (!error && data) {
+      if (error) throw error;
+
+      if (data) {
         setProfile(data);
         if (data.churches) {
           const status = getSubscriptionStatus(data.churches);
           setSubStatus(status);
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Profile fetch failed', e);
+      setFetchError(e.message || 'unknown');
     } finally {
+      clearTimeout(timeout);
       setProfileLoading(false);
     }
   };
@@ -224,7 +244,7 @@ function App() {
           ...newData,
           // Map snake_case from DB back to the camelCase local if needed, 
           // or just ensure church object reflects standard naming
-          logo_url: newData.logo_url 
+          logo_url: newData.logo_url
         }
       });
     } catch (err) {
@@ -257,12 +277,28 @@ function App() {
     return <AdminPanel adminEmail={session.user.email || 'admin'} onLogout={async () => { await supabase.auth.signOut(); setIsAdmin(false); }} />;
   }
 
-  if (profileLoading) {
+  if (profileLoading || fetchError) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', minHeight: '100vh', padding: '2rem 1rem', width: '100%', background: 'hsl(var(--bg-main))' }}>
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-center" style={{ flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="spin" style={{ width: '40px', height: '40px', border: '3px solid hsla(var(--p)/0.2)', borderTopColor: 'hsl(var(--p))', borderRadius: '50%' }} />
-          <div style={{ color: 'hsl(var(--text-muted))', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Synchronizing Shard...</div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-center" style={{ flexDirection: 'column', gap: '1.5rem', textAlign: 'center' }}>
+          {fetchError === 'latency' ? (
+            <>
+              <div style={{ padding: '1rem', borderRadius: '12px', background: 'hsla(var(--error)/0.1)', color: 'hsl(var(--error))', border: '1px solid hsla(var(--error)/0.2)', maxWidth: '400px' }}>
+                <div style={{ fontWeight: 800, marginBottom: '0.5rem' }}>Connection Latency Detected</div>
+                <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>The handshake with the secure shard is taking longer than usual. This may be due to temporary network congestion.</div>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button onClick={() => fetchProfile(session?.user?.id)} className="btn-ghost" style={{ padding: '0.5rem 1.5rem', borderRadius: '8px' }}>Retry Connection</button>
+                <button onClick={handleBypass} className="btn-ghost" style={{ padding: '0.5rem 1.5rem', borderRadius: '8px', opacity: 0.5 }}>Bypass (Dev)</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="spin" style={{ width: '40px', height: '40px', border: '3px solid hsla(var(--p)/0.2)', borderTopColor: 'hsl(var(--p))', borderRadius: '50%' }} />
+              <div style={{ color: 'hsl(var(--text-muted))', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Synchronizing Shard...</div>
+              {fetchError && <div style={{ fontSize: '0.7rem', color: '#ef4444' }}>Error: {fetchError}</div>}
+            </>
+          )}
         </motion.div>
       </div>
     );
@@ -290,18 +326,18 @@ function App() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'hsl(var(--bg-main))', color: 'hsl(var(--text-main))', overflow: 'hidden' }}>
-      
+
       {/* ── AMBIENT DECOR ── */}
       <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
         <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '40%', height: '40%', background: 'hsla(var(--p)/0.05)', filter: 'blur(120px)', borderRadius: '50%' }} />
         <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '40%', height: '40%', background: 'hsla(var(--s)/0.05)', filter: 'blur(120px)', borderRadius: '50%' }} />
       </div>
 
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        open={sidebarOpen} 
-        setOpen={setSidebarOpen} 
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        open={sidebarOpen}
+        setOpen={setSidebarOpen}
         isMobile={isMobile}
         church={church}
         onLogout={async () => {
@@ -311,12 +347,12 @@ function App() {
         }}
         onOpenSupport={() => setSupportModalOpen(true)}
       />
-      
+
       <SupportModal isOpen={supportModalOpen} onClose={() => setSupportModalOpen(false)} />
       <CookieConsent />
 
-      <main style={{ 
-        flex: 1, 
+      <main style={{
+        flex: 1,
         marginLeft: !isMobile && sidebarOpen ? 'var(--sidebar-width)' : '0',
         transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
@@ -326,13 +362,13 @@ function App() {
         display: 'flex',
         flexDirection: 'column'
       }}>
-        
+
         {subStatus?.isCancelled && (
-          <motion.div 
+          <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            style={{ 
-              background: 'linear-gradient(90deg, #ef4444 0%, #b91c1c 100%)', 
+            style={{
+              background: 'linear-gradient(90deg, #ef4444 0%, #b91c1c 100%)',
               color: 'white', padding: '0.6rem 2rem', fontSize: '0.8rem', fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem',
               zIndex: 60, position: 'sticky', top: 0
@@ -342,13 +378,13 @@ function App() {
               <Bell size={14} fill="white" />
               Subscription Cancellation Pending — Ends on {subStatus.subscriptionEndDate?.toLocaleDateString()}
             </span>
-            <button 
+            <button
               onClick={() => {
                 setActiveTab('settings');
                 setSettingsSection('billing');
               }}
-              style={{ 
-                background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', 
+              style={{
+                background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white',
                 padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer',
                 fontSize: '0.75rem', fontWeight: 800
               }}
@@ -359,8 +395,8 @@ function App() {
         )}
 
         {/* ── TOP NAV BAR ── */}
-        <header className="glass" style={{ 
-          position: 'sticky', top: 0, zIndex: 50, padding: isMobile ? '0.75rem 1rem' : '0.75rem 2rem', 
+        <header className="glass" style={{
+          position: 'sticky', top: 0, zIndex: 50, padding: isMobile ? '0.75rem 1rem' : '0.75rem 2rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderBottom: '1px solid hsla(var(--text-main)/0.05)'
         }}>
@@ -370,7 +406,7 @@ function App() {
                 <CmdIcon size={20} />
               </button>
             )}
-            <div 
+            <div
               onClick={() => setActiveTab('dashboard')}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
             >
@@ -381,14 +417,14 @@ function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <div 
+            <div
               onClick={() => setShowCommandCenter(true)}
-              className="glass-input" 
-              style={{ 
-                width: isMobile ? '40px' : '320px', 
+              className="glass-input"
+              style={{
+                width: isMobile ? '40px' : '320px',
                 height: '36px',
-                padding: isMobile ? '0' : '0.5rem 1rem', 
-                display: 'flex', alignItems: 'center', 
+                padding: isMobile ? '0' : '0.5rem 1rem',
+                display: 'flex', alignItems: 'center',
                 justifyContent: isMobile ? 'center' : 'flex-start',
                 gap: '10px', color: 'hsl(var(--text-muted))', fontSize: '0.8rem', cursor: 'pointer',
                 borderRadius: '10px', border: '1px solid hsla(var(--text-main)/0.1)'
@@ -404,15 +440,15 @@ function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               {/* Notifications */}
               <div style={{ position: 'relative' }}>
-                <button 
+                <button
                   onClick={() => {
                     setNotificationsOpen(!notificationsOpen);
                     setProfileMenuOpen(false);
                   }}
-                  className="flex-center" 
-                  style={{ 
-                    width: '36px', height: '36px', borderRadius: '10px', 
-                    background: notificationsOpen ? 'hsla(var(--p)/0.2)' : 'hsla(var(--text-main)/0.03)', 
+                  className="flex-center"
+                  style={{
+                    width: '36px', height: '36px', borderRadius: '10px',
+                    background: notificationsOpen ? 'hsla(var(--p)/0.2)' : 'hsla(var(--text-main)/0.03)',
                     border: 'none', color: notificationsOpen ? 'hsl(var(--p))' : 'white', cursor: 'pointer',
                     transition: 'all 0.2s'
                   }}
@@ -443,15 +479,15 @@ function App() {
                         <BellRing size={16} color="hsl(var(--p))" />
                         <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{t('header_notifications')}</span>
                       </div>
-                      
+
                       {subStatus?.isCancelled && (
-                        <div 
+                        <div
                           onClick={() => {
                             setActiveTab('settings');
                             setSettingsSection('billing');
                             setNotificationsOpen(false);
                           }}
-                          style={{ 
+                          style={{
                             padding: '1rem', background: 'hsla(var(--error)/0.1)', border: '1px solid hsla(var(--error)/0.2)',
                             borderRadius: '12px', marginBottom: '1rem', cursor: 'pointer', display: 'flex', gap: '12px'
                           }}
@@ -465,8 +501,8 @@ function App() {
                           </div>
                         </div>
                       )}
-                      <div style={{ 
-                        padding: '2rem 1rem', textAlign: 'center', 
+                      <div style={{
+                        padding: '2rem 1rem', textAlign: 'center',
                         background: 'hsla(var(--text-main)/0.02)', borderRadius: '12px',
                         border: '1px dashed hsla(var(--text-main)/0.1)'
                       }}>
@@ -478,20 +514,20 @@ function App() {
               </div>
 
               <div style={{ height: '20px', width: '1px', background: 'hsla(var(--text-main)/0.1)' }} />
-              
+
               {/* Profile */}
               <div style={{ position: 'relative' }}>
-                <div 
+                <div
                   onClick={() => {
                     setProfileMenuOpen(!profileMenuOpen);
                     setNotificationsOpen(false);
                   }}
                   style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
                 >
-                  <div style={{ 
-                    width: '32px', height: '32px', borderRadius: '50%', 
-                    background: 'linear-gradient(135deg, var(--primary), var(--primary-light))', 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                  <div style={{
+                    width: '32px', height: '32px', borderRadius: '50%',
+                    background: 'linear-gradient(135deg, var(--primary), var(--primary-light))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontWeight: 900, fontSize: '0.75rem', color: 'white'
                   }}>
                     {profile.full_name?.charAt(0) || 'U'}
@@ -518,15 +554,15 @@ function App() {
                         padding: '0.75rem', backdropFilter: 'blur(20px)'
                       }}
                     >
-                      <div 
+                      <div
                         onClick={() => { setActiveTab('dashboard'); setProfileMenuOpen(false); }}
                         style={{ padding: '0.5rem 0.5rem 0.75rem', marginBottom: '0.5rem', borderBottom: '1px solid hsla(var(--text-main)/0.05)', cursor: 'pointer' }}
                       >
                         <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white' }}>{profile.full_name}</div>
                         <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-muted))' }}>{session.user.email}</div>
                       </div>
-                      
-                      <button 
+
+                      <button
                         onClick={() => { setActiveTab('dashboard'); setProfileMenuOpen(false); }}
                         style={profileMenuBtnStyle}
                       >
@@ -534,23 +570,23 @@ function App() {
                         <span>Homepage / Dashboard</span>
                       </button>
 
-                      <button 
-                        onClick={() => { 
+                      <button
+                        onClick={() => {
                           setSettingsSection('user_profile');
-                          setActiveTab('settings'); 
-                          setProfileMenuOpen(false); 
+                          setActiveTab('settings');
+                          setProfileMenuOpen(false);
                         }}
                         style={profileMenuBtnStyle}
                       >
                         <User size={16} />
                         <span>{t('header_profile')}</span>
                       </button>
-                      
-                      <button 
-                        onClick={() => { 
+
+                      <button
+                        onClick={() => {
                           setSettingsSection('grid');
-                          setActiveTab('settings'); 
-                          setProfileMenuOpen(false); 
+                          setActiveTab('settings');
+                          setProfileMenuOpen(false);
                         }}
                         style={profileMenuBtnStyle}
                       >
@@ -560,8 +596,8 @@ function App() {
 
                       <div style={{ height: '1px', background: 'hsla(var(--text-main)/0.05)', margin: '0.5rem 0' }} />
 
-                      <button 
-                         onClick={async () => {
+                      <button
+                        onClick={async () => {
                           await supabase.auth.signOut();
                           setProfile(null);
                           setSession(null);
@@ -656,11 +692,11 @@ function App() {
               >
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid hsla(var(--text-main)/0.1)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <Search size={22} color="var(--primary)" />
-                  <input 
-                    autoFocus 
+                  <input
+                    autoFocus
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search modules or settings..." 
+                    placeholder="Search modules or settings..."
                     style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.1rem', width: '100%', outline: 'none' }}
                   />
                   <div style={{ padding: '4px 8px', background: 'hsla(var(--text-main)/0.05)', borderRadius: '6px', fontSize: '0.6rem', color: 'var(--text-muted)' }}>ESC</div>
@@ -677,12 +713,12 @@ function App() {
                     { id: 'budget', label: 'Budget', icon: CmdIcon },
                     { id: 'settings', label: 'Settings', icon: CmdIcon }
                   ].filter(m => m.label.toLowerCase().includes(searchQuery.toLowerCase())).map(mod => (
-                    <div 
-                      key={mod.id} 
-                      className="btn-ghost" 
+                    <div
+                      key={mod.id}
+                      className="btn-ghost"
                       onClick={() => { setActiveTab(mod.id); setShowCommandCenter(false); }}
-                      style={{ 
-                        width: '100%', justifyContent: 'flex-start', padding: '0.75rem 1rem', 
+                      style={{
+                        width: '100%', justifyContent: 'flex-start', padding: '0.75rem 1rem',
                         border: 'none', borderRadius: '10px', cursor: 'pointer', gap: '12px',
                         background: 'transparent'
                       }}
