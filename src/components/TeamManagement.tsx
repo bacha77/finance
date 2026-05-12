@@ -50,6 +50,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
     const [inviteError, setInviteError] = useState<string | null>(null);
     const [inviteSuccess, setInviteSuccess] = useState(false);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
 
     const fetchData = async () => {
         if (!churchId) return;
@@ -172,9 +173,10 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
     };
 
     const handleCancelInvite = async (inviteId: string) => {
-        if (!confirm('Cancel this invitation?')) return;
+        // Removed confirm() as it can be blocked by browsers
         setCancellingId(inviteId);
         try {
+            console.log('Attempting to cancel invite:', inviteId);
             const { error } = await supabase
                 .from('invites')
                 .delete()
@@ -193,10 +195,41 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
         }
     };
 
-    const copyInviteLink = (email: string) => {
+    const copyInviteLink = async (email: string, inviteId: string) => {
         const signupUrl = `${window.location.origin}${window.location.pathname}#/signup?email=${encodeURIComponent(email)}`;
-        navigator.clipboard.writeText(signupUrl);
-        alert('Invite link copied to clipboard! You can now send it manually.');
+        
+        try {
+            // Modern Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(signupUrl);
+                setCopiedId(inviteId);
+                setTimeout(() => setCopiedId(null), 2000);
+                return;
+            }
+            throw new Error('Clipboard API unavailable');
+        } catch (err) {
+            // Robust Fallback (Hidden Textarea)
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = signupUrl;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                if (successful) {
+                    setCopiedId(inviteId);
+                    setTimeout(() => setCopiedId(null), 2000);
+                } else {
+                    prompt("Could not auto-copy. Please copy this link manually:", signupUrl);
+                }
+            } catch (fallbackErr) {
+                prompt("Please copy this link manually:", signupUrl);
+            }
+        }
     };
 
     const handleRemoveMember = async (profileId: string) => {
@@ -358,10 +391,20 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                             {getRoleBadge(invite.role)}
                                             <button 
-                                                onClick={() => copyInviteLink(invite.email)}
-                                                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 800 }}
+                                                onClick={() => copyInviteLink(invite.email, invite.id)}
+                                                style={{ 
+                                                    background: 'none', 
+                                                    border: 'none', 
+                                                    color: copiedId === invite.id ? '#10b981' : '#6366f1', 
+                                                    cursor: 'pointer', 
+                                                    fontSize: '0.75rem', 
+                                                    fontWeight: 800,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
                                             >
-                                                Copy Link
+                                                {copiedId === invite.id ? <><CheckCircle2 size={12} /> Copied!</> : 'Copy Link'}
                                             </button>
                                             <button 
                                                 onClick={() => handleCancelInvite(invite.id)}
