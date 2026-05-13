@@ -154,7 +154,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
                 );
             } catch (emailErr) {
                 console.warn('Database invite created, but email failed to send:', emailErr);
-                // We still count it as success in the DB, but maybe notify the UI
+                alert('Invitation saved in the database, but the email could not be sent. Please use the "Copy Link" button to send the invitation manually.');
             }
 
             setInviteSuccess(true);

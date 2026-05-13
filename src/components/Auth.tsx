@@ -208,12 +208,23 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
     // ── Invitation Detection ──
     const [isInvited, setIsInvited] = useState(false);
     React.useEffect(() => {
+        // Look in both search params AND hash params (SPA fallback)
         const params = new URLSearchParams(window.location.search);
-        const invitedEmail = params.get('email');
+        let invitedEmail = params.get('email');
+        
+        if (!invitedEmail && window.location.hash.includes('?')) {
+            const hashParts = window.location.hash.split('?');
+            if (hashParts[1]) {
+                const hashParams = new URLSearchParams(hashParts[1]);
+                invitedEmail = hashParams.get('email');
+            }
+        }
+
         if (invitedEmail) {
             setEmail(invitedEmail);
             setMode('signup');
             setIsInvited(true);
+            setStep(0); // Ensure we are on the password step
         }
     }, []);
 
@@ -578,45 +589,63 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                     {/* ── SIGN UP STEP 0: Account credentials ── */}
                     {mode === 'signup' && step === 0 && (
                         <motion.div key="signup-0" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}>
-                            <StepDots total={2} current={0} />
-
-                            {/* Social Logins */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                                <button type="button" onClick={handleGoogleSignIn} disabled={googleLoading || loading}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        gap: '0.6rem', padding: '0.75rem', borderRadius: '12px',
-                                        background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer',
-                                        fontFamily: 'inherit', fontSize: '0.825rem', fontWeight: 700, color: '#1a1a1a',
-                                        opacity: googleLoading ? 0.7 : 1, transition: 'all 0.2s',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                            {isInvited ? (
+                                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                                    <div style={{ 
+                                        width: '64px', height: '64px', borderRadius: '50%', 
+                                        background: 'rgba(16, 185, 129, 0.1)', border: '2px solid rgba(16, 185, 129, 0.2)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem'
                                     }}>
-                                    <svg width="16" height="16" viewBox="0 0 24 24">
-                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                                    </svg>
-                                    Google
-                                </button>
-                                <button type="button" onClick={() => supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: window.location.origin } })}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        gap: '0.6rem', padding: '0.75rem', borderRadius: '12px',
-                                        background: '#24292f', border: 'none', cursor: 'pointer',
-                                        fontFamily: 'inherit', fontSize: '0.825rem', fontWeight: 700, color: 'white',
-                                        transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                                    }}>
-                                    <Github size={16} />
-                                    GitHub
-                                </button>
-                            </div>
+                                        <ShieldCheck size={32} color="#10b981" />
+                                    </div>
+                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', marginBottom: '0.5rem' }}>Welcome to the Team!</h2>
+                                    <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>You've been invited to manage your church records. Choose a password to secure your account.</p>
+                                </div>
+                            ) : (
+                                <StepDots total={2} current={0} />
+                            )}
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                                <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-                                <span style={{ fontSize: '0.7rem', color: '#334155', fontWeight: 700 }}>{t('orWithEmail')}</span>
-                                <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-                            </div>
+                            {/* Social Logins - Hide for invited users to avoid confusion */}
+                            {!isInvited && (
+                                <>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                                        <button type="button" onClick={handleGoogleSignIn} disabled={googleLoading || loading}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                gap: '0.6rem', padding: '0.75rem', borderRadius: '12px',
+                                                background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer',
+                                                fontFamily: 'inherit', fontSize: '0.825rem', fontWeight: 700, color: '#1a1a1a',
+                                                opacity: googleLoading ? 0.7 : 1, transition: 'all 0.2s',
+                                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                            }}>
+                                            <svg width="16" height="16" viewBox="0 0 24 24">
+                                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                            </svg>
+                                            Google
+                                        </button>
+                                        <button type="button" onClick={() => supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: window.location.origin } })}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                gap: '0.6rem', padding: '0.75rem', borderRadius: '12px',
+                                                background: '#24292f', border: 'none', cursor: 'pointer',
+                                                fontFamily: 'inherit', fontSize: '0.825rem', fontWeight: 700, color: 'white',
+                                                transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                            }}>
+                                            <Github size={16} />
+                                            GitHub
+                                        </button>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                                        <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+                                        <span style={{ fontSize: '0.7rem', color: '#334155', fontWeight: 700 }}>{t('orWithEmail')}</span>
+                                        <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+                                    </div>
+                                </>
+                            )}
 
                             <form onSubmit={handleStep0} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 <Field label={t('emailAddress')} placeholder="pastor@mychurch.org" type="email"
