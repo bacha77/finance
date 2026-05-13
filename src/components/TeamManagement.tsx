@@ -130,24 +130,28 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
                 const signupUrl = `${window.location.origin}${window.location.pathname}#/signup?email=${encodeURIComponent(inviteEmail)}`;
                 await sendResendEmail(
                     inviteEmail.toLowerCase().trim(),
-                    `Invitation to manage ${churchName || 'the church'}`,
+                    `Join the ${churchName || 'Church'} Finance Team`,
                     `
-                    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
-                        <h2 style="color: #6366f1; font-weight: 800; font-size: 24px;">Storehouse Finance Invitation</h2>
-                        <p style="color: #475569; line-height: 1.6; font-size: 16px;">
-                            You have been invited to join the financial management team for <strong>${churchName || 'your church'}</strong> as an <strong>${inviteRole.toUpperCase()}</strong>.
+                    <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1e293b;">
+                        <div style="text-align: center; margin-bottom: 32px;">
+                            <div style="display: inline-block; padding: 12px; background: #f1f5f9; border-radius: 16px;">
+                                <img src="https://storehousefinance.net/logo.png" alt="Logo" style="width: 48px; height: 48px; display: block;">
+                            </div>
+                        </div>
+                        <h1 style="font-size: 24px; font-weight: 800; text-align: center; color: #0f172a; margin-bottom: 16px; letter-spacing: -0.02em;">Welcome to the Team!</h1>
+                        <p style="font-size: 16px; line-height: 1.6; color: #475569; text-align: center; margin-bottom: 32px;">
+                            You have been invited to help manage the stewardship and financial records for <strong>${churchName || 'your church'}</strong>. Your contribution will help ensure transparency and accuracy in our ministry's finances.
                         </p>
-                        <p style="color: #475569; line-height: 1.6; font-size: 16px;">
-                            By joining, you will be able to record transactions, view reports, and help manage the church stewardship.
-                        </p>
-                        <div style="margin: 32px 0; text-align: center;">
-                            <a href="${signupUrl}" style="background-color: #6366f1; color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
-                                Create My Account & Password
+                        <div style="text-align: center; margin-bottom: 32px;">
+                            <a href="${signupUrl}" style="background-color: #2563eb; color: white; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 700; display: inline-block; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);">
+                                Accept Invitation & Set Password
                             </a>
                         </div>
-                        <p style="color: #94a3b8; font-size: 13px;">
-                            Note: Please ensure you sign up using the email address <strong>${inviteEmail}</strong> to gain access to the correct church records.
-                        </p>
+                        <div style="border-top: 1px solid #e2e8f0; padding-top: 24px; text-align: center;">
+                            <p style="font-size: 13px; color: #94a3b8; margin: 0;">
+                                Note: This invitation was sent to ${inviteEmail}. If you didn't expect this, you can safely ignore this email.
+                            </p>
+                        </div>
                     </div>
                     `,
                     churchName || 'Storehouse Finance'

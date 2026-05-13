@@ -25,7 +25,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: `${fromName || 'Storehouse Finance'} <no-reply@storehousefinance.net>`,
+        from: `Storehouse Finance Team <no-reply@storehousefinance.net>`,
         to,
         subject,
         html,
