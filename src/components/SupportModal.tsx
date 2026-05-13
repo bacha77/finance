@@ -121,7 +121,7 @@ const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) => {
                                     <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', textAlign: 'center' }}>
                                         <Mail size={16} color="#60a5fa" style={{ marginBottom: '8px' }} />
                                         <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>Email</div>
-                                        <div style={{ fontSize: '0.8rem', color: 'white', marginTop: '4px' }}>support@churchhq.org</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'white', marginTop: '4px' }}>support@storehousefinance.net</div>
                                     </div>
                                     <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', textAlign: 'center' }}>
                                         <Book size={16} color="#8b5cf6" style={{ marginBottom: '8px' }} />

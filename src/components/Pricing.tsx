@@ -461,7 +461,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan = 'trial', churchId, onUp
             <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.825rem', marginTop: '3rem', fontWeight: 500 }}>
                 <Shield size={13} style={{ display: 'inline', marginRight: '5px', verticalAlign: 'middle' }} />
                 All payments secured by PayPal · All plans billed monthly ·{' '}
-                <a href="mailto:support@storehousefinance.com" style={{ color: 'var(--primary-light)', textDecoration: 'none', fontWeight: 700 }}>
+                <a href="mailto:sales@storehousefinance.net" style={{ color: 'var(--primary-light)', textDecoration: 'none', fontWeight: 700 }}>
                     Contact support
                 </a>
             </p>
