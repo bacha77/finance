@@ -12,6 +12,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet" />
 
+    <script type="text/javascript">
+        // SPA Redirect Handler
+        (function() {
+            var p = new URLSearchParams(window.location.search).get('p');
+            if (p) {
+                // If the path starts with finance/, redirect to the finance app
+                if (p.startsWith('finance/')) {
+                    var subPath = p.replace('finance/', '');
+                    window.location.replace('/finance/' + (subPath ? '?p=' + subPath : ''));
+                }
+            }
+        })();
+    </script>
+
     <style>
         :root {
             --primary: #7c3aed;
@@ -945,8 +959,8 @@
                 <button class="lang-btn active" onclick="setLang('en')">EN</button>
                 <button class="lang-btn" onclick="setLang('es')">ES</button>
             </div>
-            <a href="/finance/finance/" class="btn btn-ghost" data-en="Sign In" data-es="Iniciar Sesión">Sign In</a>
-            <a href="/finance/finance/" class="btn btn-gold" data-en="Start Free Trial" data-es="Prueba Gratis">Start Free Trial</a>
+            <a href="/finance/" class="btn btn-ghost" data-en="Sign In" data-es="Iniciar Sesión">Sign In</a>
+            <a href="/finance/" class="btn btn-gold" data-en="Start Free Trial" data-es="Prueba Gratis">Start Free Trial</a>
         </div>
     </nav>
 
@@ -971,7 +985,7 @@
         </p>
 
         <div class="hero-ctas">
-            <a href="/finance/finance/" class="btn btn-gold btn-large" data-en="🚀 Start Free 30-Day Trial" data-es="🚀 Iniciar Prueba de 30 Días">🚀 Start Free 30-Day Trial</a>
+            <a href="/finance/" class="btn btn-gold btn-large" data-en="🚀 Start Free 30-Day Trial" data-es="🚀 Iniciar Prueba de 30 Días">🚀 Start Free 30-Day Trial</a>
             <a href="#features" class="btn btn-outline btn-large" data-en="See How It Works" data-es="Ver Cómo Funciona">See How It Works</a>
         </div>
 
@@ -1127,7 +1141,7 @@
                         <li><span class="cross" style="color:var(--text-muted)">✗</span> <span
                                 style="color:var(--text-muted)">Custom domain</span></li>
                     </ul>
-                    <a href="/finance/finance/" class="btn btn-outline" style="width:100%; justify-content:center;">Get Started →</a>
+                    <a href="/finance/" class="btn btn-outline" style="width:100%; justify-content:center;">Get Started →</a>
                 </div>
 
                 <!-- Growth (Popular) -->
@@ -1153,7 +1167,7 @@
                         <li><span class="check">✓</span> Priority support</li>
                         <li><span class="check">✓</span> Custom departments</li>
                     </ul>
-                    <a href="/finance/finance/" class="btn btn-gold" style="width:100%; justify-content:center;">Start Free Trial →</a>
+                    <a href="/finance/" class="btn btn-gold" style="width:100%; justify-content:center;">Start Free Trial →</a>
                 </div>
 
                 <!-- Enterprise -->
@@ -1176,7 +1190,7 @@
                         <li><span class="check">✓</span> Unlimited admin users</li>
                         <li><span class="check">✓</span> 24/7 phone & chat support</li>
                     </ul>
-                    <a href="/finance/finance/" class="btn btn-outline" style="width:100%; justify-content:center;">Contact Sales →</a>
+                    <a href="/finance/" class="btn btn-outline" style="width:100%; justify-content:center;">Contact Sales →</a>
                 </div>
             </div>
         </div>

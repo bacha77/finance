@@ -55,7 +55,7 @@ function App() {
 
   const [activeTab, setActiveTabState] = React.useState(() => {
     const params = new URLSearchParams(window.location.search);
-    const urlTab = params.get('tab');
+    const urlTab = params.get('tab') || params.get('p');
     if (urlTab) return urlTab;
     return localStorage.getItem('sanctuary_active_tab') || 'dashboard';
   });
