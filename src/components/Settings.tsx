@@ -23,7 +23,6 @@ import {
   AlertTriangle,
   RotateCcw,
   FileJson,
-  History,
   Users
 } from 'lucide-react';
 import TeamManagement from './TeamManagement';
@@ -50,6 +49,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
   const [isResetting, setIsResetting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState('');
   const [resetCountdown, setResetCountdown] = useState(0);
 
@@ -90,6 +90,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
 
   const [isUploading, setIsUploading] = useState(false);
   const logoInputRef = React.useRef<HTMLInputElement>(null);
+  const restoreInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -155,6 +156,48 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
       console.error('Cancel error:', err);
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !churchData?.id) return;
+
+    if (!window.confirm("CRITICAL WARNING: This will overwrite or add records to your current database using the selected backup file. Continue?")) return;
+
+    setIsRestoring(true);
+    try {
+        const text = await file.text();
+        const backup = JSON.parse(text);
+
+        if (!backup.data) throw new Error("Invalid backup format: Missing 'data' object.");
+        const { ledger, funds, members, depts, staff, documents } = backup.data;
+        const cid = churchData.id;
+
+        const restoreBatch = async (table: string, data: any[]) => {
+            if (!data || data.length === 0) return;
+            // Ensure all records have the current church_id for security
+            const sanitized = data.map(item => ({ ...item, church_id: cid }));
+            const { error } = await supabase.from(table).upsert(sanitized);
+            if (error) throw error;
+        };
+
+        // Order matters for foreign keys
+        if (depts) await restoreBatch('departments', depts);
+        if (funds) await restoreBatch('funds', funds);
+        if (members) await restoreBatch('members', members);
+        if (staff) await restoreBatch('staff', staff);
+        if (ledger) await restoreBatch('ledger', ledger);
+        if (documents) await restoreBatch('documents', documents);
+
+        alert("Restoration Complete: Data has been synchronized with the backup file. The page will now reload.");
+        window.location.reload();
+    } catch (err: any) {
+        console.error('Restoration failed:', err);
+        alert(`Restoration failed: ${err.message || "Invalid backup file structure."}`);
+    } finally {
+        setIsRestoring(false);
+        if (restoreInputRef.current) restoreInputRef.current.value = '';
     }
   };
 
@@ -236,6 +279,9 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
     }
   };
 
+  const userRole = profile?.role?.toLowerCase() || 'viewer';
+  const isAdmin = userRole.includes('admin');
+
   const settingsCards = [
     {
       id: 'user_profile',
@@ -251,7 +297,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
       desc: t('churchIdentityDesc'),
       icon: Building2,
       color: '#ec4899',
-      bg: 'rgba(236, 72, 153, 0.1)'
+      bg: 'rgba(236, 72, 153, 0.1)',
+      hidden: !isAdmin
     },
     {
       id: 'financial',
@@ -259,7 +306,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
       desc: t('financialControlsDesc'),
       icon: DollarSign,
       color: '#10b981',
-      bg: 'rgba(16, 185, 129, 0.1)'
+      bg: 'rgba(16, 185, 129, 0.1)',
+      hidden: !isAdmin
     },
     {
       id: 'billing',
@@ -267,7 +315,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
       desc: t('billingDesc'),
       icon: CreditCard,
       color: '#f59e0b',
-      bg: 'rgba(245, 158, 11, 0.1)'
+      bg: 'rgba(245, 158, 11, 0.1)',
+      hidden: !isAdmin
     },
     {
       id: 'security',
@@ -275,7 +324,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
       desc: t('securityDesc'),
       icon: Lock,
       color: '#ef4444',
-      bg: 'rgba(239, 68, 68, 0.1)'
+      bg: 'rgba(239, 68, 68, 0.1)',
+      hidden: !isAdmin
     },
     {
       id: 'appearance',
@@ -299,7 +349,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
       desc: 'System diagnostics and congregational data reset.',
       icon: RotateCcw,
       color: '#64748b',
-      bg: 'rgba(100, 116, 139, 0.1)'
+      bg: 'rgba(100, 116, 139, 0.1)',
+      hidden: !isAdmin
     },
     {
       id: 'team',
@@ -307,9 +358,10 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
       desc: 'Invite Assistant Treasurers and manage workspace access.',
       icon: Users,
       color: '#818cf8',
-      bg: 'rgba(129, 140, 248, 0.1)'
+      bg: 'rgba(129, 140, 248, 0.1)',
+      hidden: !isAdmin
     }
-  ];
+  ].filter(card => !card.hidden);
 
   const renderGrid = () => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
@@ -355,7 +407,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
     </div>
   );
 
-  const renderSectionHeader = (title: string, desc: string) => (
+  const renderSectionHeader = (title: string, desc: string, hideSave = false) => (
     <div style={{ marginBottom: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem' }}>
       <div>
         <button 
@@ -371,17 +423,19 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
         <h2 style={{ fontSize: '2rem', fontWeight: 900, color: 'white', letterSpacing: '-0.03em' }}>{title}</h2>
         <p style={{ color: 'var(--text-muted)', marginTop: '0.25rem' }}>{desc}</p>
       </div>
-      <button 
-        className="btn btn-primary"
-        style={{ padding: '0.75rem 1.75rem' }}
-        onClick={async () => {
-            if (onUpdateChurch) await onUpdateChurch(formData);
-            alert(t('success'));
-            setActiveSection('grid');
-        }}
-      >
-        <Save size={18} /> {t('saveChanges')}
-      </button>
+      {!hideSave && (userRole === 'admin' || userRole === 'assistant') && (
+        <button 
+            className="btn btn-primary"
+            style={{ padding: '0.75rem 1.75rem' }}
+            onClick={async () => {
+                if (onUpdateChurch) await onUpdateChurch(formData);
+                alert(t('success'));
+                setActiveSection('grid');
+            }}
+        >
+            <Save size={18} /> {t('saveChanges')}
+        </button>
+      )}
     </div>
   );
 
@@ -1014,7 +1068,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
   const renderTeam = () => (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
       {renderSectionHeader('Team & Permissions', 'Manage who can access and manage your church records.')}
-      <TeamManagement churchId={churchData?.id} currentUserId={profile?.id} />
+      <TeamManagement churchId={churchData?.id} currentUserId={profile?.id} currentUserRole={userRole} />
     </motion.div>
   );
 
@@ -1076,18 +1130,20 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
                         setIsBackingUp(true);
                         try {
                             const cid = churchData.id;
-                            const [{ data: ledger }, { data: funds }, { data: members }, { data: depts }] = await Promise.all([
+                            const [{ data: ledger }, { data: funds }, { data: members }, { data: depts }, { data: staff }, { data: documents }] = await Promise.all([
                                 supabase.from('ledger').select('*').eq('church_id', cid),
                                 supabase.from('funds').select('*').eq('church_id', cid),
-                                supabase.from('members').select('*').eq('church_id', cid).select('name, contact'),
-                                supabase.from('departments').select('*').eq('church_id', cid)
+                                supabase.from('members').select('*').eq('church_id', cid),
+                                supabase.from('departments').select('*').eq('church_id', cid),
+                                supabase.from('staff').select('*').eq('church_id', cid),
+                                supabase.from('documents').select('*').eq('church_id', cid)
                             ]);
 
                             const backup = {
                                 organization: churchData.name,
                                 timestamp: new Date().toISOString(),
-                                schema_version: 'v8',
-                                data: { ledger, funds, members, depts }
+                                schema_version: 'v9',
+                                data: { ledger, funds, members, depts, staff, documents }
                             };
 
                             const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -1114,12 +1170,21 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
                     </button>
 
                     <button 
-                      onClick={() => alert("Point-In-Time-Recovery (PITR) is active for this tenant. Daily snapshots are stored for 7 days. Contact support for emergency database rolling.")}
+                      onClick={() => !isRestoring && restoreInputRef.current?.click()}
                       className="btn btn-ghost"
                       style={{ height: '56px', fontSize: '0.9rem', fontWeight: 800, background: 'rgba(255,255,255,0.03)' }}
+                      disabled={isRestoring}
                     >
-                      <History size={20} /> View Recovery Logs
+                      {isRestoring ? <Loader2 className="spin" size={20} /> : <RotateCcw size={20} />} 
+                      {isRestoring ? 'Restoring Data...' : 'Restore from Backup (.json)'}
                     </button>
+                    <input 
+                      type="file" 
+                      ref={restoreInputRef} 
+                      onChange={handleRestore} 
+                      style={{ display: 'none' }} 
+                      accept=".json" 
+                    />
                 </div>
               </div>
 

@@ -28,9 +28,13 @@ interface Member {
 interface MemberPortalProps {
     memberLimit?: number | null;
     churchId: string;
+    userRole?: string;
 }
 
-const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) => {
+const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, userRole = 'viewer' }) => {
+    const isAdmin = userRole.toLowerCase().includes('admin');
+    const isAssistant = userRole.toLowerCase().includes('assistant');
+    const canManage = isAdmin || isAssistant;
     const { t, language } = useLanguage();
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [openMenuId, setOpenMenuId] = useState<number | null>(null);
@@ -519,35 +523,39 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                     <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>{t('cultivatingEngagementDesc')}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    <button
-                        className="btn btn-ghost"
-                        onClick={handleBulkSend}
-                        disabled={bulkSending}
-                        style={{ position: 'relative' }}
-                    >
-                        {bulkSending ? (
-                            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Send size={18} /></motion.div>
-                        ) : <Send size={18} />}
-                        <span style={{ marginLeft: '8px' }}>{t('bulkStatements')}</span>
-                        {bulkSending && (
-                            <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: '100%' }}
-                                transition={{ duration: 3 }}
-                                style={{ position: 'absolute', bottom: 0, left: 0, height: '2px', background: 'var(--primary)' }}
-                            />
-                        )}
-                    </button>
+                    {canManage && (
+                        <button
+                            className="btn btn-ghost"
+                            onClick={handleBulkSend}
+                            disabled={bulkSending}
+                            style={{ position: 'relative' }}
+                        >
+                            {bulkSending ? (
+                                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Send size={18} /></motion.div>
+                            ) : <Send size={18} />}
+                            <span style={{ marginLeft: '8px' }}>{t('bulkStatements')}</span>
+                            {bulkSending && (
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: '100%' }}
+                                    transition={{ duration: 3 }}
+                                    style={{ position: 'absolute', bottom: 0, left: 0, height: '2px', background: 'var(--primary)' }}
+                                />
+                            )}
+                        </button>
+                    )}
 
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => setShowAddMemberModal(true)}
-                            disabled={memberLimit !== null && memberLimit !== undefined && members.length >= memberLimit}
-                            style={{ opacity: (memberLimit !== null && memberLimit !== undefined && members.length >= memberLimit) ? 0.5 : 1 }}
-                        >
-                            <UserPlus size={18} /> {t('addMember')}
-                        </button>
+                        {canManage && (
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => setShowAddMemberModal(true)}
+                                disabled={memberLimit !== null && memberLimit !== undefined && members.length >= memberLimit}
+                                style={{ opacity: (memberLimit !== null && memberLimit !== undefined && members.length >= memberLimit) ? 0.5 : 1 }}
+                            >
+                                <UserPlus size={18} /> {t('addMember')}
+                            </button>
+                        )}
                         {memberLimit !== null && memberLimit !== undefined && (
                             <span style={{ fontSize: '0.7rem', color: members.length >= memberLimit ? '#ef4444' : 'var(--text-muted)', fontWeight: 600 }}>
                                 {members.length} / {memberLimit} {t('membersUsed')}
@@ -684,14 +692,17 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId }) =>
                                         >
                                             {[{
                                                 icon: Edit3, label: t('editMember'), color: '#60a5fa',
+                                                show: canManage,
                                                 action: () => openEditModal(member, idx)
                                             }, {
                                                 icon: FileText, label: t('viewStatement'), color: '#a78bfa',
+                                                show: true,
                                                 action: () => { setSelectedMember(member); setShowInvoiceModal(true); setOpenMenuId(null); }
                                             }, {
                                                 icon: Trash2, label: t('removeMember'), color: '#ef4444',
+                                                show: isAdmin,
                                                 action: () => handleDeleteMember(idx)
-                                            }].map(({ icon: Icon, label, color, action }) => (
+                                            }].filter(item => item.show).map(({ icon: Icon, label, color, action }) => (
                                                 <button key={label} onClick={action}
                                                     style={{
                                                         display: 'flex', alignItems: 'center', gap: '10px',

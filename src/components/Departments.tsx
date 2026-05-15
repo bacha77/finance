@@ -28,11 +28,15 @@ interface Department {
 interface DepartmentsProps {
     setActiveTab: (tab: string) => void;
     churchId: string;
+    userRole?: string;
 }
 
 
 
-const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => {
+const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId, userRole = 'viewer' }) => {
+    const isAdmin = userRole.toLowerCase().includes('admin');
+    const isAssistant = userRole.toLowerCase().includes('assistant');
+    const canManage = isAdmin || isAssistant;
     const { t } = useLanguage();
     const [showAddModal, setShowAddModal] = useState(false);
     const [departments, setDepartments] = useState<Department[]>([]);
@@ -207,10 +211,12 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => 
                     <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '0.5rem' }}>{t('churchDepartments')}</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>{t('departmentsDesc')}</p>
                 </div>
-                <button className="btn btn-primary" style={{ gap: '8px' }} onClick={() => setShowAddModal(true)}>
-                    <Plus size={18} />
-                    {t('createDepartment')}
-                </button>
+                {canManage && (
+                    <button className="btn btn-primary" style={{ gap: '8px' }} onClick={() => setShowAddModal(true)}>
+                        <Plus size={18} />
+                        {t('createDepartment')}
+                    </button>
+                )}
             </header>
 
             <AnimatePresence>
@@ -365,14 +371,16 @@ const Departments: React.FC<DepartmentsProps> = ({ setActiveTab, churchId }) => 
                                 {getTypeIcon(dept.type)}
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                                <button
-                                    onClick={() => handleEditClick(dept)}
-                                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
-                                    onMouseOver={(e) => (e.currentTarget.style.color = 'var(--primary-light)')}
-                                    onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-                                >
-                                    <Edit2 size={18} />
-                                </button>
+                                {canManage && (
+                                    <button
+                                        onClick={() => handleEditClick(dept)}
+                                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
+                                        onMouseOver={(e) => (e.currentTarget.style.color = 'var(--primary-light)')}
+                                        onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                )}
                                 <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                                     <MoreVertical size={18} />
                                 </button>

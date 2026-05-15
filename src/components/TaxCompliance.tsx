@@ -18,6 +18,7 @@ interface TaxComplianceProps {
     onBack?: () => void;
     churchName?: string;
     churchId?: string;
+    userRole?: string;
 }
 
 const TAX_YEAR = new Date().getFullYear().toString();
@@ -72,12 +73,14 @@ function FormRow({
     year,
     onDownload,
     status,
+    isTreasurer,
 }: {
     form: string;
     person: string;
     year: string;
     onDownload: () => void;
     status: 'idle' | 'loading' | 'done';
+    isTreasurer: boolean;
 }) {
     const info = FORM_INFO[form] || FORM_INFO['W-2'];
     const Icon = info.icon;
@@ -116,36 +119,39 @@ function FormRow({
                     </div>
                 </div>
             </div>
-            <motion.button
-                onClick={onDownload}
-                disabled={status === 'loading'}
-                whileHover={status === 'idle' ? { scale: 1.05 } : {}}
-                whileTap={{ scale: 0.95 }}
-                style={{
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                    padding: '7px 14px', borderRadius: '8px', border: 'none',
-                    background: status === 'done'
-                        ? 'rgba(16,185,129,0.15)'
-                        : status === 'loading'
-                            ? 'rgba(255,255,255,0.05)'
-                            : `${info.bg}`,
-                    color: status === 'done' ? '#10b981' : info.color,
-                    fontWeight: 700, fontSize: '0.78rem', cursor: status === 'loading' ? 'default' : 'pointer',
-                    fontFamily: 'inherit', flexShrink: 0,
-                    outline: `1px solid ${status === 'done' ? 'rgba(16,185,129,0.2)' : `${info.color}30`}`,
-                }}
-            >
-                {status === 'loading' && <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}><Loader2 size={14} /></motion.div>}
-                {status === 'done' && <CheckCircle2 size={14} />}
-                {status === 'idle' && <Download size={14} />}
-                {status === 'loading' ? 'Generating...' : status === 'done' ? 'Downloaded' : 'Download PDF'}
-            </motion.button>
+            {isTreasurer && (
+              <motion.button
+                  onClick={onDownload}
+                  disabled={status === 'loading'}
+                  whileHover={status === 'idle' ? { scale: 1.05 } : {}}
+                  whileTap={{ scale: 0.95 }}
+                  style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      padding: '7px 14px', borderRadius: '8px', border: 'none',
+                      background: status === 'done'
+                          ? 'rgba(16,185,129,0.15)'
+                          : status === 'loading'
+                              ? 'rgba(255,255,255,0.05)'
+                              : `${info.bg}`,
+                      color: status === 'done' ? '#10b981' : info.color,
+                      fontWeight: 700, fontSize: '0.78rem', cursor: status === 'loading' ? 'default' : 'pointer',
+                      fontFamily: 'inherit', flexShrink: 0,
+                      outline: `1px solid ${status === 'done' ? 'rgba(16,185,129,0.2)' : `${info.color}30`}`,
+                  }}
+              >
+                  {status === 'loading' && <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}><Loader2 size={14} /></motion.div>}
+                  {status === 'done' && <CheckCircle2 size={14} />}
+                  {status === 'idle' && <Download size={14} />}
+                  {status === 'loading' ? 'Generating...' : status === 'done' ? 'Downloaded' : 'Download PDF'}
+              </motion.button>
+            )}
         </motion.div>
     );
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────
-const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propChurchName, churchId }) => {
+const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propChurchName, churchId, userRole = 'viewer' }) => {
+    const isTreasurer = userRole.includes('admin') || userRole.includes('assistant');
     const [staff, setStaff] = useState<any[]>([]);
     const [churchInfo, setChurchInfo] = useState({ name: propChurchName || 'Your Church', ein: 'XX-XXXXXXX', address: '', logo_url: '' });
     const [stats, setStats] = useState({ income: 0, expenses: 0, balance: 0, members: 0 });
@@ -343,6 +349,7 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                             person={`${emp.name} — ${emp.role}`}
                             year={TAX_YEAR}
                             status={dlStatus[`w2_${i}`] || 'idle'}
+                            isTreasurer={isTreasurer}
                             onDownload={() => handleDownload(`w2_${i}`, () => generateW2({
                                 name: emp.name, 
                                 role: emp.role, 
@@ -358,6 +365,7 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                             person={`All ${employees.length} employees — W-3 Transmittal`}
                             year={TAX_YEAR}
                             status={dlStatus['w3'] || 'idle'}
+                            isTreasurer={isTreasurer}
                             onDownload={() => handleDownload('w3', () => generateW3(staff, church))}
                         />
                     )}
@@ -384,6 +392,7 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                             person={`${con.name} — ${con.role}`}
                             year={TAX_YEAR}
                             status={dlStatus[`1099_${i}`] || 'idle'}
+                            isTreasurer={isTreasurer}
                             onDownload={() => handleDownload(`1099_${i}`, () => generate1099NEC(con, church))}
                         />
                     ))}
@@ -415,6 +424,7 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                     person={`IRS — Quarter ${selectedQuarter}, ${TAX_YEAR} · ${employees.length} employees`}
                     year={TAX_YEAR}
                     status={dlStatus[`941_q${selectedQuarter}`] || 'idle'}
+                    isTreasurer={isTreasurer}
                     onDownload={() => handleDownload(`941_q${selectedQuarter}`, () => generate941(staff, church, selectedQuarter))}
                 />
             </section>
@@ -431,6 +441,7 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                     person={`${churchInfo.name} — Full Year ${TAX_YEAR}`}
                     year={TAX_YEAR}
                     status={dlStatus['990'] || 'idle'}
+                    isTreasurer={isTreasurer}
                     onDownload={() => handleDownload('990', () => generate990Summary(stats, church))}
                 />
             </section>

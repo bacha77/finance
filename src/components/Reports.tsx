@@ -31,11 +31,13 @@ interface Member {
 
 interface ReportsProps {
     churchId: string;
+    userRole?: string;
 }
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
-const Reports: React.FC<ReportsProps> = ({ churchId }) => {
+const Reports: React.FC<ReportsProps> = ({ churchId, userRole = 'viewer' }) => {
+    const isAdmin = userRole.toLowerCase().includes('admin');
     const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
     const [viewStatement, setViewStatement] = useState<StatementType>(null);
@@ -242,9 +244,16 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                     </div>
 
                     <div style={{ display: 'flex', gap: '1.5rem' }}>
-                        <button className="btn btn-primary" style={{ flex: 2, height: '72px', fontSize: '1.25rem', gap: '15px' }} onClick={() => setShowDispatchModal(true)}>
-                            <Send size={24} /> Authorize & Execute
-                        </button>
+                        {isAdmin && (
+                            <button className="btn btn-primary" style={{ flex: 2, height: '72px', fontSize: '1.25rem', gap: '15px' }} onClick={() => setShowDispatchModal(true)}>
+                                <Send size={24} /> Authorize & Execute
+                            </button>
+                        )}
+                        {!isAdmin && (
+                            <div className="glass" style={{ flex: 2, height: '72px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', color: 'var(--text-muted)', fontSize: '1rem' }}>
+                                <Lock size={20} /> Administrative Access Only
+                            </div>
+                        )}
                         <button className="btn glass" style={{ flex: 1, height: '72px' }} onClick={() => setShowRecipientManager(!showRecipientManager)}>
                             <Users size={20} /> {showRecipientManager ? 'Close' : 'Sync Board'}
                         </button>
@@ -603,8 +612,13 @@ const Reports: React.FC<ReportsProps> = ({ churchId }) => {
                                     <Activity size={80} color="var(--primary)" className="pulse" />
                                     <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginTop: '2rem' }}>Executing Mission Audit</h2>
                                     <p style={{ color: 'var(--text-secondary)', marginBottom: '4rem', fontSize: '1.1rem' }}>Performing forensic scan of <strong>{ledger.length} ledger blocks</strong> against fund velocity nodes.</p>
-                                    <button className="btn btn-primary" style={{ width: '400px', height: '64px', fontSize: '1.1rem' }} onClick={() => { setIsAuditRunning(true); setTimeout(() => { setAuditSummary({}); setIsAuditRunning(false); }, 3000); }}>
-                                        {isAuditRunning ? <RefreshCw className="spin" /> : 'Begin Forensic Scan'}
+                                    <button 
+                                        className="btn btn-primary" 
+                                        style={{ width: '400px', height: '64px', fontSize: '1.1rem', opacity: isAdmin ? 1 : 0.5 }} 
+                                        onClick={() => { if (!isAdmin) return; setIsAuditRunning(true); setTimeout(() => { setAuditSummary({}); setIsAuditRunning(false); }, 3000); }}
+                                        disabled={!isAdmin}
+                                    >
+                                        {isAuditRunning ? <RefreshCw className="spin" /> : isAdmin ? 'Begin Forensic Scan' : 'Main Treasurer Access Only'}
                                     </button>
                                 </div>
                             ) : renderAuditCertificate()}

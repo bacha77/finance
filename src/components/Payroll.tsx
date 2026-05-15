@@ -26,9 +26,13 @@ const DEFAULT_STAFF: any[] = [];
 
 interface PayrollProps {
     churchId: string;
+    userRole?: string;
 }
 
-const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
+const Payroll: React.FC<PayrollProps> = ({ churchId, userRole = 'viewer' }) => {
+    const isAdmin = userRole.toLowerCase().includes('admin');
+    const isAssistant = userRole.toLowerCase().includes('assistant');
+    const canManage = isAdmin || isAssistant;
     const { t } = useLanguage();
     const [view, setView] = useState<'staff' | 'tax'>('staff');
     const [showHireModal, setShowHireModal] = useState(false);
@@ -381,12 +385,14 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                         <option value="PM">{t('pmShift')}</option>
                                     </select>
                                 )}
-                                <button className="btn btn-primary" style={{ background: 'var(--success)', border: 'none' }} onClick={handleProcessPayroll} disabled={processing}>
+                                <button className="btn btn-primary" style={{ background: 'var(--success)', border: 'none', opacity: canManage ? 1 : 0.5 }} onClick={handleProcessPayroll} disabled={processing || !canManage}>
                                     {processing ? t('processing') : <><Zap size={18} /> {t('runPayroll')}</>}
                                 </button>
-                                <button className="btn btn-primary" onClick={() => setShowHireModal(true)}>
-                                    <Plus size={18} /> {t('onboardStaff')}
-                                </button>
+                                {canManage && (
+                                    <button className="btn btn-primary" onClick={() => setShowHireModal(true)}>
+                                        <Plus size={18} /> {t('onboardStaff')}
+                                    </button>
+                                )}
                             </div>
                         </header>
 

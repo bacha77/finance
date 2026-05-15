@@ -56,9 +56,13 @@ interface Transaction {
 
 interface FundAccountingProps {
     churchId: string;
+    userRole?: string;
 }
 
-const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
+const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'viewer' }) => {
+    const isAdmin = userRole.toLowerCase().includes('admin');
+    const isAssistant = userRole.toLowerCase().includes('assistant');
+    const canManage = isAdmin || isAssistant;
     const { t, language } = useLanguage();
     const [showNewTxModal, setShowNewTxModal] = useState(false);
     const [selectedTxForAudit, setSelectedTxForAudit] = useState<Transaction | null>(null);
@@ -650,16 +654,22 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                     <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>{t('fundStewardshipDesc')}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button className="btn btn-ghost" onClick={() => setShowNewFundModal(true)}>
-                        <PieChart size={18} /> {t('newFund') || 'New Fund'}
-                    </button>
-                    <button className={`btn ${showReconcile ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setShowReconcile(!showReconcile)}>
-                        {isSyncing ? <RefreshCw size={18} className="spin" /> : <CheckCircle size={18} />}
-                        {showReconcile ? t('integratedLedger') : t('reconcileBank')}
-                    </button>
-                    <button className="btn btn-primary" onClick={() => setShowNewTxModal(true)}>
-                        <Plus size={18} /> {t('recordDeposit')}
-                    </button>
+                    {isAdmin && (
+                        <button className="btn btn-ghost" onClick={() => setShowNewFundModal(true)}>
+                            <PieChart size={18} /> {t('newFund') || 'New Fund'}
+                        </button>
+                    )}
+                    {canManage && (
+                        <button className={`btn ${showReconcile ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setShowReconcile(!showReconcile)}>
+                            {isSyncing ? <RefreshCw size={18} className="spin" /> : <CheckCircle size={18} />}
+                            {showReconcile ? t('integratedLedger') : t('reconcileBank')}
+                        </button>
+                    )}
+                    {canManage && (
+                        <button className="btn btn-primary" onClick={() => setShowNewTxModal(true)}>
+                            <Plus size={18} /> {t('recordDeposit')}
+                        </button>
+                    )}
                 </div>
             </header>
 
@@ -853,8 +863,12 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId }) => {
                                                 <td style={{ textAlign: 'right' }}>
                                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                                         <button onClick={() => setSelectedTxForAudit(tx)} style={{ background: 'var(--glass-light)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }} title="Audit Trail"><Shield size={12} /></button>
-                                                        <button onClick={() => handleEditTransaction(tx)} style={{ background: 'var(--glass-light)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }} title="Edit Record"><Edit2 size={12} /></button>
-                                                        <button onClick={async () => tx.id && await handleDeleteTransaction(tx.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }} title="Void"><Trash2 size={12} /></button>
+                                                        {canManage && (
+                                                            <button onClick={() => handleEditTransaction(tx)} style={{ background: 'var(--glass-light)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }} title="Edit Record"><Edit2 size={12} /></button>
+                                                        )}
+                                                        {isAdmin && (
+                                                            <button onClick={async () => tx.id && await handleDeleteTransaction(tx.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem' }} title="Void"><Trash2 size={12} /></button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

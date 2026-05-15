@@ -50,9 +50,13 @@ const DEFAULT_CATEGORIES = [
 interface ExpensesProps {
     setActiveTab: (tab: string) => void;
     churchId: string;
+    userRole?: string;
 }
 
-const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, churchId }) => {
+const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, churchId, userRole = 'viewer' }) => {
+    const isAdmin = userRole.toLowerCase().includes('admin');
+    const isAssistant = userRole.toLowerCase().includes('assistant');
+    const canManage = isAdmin || isAssistant;
     const { t, language } = useLanguage();
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -494,12 +498,16 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
                         <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px' }}>{t('auditableRecordDesc')}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem', width: '100%', maxWidth: 'none', justifyContent: 'flex-start' }}>
-                        <button className="btn btn-ghost" onClick={toggleScan} style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}>
-                            <Camera size={16} /> {t('scan')}
-                        </button>
-                        <button className="btn btn-primary" onClick={() => setShowAddModal(true)} style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}>
-                            <Plus size={16} /> {t('new')}
-                        </button>
+                        {canManage && (
+                            <button className="btn btn-ghost" onClick={toggleScan} style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}>
+                                <Camera size={16} /> {t('scan')}
+                            </button>
+                        )}
+                        {canManage && (
+                            <button className="btn btn-primary" onClick={() => setShowAddModal(true)} style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}>
+                                <Plus size={16} /> {t('new')}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -586,8 +594,12 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
                                     <td style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--danger)' }}>-${exp.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                     <td style={{ textAlign: 'right' }}>
                                         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                                            <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} onClick={() => handleEdit(exp)}><Edit2 size={14} /></button>
-                                            <button style={{ background: 'none', border: 'none', color: 'rgba(239, 68, 68, 0.5)', cursor: 'pointer' }} onClick={() => handleDelete(exp.id)}><Trash2 size={14} /></button>
+                                            {canManage && (
+                                                <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} onClick={() => handleEdit(exp)}><Edit2 size={14} /></button>
+                                            )}
+                                            {isAdmin && (
+                                                <button style={{ background: 'none', border: 'none', color: 'rgba(239, 68, 68, 0.5)', cursor: 'pointer' }} onClick={() => handleDelete(exp.id)}><Trash2 size={14} /></button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

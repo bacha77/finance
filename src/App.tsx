@@ -626,17 +626,24 @@ function App() {
               transition={{ duration: 0.2 }}
               style={{ height: '100%' }}
             >
-              {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} churchId={church.id} />}
-              {activeTab === 'accounting' && <FundAccounting churchId={church.id} />}
-              {activeTab === 'members' && <MemberPortal churchId={church.id} />}
-              {activeTab === 'payroll' && <Payroll churchId={church.id} />}
-              {activeTab === 'reports' && <Reports churchId={church.id} />}
-              {activeTab === 'departments' && <Departments setActiveTab={setActiveTab} churchId={church.id} />}
-              {activeTab === 'expenses' && <Expenses setActiveTab={setActiveTab} churchId={church.id} />}
-              {activeTab === 'budget' && <Budget setActiveTab={setActiveTab} churchId={church.id} />}
-              {activeTab === 'tax' && <TaxCompliance churchId={church.id} churchName={church.name} />}
-              {activeTab === 'settings' && <Settings churchData={church} onUpdateChurch={handleUpdateChurch} initialSection={settingsSection} profile={profile} />}
-              {activeTab === 'pricing' && <Pricing currentPlan={church.plan} churchId={church.id} />}
+              {(() => {
+                const userRole = profile?.role || 'viewer';
+                return (
+                  <>
+                    {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
+                    {activeTab === 'accounting' && <FundAccounting churchId={church.id} userRole={userRole} />}
+                    {activeTab === 'members' && <MemberPortal churchId={church.id} userRole={userRole} />}
+                    {activeTab === 'payroll' && <Payroll churchId={church.id} userRole={userRole} />}
+                    {activeTab === 'reports' && <Reports churchId={church.id} userRole={userRole} />}
+                    {activeTab === 'departments' && <Departments setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
+                    {activeTab === 'expenses' && <Expenses setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
+                    {activeTab === 'budget' && <Budget setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
+                    {activeTab === 'tax' && <TaxCompliance churchId={church.id} churchName={church.name} userRole={userRole} />}
+                    {activeTab === 'settings' && <Settings churchData={church} onUpdateChurch={handleUpdateChurch} initialSection={settingsSection} profile={profile} />}
+                    {activeTab === 'pricing' && <Pricing currentPlan={church.plan} churchId={church.id} />}
+                  </>
+                );
+              })()}
             </motion.div>
           </AnimatePresence>
         </div>

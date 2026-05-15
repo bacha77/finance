@@ -23,6 +23,7 @@ import { checkAndSendTrialReminder } from '../lib/reminderService';
 interface DashboardProps {
     setActiveTab: (tab: string) => void;
     churchId: string;
+    userRole?: string;
 }
 
 interface Fund {
@@ -179,7 +180,8 @@ const FeatureCard: React.FC<{
 );
 
 // ── Main Dashboard ─────────────────────────────────────────────────────────
-const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
+const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole = 'viewer' }) => {
+    const isTreasurer = userRole.includes('admin') || userRole.includes('assistant');
     const { t, language } = useLanguage();
     const [recentTx, setRecentTx] = useState<any[]>([]);
     const [, setProjection] = useState<{income: number, expense: number, confidence: number} | null>(null);
@@ -423,19 +425,21 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId }) => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <motion.button
-                        onClick={() => setActiveTab('accounting')}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '0.5rem',
-                            padding: '0.6rem 1.2rem', borderRadius: '10px',
-                            background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.3)',
-                            color: '#60a5fa', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit',
-                        }}
-                    >
-                        <BarChart3 size={15} /> {t('newTransaction')}
-                    </motion.button>
+                    {isTreasurer && (
+                      <motion.button
+                          onClick={() => setActiveTab('accounting')}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
+                          style={{
+                              display: 'flex', alignItems: 'center', gap: '0.5rem',
+                              padding: '0.6rem 1.2rem', borderRadius: '10px',
+                              background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.3)',
+                              color: '#60a5fa', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit',
+                          }}
+                      >
+                          <BarChart3 size={15} /> {t('newTransaction')}
+                      </motion.button>
+                    )}
                     <motion.button
                         onClick={() => setActiveTab('reports')}
                         whileHover={{ scale: 1.03 }}

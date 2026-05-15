@@ -34,9 +34,11 @@ interface Invite {
 interface TeamManagementProps {
     churchId: string;
     currentUserId: string;
+    currentUserRole: string;
 }
 
-const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId }) => {
+const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId, currentUserRole }) => {
+    const isAdminUser = currentUserRole?.toLowerCase().includes('admin');
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [invites, setInvites] = useState<Invite[]>([]);
     const [churchName, setChurchName] = useState('');
@@ -95,6 +97,10 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
 
     const handleSendInvite = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isAdminUser) {
+            alert("Only the Main Treasurer can invite new members.");
+            return;
+        }
         if (!inviteEmail.trim()) return;
         
         setIsInviting(true);
@@ -177,6 +183,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
     };
 
     const handleCancelInvite = async (inviteId: string) => {
+        if (!isAdminUser) return;
         // Removed confirm() as it can be blocked by browsers
         setCancellingId(inviteId);
         try {
@@ -237,6 +244,10 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
     };
 
     const handleRemoveMember = async (profileId: string) => {
+        if (!isAdminUser) {
+            alert("Only the Main Treasurer can remove members.");
+            return;
+        }
         if (profileId === currentUserId) {
             alert("You cannot remove yourself.");
             return;
@@ -259,6 +270,12 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
 
     const getRoleBadge = (role: string) => {
         const isAdmin = role.toLowerCase().includes('admin');
+        const isAssistant = role.toLowerCase().includes('assistant');
+        
+        let label = role;
+        if (isAdmin) label = 'Main Treasurer';
+        if (isAssistant) label = 'Assistant Treasurer';
+
         return (
             <span style={{ 
                 padding: '4px 8px', 
@@ -266,14 +283,14 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
                 fontSize: '0.7rem', 
                 fontWeight: 800, 
                 textTransform: 'uppercase',
-                background: isAdmin ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                color: isAdmin ? '#818cf8' : '#34d399',
+                background: isAdmin ? 'rgba(99, 102, 241, 0.1)' : isAssistant ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                color: isAdmin ? '#818cf8' : isAssistant ? '#60a5fa' : '#34d399',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px'
             }}>
                 {isAdmin ? <Shield size={10} /> : <UserCircle size={10} />}
-                {role}
+                {label}
             </span>
         );
     };
@@ -285,14 +302,16 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>Team & Permissions</h2>
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Manage who can access and manage your church's financial records.</p>
                 </div>
-                <button 
-                    className="btn btn-primary" 
-                    onClick={() => setShowInviteModal(true)}
-                    style={{ gap: '8px' }}
-                >
-                    <UserPlus size={18} />
-                    Invite Member
-                </button>
+                {isAdminUser && (
+                    <button 
+                        className="btn btn-primary" 
+                        onClick={() => setShowInviteModal(true)}
+                        style={{ gap: '8px' }}
+                    >
+                        <UserPlus size={18} />
+                        Invite Member
+                    </button>
+                )}
             </header>
 
             {loading ? (
@@ -341,7 +360,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                                         {getRoleBadge(profile.role)}
-                                        {profile.id !== currentUserId && (
+                                        {profile.id !== currentUserId && isAdminUser && (
                                             <button 
                                                 onClick={() => handleRemoveMember(profile.id)}
                                                 style={{ background: 'none', border: 'none', color: 'rgba(239, 68, 68, 0.6)', cursor: 'pointer', transition: 'color 0.2s' }}
@@ -410,20 +429,22 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
                                             >
                                                 {copiedId === invite.id ? <><CheckCircle2 size={12} /> Copied!</> : 'Copy Link'}
                                             </button>
-                                            <button 
-                                                onClick={() => handleCancelInvite(invite.id)}
-                                                disabled={cancellingId === invite.id}
-                                                style={{ 
-                                                    background: 'none', 
-                                                    border: 'none', 
-                                                    color: cancellingId === invite.id ? 'var(--text-muted)' : 'rgba(239, 68, 68, 0.8)', 
-                                                    cursor: cancellingId === invite.id ? 'default' : 'pointer', 
-                                                    fontSize: '0.75rem', 
-                                                    fontWeight: 800 
-                                                }}
-                                            >
-                                                {cancellingId === invite.id ? 'Cancelling...' : 'Cancel'}
-                                            </button>
+                                            {isAdminUser && (
+                                                <button 
+                                                    onClick={() => handleCancelInvite(invite.id)}
+                                                    disabled={cancellingId === invite.id}
+                                                    style={{ 
+                                                        background: 'none', 
+                                                        border: 'none', 
+                                                        color: cancellingId === invite.id ? 'var(--text-muted)' : 'rgba(239, 68, 68, 0.8)', 
+                                                        cursor: cancellingId === invite.id ? 'default' : 'pointer', 
+                                                        fontSize: '0.75rem', 
+                                                        fontWeight: 800 
+                                                    }}
+                                                >
+                                                    {cancellingId === invite.id ? 'Cancelling...' : 'Cancel'}
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -488,7 +509,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ churchId, currentUserId
                                         onChange={e => setInviteRole(e.target.value)}
                                         style={{ width: '100%', padding: '12px', borderRadius: '10px', background: '#0f172a', border: '1px solid var(--border)', color: 'white' }}
                                     >
-                                        <option value="admin">Administrator / Treasurer</option>
+                                        <option value="admin">Main Treasurer (Full Access)</option>
                                         <option value="assistant">Assistant Treasurer</option>
                                         <option value="viewer">Viewer (Read Only)</option>
                                     </select>

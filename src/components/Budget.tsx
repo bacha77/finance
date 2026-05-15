@@ -32,11 +32,16 @@ interface BudgetYear {
 interface BudgetProps {
     setActiveTab: (tab: string) => void;
     churchId: string;
+    userRole?: string;
 }
 
 
 
-const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId }) => {
+const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'viewer' }) => {
+    const isAdmin = userRole.includes('admin');
+    const isAssistant = userRole.includes('assistant');
+    const canManage = isAdmin || isAssistant;
+
     const { t, language } = useLanguage();
     const [budgets, setBudgets] = useState<BudgetYear[]>([]);
     const [activeYear, setActiveYear] = useState(new Date().getFullYear());
@@ -300,22 +305,26 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId }) => {
                                 ))}
                             </select>
                         </div>
-                        <button
-                            className="btn glass"
-                            onClick={handleInitializeNewYear}
-                            style={{ gap: '8px', padding: '0.75rem 1.5rem' }}
-                        >
-                            <Calendar size={18} /> {t('planNextYear')}
-                        </button>
-                        <button
-                            className="btn btn-primary"
-                            onClick={handleSaveBudget}
-                            disabled={isSaving}
-                            style={{ gap: '8px', padding: '0.75rem 1.5rem', minWidth: '160px' }}
-                        >
-                            {isSaving ? <RefreshCw size={18} className="spin" /> : <Save size={18} />}
-                            {isSaving ? t('loading') : t('saveToCloud')}
-                        </button>
+                        {canManage && (
+                          <>
+                            <button
+                                className="btn glass"
+                                onClick={handleInitializeNewYear}
+                                style={{ gap: '8px', padding: '0.75rem 1.5rem' }}
+                            >
+                                <Calendar size={18} /> {t('planNextYear')}
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleSaveBudget}
+                                disabled={isSaving}
+                                style={{ gap: '8px', padding: '0.75rem 1.5rem', minWidth: '160px' }}
+                            >
+                                {isSaving ? <RefreshCw size={18} className="spin" /> : <Save size={18} />}
+                                {isSaving ? t('loading') : t('saveToCloud')}
+                            </button>
+                          </>
+                        )}
                     </div>
                 </div>
 
