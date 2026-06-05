@@ -12,6 +12,7 @@ interface AdminPanelProps {
     adminEmail: string;
     onLogout: () => void;
     onSwitchToUser?: () => void;
+    onImpersonate?: (churchId: string) => void;
 }
 
 const PLAN_COLORS: Record<string, string> = {
@@ -292,7 +293,7 @@ const PaymentModal: React.FC<{
 };
 
 // ── Main Admin Panel ───────────────────────────────────────────────────────
-const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchToUser }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchToUser, onImpersonate }) => {
     const [churches, setChurches] = useState<any[]>([]);
     const [profiles, setProfiles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -737,6 +738,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                             >
                                                 <DollarSign size={13} />
                                             </button>
+                                            {onImpersonate && (
+                                                <button
+                                                    onClick={() => onImpersonate(church.id)}
+                                                    style={{
+                                                        background: 'rgba(236,72,153,0.1)', border: '1px solid rgba(236,72,153,0.2)',
+                                                        borderRadius: '7px', padding: '5px', cursor: 'pointer', color: '#ec4899',
+                                                        display: 'flex', alignItems: 'center',
+                                                    }}
+                                                    title="Support Login (Impersonate)"
+                                                >
+                                                    <Key size={13} />
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => handleToggleActive(church.id, church.is_active !== false)}
                                                 style={{

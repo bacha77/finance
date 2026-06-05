@@ -72,6 +72,7 @@ function App() {
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [viewingAdminPanel, setViewingAdminPanel] = useState(false);
+  const [impersonatedChurchId, setImpersonatedChurchId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
 
@@ -213,6 +214,30 @@ function App() {
     setProfileLoading(false);
   };
 
+  const handleImpersonate = async (churchId: string) => {
+    try {
+      setProfileLoading(true);
+      const { data: targetChurch, error } = await supabase.from('churches').select('*').eq('id', churchId).single();
+      if (error) throw error;
+      
+      setImpersonatedChurchId(churchId);
+      // Create a mock profile attached to this church so the rest of the app functions
+      setProfile({
+        id: session?.user?.id || '00000000-0000-0000-0000-000000000000',
+        full_name: 'Support Admin',
+        churches: targetChurch
+      });
+      setSubStatus(getSubscriptionStatus(targetChurch));
+      setViewingAdminPanel(false);
+      setActiveTabState('dashboard');
+    } catch (e) {
+      console.error('Failed to impersonate', e);
+      alert('Failed to load church profile for support login.');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   const church = profile?.churches;
 
   const handleUpdateChurch = async (newData: any) => {
@@ -273,7 +298,12 @@ function App() {
   if (!session) return <Auth onBypass={handleBypass} />;
 
   if (isAdmin && viewingAdminPanel) {
-    return <AdminPanel adminEmail={session.user.email!} onLogout={() => supabase.auth.signOut()} onSwitchToUser={() => setViewingAdminPanel(false)} />;
+    return <AdminPanel 
+      adminEmail={session.user.email!} 
+      onLogout={() => supabase.auth.signOut()} 
+      onSwitchToUser={() => setViewingAdminPanel(false)}
+      onImpersonate={handleImpersonate}
+    />;
   }
 
   if (profileLoading || fetchError) {
@@ -304,6 +334,12 @@ function App() {
   }
 
   if (!profile || !profile.churches) {
+    // If they are an Admin returning from the panel but have no church, give them a Dev Workspace instantly
+    if (isAdmin) {
+      handleBypass();
+      return null; // Will re-render with bypass profile
+    }
+    
     return (
       <Onboarding
         userId={session.user.id}
@@ -319,7 +355,8 @@ function App() {
     );
   }
 
-  if (subStatus?.isBlocked && church) {
+  // Bypass Payment Wall for Admins
+  if (subStatus?.isBlocked && church && !isAdmin) {
     return <PaymentWall churchId={church.id} churchName={church.name} subStatus={subStatus} onPaymentSuccess={() => fetchProfile(session.user.id)} />;
   }
 
@@ -428,7 +465,9 @@ function App() {
               onClick={() => setActiveTab('dashboard')}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
             >
-              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'hsl(var(--text-muted))' }}>{church?.name}</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'hsl(var(--text-muted))' }}>
+                {church?.name} {impersonatedChurchId && <span style={{ color: 'hsl(var(--warning))', marginLeft: '4px' }}>(Support Mode)</span>}
+              </span>
               <span style={{ color: 'hsla(var(--text-main)/0.1)' }}>/</span>
               <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white', textTransform: 'capitalize' }}>{activeTab}</span>
             </div>
