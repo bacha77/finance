@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 interface AdminPanelProps {
     adminEmail: string;
     onLogout: () => void;
+    onSwitchToUser?: () => void;
 }
 
 const PLAN_COLORS: Record<string, string> = {
@@ -291,7 +292,7 @@ const PaymentModal: React.FC<{
 };
 
 // ── Main Admin Panel ───────────────────────────────────────────────────────
-const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchToUser }) => {
     const [churches, setChurches] = useState<any[]>([]);
     const [profiles, setProfiles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -520,6 +521,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                     >
                         <LogOut size={14} /> Sign Out
                     </motion.button>
+                    {onSwitchToUser && (
+                        <motion.button
+                            onClick={onSwitchToUser}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)',
+                                borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', color: '#60a5fa',
+                                fontWeight: 700, fontSize: '0.78rem', fontFamily: 'inherit',
+                            }}
+                        >
+                            Return to Church App
+                        </motion.button>
+                    )}
                 </div>
             </header>
 

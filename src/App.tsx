@@ -24,7 +24,7 @@ import { runMigrations } from './lib/migrations';
 import type { SubscriptionStatus } from './lib/subscriptionConfig';
 import {
   Search, Bell, ChevronDown, CheckCircle2, Command as CmdIcon,
-  User, Settings as SettingsIcon, LogOut, BellRing, LayoutDashboard, Shield
+  User, Settings as SettingsIcon, LogOut, BellRing, LayoutDashboard, Shield, Crown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from './contexts/LanguageContext';
@@ -71,6 +71,7 @@ function App() {
   };
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [viewingAdminPanel, setViewingAdminPanel] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
 
@@ -160,9 +161,7 @@ function App() {
       const { data: adminRow } = await supabase.from('admins').select('user_id').eq('user_id', userId).maybeSingle();
       if (adminRow) { 
         setIsAdmin(true); 
-        clearTimeout(timeout);
-        setProfileLoading(false); 
-        return; 
+        setViewingAdminPanel(true); // Default to admin panel on load for admins
       }
 
       const { data, error } = await supabase
@@ -273,8 +272,8 @@ function App() {
 
   if (!session) return <Auth onBypass={handleBypass} />;
 
-  if (isAdmin) {
-    return <AdminPanel adminEmail={session.user.email || 'admin'} onLogout={async () => { await supabase.auth.signOut(); setIsAdmin(false); }} />;
+  if (isAdmin && viewingAdminPanel) {
+    return <AdminPanel adminEmail={session.user.email!} onLogout={() => supabase.auth.signOut()} onSwitchToUser={() => setViewingAdminPanel(false)} />;
   }
 
   if (profileLoading || fetchError) {
@@ -612,6 +611,20 @@ function App() {
                         <SettingsIcon size={16} />
                         <span>{t('header_preferences')}</span>
                       </button>
+
+                      {/* Admin Toggle */}
+                      {isAdmin && (
+                        <button
+                          onClick={() => setViewingAdminPanel(true)}
+                          style={{
+                            background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.3)',
+                            color: '#60a5fa', padding: '0.4rem 0.8rem', borderRadius: '8px', cursor: 'pointer',
+                            fontSize: '0.75rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', margin: '0.5rem 0'
+                          }}
+                        >
+                          <Crown size={14} /> Admin Portal
+                        </button>
+                      )}
 
                       <div style={{ height: '1px', background: 'hsla(var(--text-main)/0.05)', margin: '0.5rem 0' }} />
 
