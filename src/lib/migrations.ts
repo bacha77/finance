@@ -6,7 +6,7 @@
  */
 import { supabase } from './supabase';
 
-const MIGRATION_KEY = 'sf_migrations_v8';
+const MIGRATION_KEY = 'sf_migrations_v9';
 
 const MIGRATIONS: { name: string; sql: string }[] = [
     {
