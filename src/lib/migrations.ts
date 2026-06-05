@@ -305,6 +305,18 @@ const MIGRATIONS: { name: string; sql: string }[] = [
     {
         name: 'add_churches_is_active',
         sql: `ALTER TABLE public.churches ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`,
+    },
+    {
+        name: 'add_profiles_is_active',
+        sql: `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`,
+    },
+    {
+        name: 'update_profiles_rls_admin',
+        sql: `
+            DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+            CREATE POLICY "Users can view their own profile" ON public.profiles 
+            FOR SELECT USING (id = auth.uid() OR church_id = public.get_my_church_id() OR (SELECT public.get_my_church_id()) IS NULL);
+        `
     }
 ];
 

@@ -324,7 +324,7 @@ function App() {
     return <PaymentWall churchId={church.id} churchName={church.name} subStatus={subStatus} onPaymentSuccess={() => fetchProfile(session.user.id)} />;
   }
 
-  if (church?.is_active === false) {
+  if (church?.is_active === false || profile?.is_active === false) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'hsl(var(--bg-main))' }}>
         <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', maxWidth: '400px', border: '1px solid hsla(var(--error)/0.2)' }}>

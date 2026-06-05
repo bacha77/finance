@@ -173,12 +173,14 @@ const EditPlanModal: React.FC<{
 // ── Main Admin Panel ───────────────────────────────────────────────────────
 const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
     const [churches, setChurches] = useState<any[]>([]);
+    const [profiles, setProfiles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
     const [search, setSearch] = useState('');
     const [editingChurch, setEditingChurch] = useState<any | null>(null);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [filterPlan, setFilterPlan] = useState<string>('all');
+    const [activeTab, setActiveTab] = useState<'churches' | 'users'>('churches');
 
     const fetchAll = useCallback(async () => {
         setSyncing(true);
@@ -201,6 +203,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                 );
                 setChurches(enriched);
             }
+
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*, churches(name)')
+                .order('created_at', { ascending: false });
+            
+            if (profileData) {
+                setProfiles(profileData);
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -222,6 +233,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
     const handleToggleActive = async (churchId: string, currentStatus: boolean) => {
         if (!confirm(`Are you sure you want to ${currentStatus ? 'disable' : 'reactivate'} this account?`)) return;
         await supabase.from('churches').update({ is_active: !currentStatus }).eq('id', churchId);
+        await fetchAll();
+    };
+
+    const handleToggleUserActive = async (userId: string, currentStatus: boolean) => {
+        if (!confirm(`Are you sure you want to ${currentStatus ? 'disable' : 'reactivate'} this user?`)) return;
+        await supabase.from('profiles').update({ is_active: !currentStatus }).eq('id', userId);
         await fetchAll();
     };
 
@@ -331,15 +348,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
 
             <div style={{ padding: '2rem 2.5rem', maxWidth: '1400px', margin: '0 auto' }}>
 
-                {/* Page Title */}
-                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: '2rem' }}>
-                    <h1 style={{ fontSize: '1.75rem', fontWeight: 900, letterSpacing: '-0.04em', marginBottom: '0.25rem' }}>
-                        Admin Dashboard
-                    </h1>
-                    <p style={{ color: '#475569', fontSize: '0.82rem' }}>
-                        All registered churches · Real-time subscription management
-                    </p>
-                </motion.div>
+                {/* Page Title & Tabs */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem' }}>
+                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+                        <h1 style={{ fontSize: '1.75rem', fontWeight: 900, letterSpacing: '-0.04em', marginBottom: '0.25rem' }}>
+                            Admin Dashboard
+                        </h1>
+                        <p style={{ color: '#475569', fontSize: '0.82rem' }}>
+                            All registered churches & users · Real-time management
+                        </p>
+                    </motion.div>
+                    
+                    <div style={{ display: 'flex', background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', overflow: 'hidden', padding: '4px' }}>
+                        <button onClick={() => setActiveTab('churches')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'churches' ? '#2563eb' : 'transparent', color: activeTab === 'churches' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Churches</button>
+                        <button onClick={() => setActiveTab('users')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'users' ? '#2563eb' : 'transparent', color: activeTab === 'users' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Users</button>
+                    </div>
+                </div>
 
                 {/* Stats Row */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
@@ -376,11 +400,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                         ))}
                     </div>
                     <div style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#334155' }}>
-                        {filtered.length} of {churches.length} churches
+                        {activeTab === 'churches' ? `${filtered.length} of ${churches.length} churches` : `${profiles.filter(p => p.full_name?.toLowerCase().includes(search.toLowerCase()) || p.email?.toLowerCase().includes(search.toLowerCase())).length} of ${profiles.length} users`}
                     </div>
                 </div>
 
                 {/* Church Table */}
+                {activeTab === 'churches' && (
                 <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' }}>
                     {/* Table Header */}
                     <div style={{
@@ -570,6 +595,52 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                         })
                     )}
                 </div>
+                )}
+
+                {/* Users Table */}
+                {activeTab === 'users' && (
+                    <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 120px', padding: '0.75rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
+                            {['User', 'Church', 'Role', 'Joined', 'Actions'].map(h => (
+                                <div key={h} style={{ fontSize: '0.65rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</div>
+                            ))}
+                        </div>
+                        {loading ? (
+                            <div style={{ padding: '4rem', textAlign: 'center', color: '#334155' }}>
+                                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ display: 'inline-block' }}>
+                                    <Loader2 size={20} />
+                                </motion.div>
+                            </div>
+                        ) : profiles.filter(p => p.full_name?.toLowerCase().includes(search.toLowerCase()) || p.email?.toLowerCase().includes(search.toLowerCase())).length === 0 ? (
+                            <div style={{ padding: '4rem', textAlign: 'center', color: '#334155', fontSize: '0.85rem' }}>
+                                No users match your search.
+                            </div>
+                        ) : profiles.filter(p => p.full_name?.toLowerCase().includes(search.toLowerCase()) || p.email?.toLowerCase().includes(search.toLowerCase())).map((profile, i) => (
+                            <motion.div key={profile.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 120px', padding: '1rem 1.5rem', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontWeight: 800, color: 'white', fontSize: '0.88rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        {profile.full_name || '—'}
+                                        {profile.is_active === false && <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: '#ef444420', color: '#ef4444', borderRadius: '4px', textTransform: 'uppercase' }}>Disabled</span>}
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: '#60a5fa', marginTop: '2px' }}>{profile.email}</div>
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{profile.churches?.name || 'No Church'}</div>
+                                <div>
+                                    <span style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '100px', background: 'rgba(255,255,255,0.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)' }}>{profile.role || 'user'}</span>
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{profile.created_at ? new Date(profile.created_at).toLocaleDateString() : '—'}</div>
+                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                    <button onClick={() => handleToggleUserActive(profile.id, profile.is_active !== false)} style={{ background: profile.is_active !== false ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', border: `1px solid ${profile.is_active !== false ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}`, borderRadius: '7px', padding: '5px', cursor: 'pointer', color: profile.is_active !== false ? '#f59e0b' : '#10b981', display: 'flex' }} title={profile.is_active !== false ? "Disable User" : "Reactivate User"}>
+                                        {profile.is_active !== false ? <Ban size={13} /> : <CheckCircle2 size={13} />}
+                                    </button>
+                                    <button onClick={() => handleResetPassword(profile.email)} style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)', borderRadius: '7px', padding: '5px', cursor: 'pointer', color: '#a855f7', display: 'flex' }} title="Send Password Reset">
+                                        <Key size={13} />
+                                    </button>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                )}
 
                 {/* Footer */}
                 <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.7rem', color: '#1e293b' }}>
