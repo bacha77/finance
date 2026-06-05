@@ -3,7 +3,7 @@ import {
     Building2, Users, DollarSign, LogOut, RefreshCw,
     Crown, AlertTriangle, CheckCircle2,
     Search, Edit3, Save, X,
-    Eye, Loader2
+    Eye, Loader2, Ban, Key
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -219,6 +219,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
         await fetchAll();
     };
 
+    const handleToggleActive = async (churchId: string, currentStatus: boolean) => {
+        if (!confirm(`Are you sure you want to ${currentStatus ? 'disable' : 'reactivate'} this account?`)) return;
+        await supabase.from('churches').update({ is_active: !currentStatus }).eq('id', churchId);
+        await fetchAll();
+    };
+
+    const handleResetPassword = async (email: string) => {
+        if (!email) {
+            alert('No email address on file for this account.');
+            return;
+        }
+        if (!confirm(`Send password reset email to ${email}?`)) return;
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin
+        });
+        if (error) {
+            alert(`Error sending reset link: ${error.message}`);
+        } else {
+            alert(`Password reset link sent to ${email}`);
+        }
+    };
+
     const totalRevenue = churches
         .filter(c => c.plan !== 'trial')
         .reduce((sum, c) => {
@@ -407,7 +429,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                                     }}>
                                         {/* Church name */}
                                         <div>
-                                            <div style={{ fontWeight: 800, color: 'white', fontSize: '0.88rem' }}>{church.name || '—'}</div>
+                                            <div style={{ fontWeight: 800, color: 'white', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                {church.name || '—'}
+                                                {church.is_active === false && (
+                                                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: '#ef444420', color: '#ef4444', borderRadius: '4px', textTransform: 'uppercase' }}>Disabled</span>
+                                                )}
+                                            </div>
                                             <div style={{ fontSize: '0.7rem', color: '#334155', marginTop: '2px' }}>
                                                 {church.contact_email || church.admin_email || 'No email'} · ID: {church.id?.slice(0, 8)}...
                                             </div>
@@ -479,6 +506,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                                                 title="Edit plan / expiry"
                                             >
                                                 <Edit3 size={13} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleToggleActive(church.id, church.is_active !== false)}
+                                                style={{
+                                                    background: church.is_active !== false ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)',
+                                                    border: `1px solid ${church.is_active !== false ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}`,
+                                                    borderRadius: '7px', padding: '5px', cursor: 'pointer',
+                                                    color: church.is_active !== false ? '#f59e0b' : '#10b981',
+                                                    display: 'flex', alignItems: 'center',
+                                                }}
+                                                title={church.is_active !== false ? "Disable Account" : "Reactivate Account"}
+                                            >
+                                                {church.is_active !== false ? <Ban size={13} /> : <CheckCircle2 size={13} />}
+                                            </button>
+                                            <button
+                                                onClick={() => handleResetPassword(church.contact_email || church.admin_email)}
+                                                style={{
+                                                    background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)',
+                                                    borderRadius: '7px', padding: '5px', cursor: 'pointer', color: '#a855f7',
+                                                    display: 'flex', alignItems: 'center',
+                                                }}
+                                                title="Send Password Reset"
+                                            >
+                                                <Key size={13} />
                                             </button>
                                         </div>
                                     </div>

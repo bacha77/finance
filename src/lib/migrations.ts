@@ -301,6 +301,10 @@ const MIGRATIONS: { name: string; sql: string }[] = [
             END;
             $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
+    },
+    {
+        name: 'add_churches_is_active',
+        sql: `ALTER TABLE public.churches ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`,
     }
 ];
 

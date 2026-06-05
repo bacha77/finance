@@ -324,6 +324,25 @@ function App() {
     return <PaymentWall churchId={church.id} churchName={church.name} subStatus={subStatus} onPaymentSuccess={() => fetchProfile(session.user.id)} />;
   }
 
+  if (church?.is_active === false) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'hsl(var(--bg-main))' }}>
+        <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', maxWidth: '400px', border: '1px solid hsla(var(--error)/0.2)' }}>
+          <Shield size={48} color="hsl(var(--error))" style={{ margin: '0 auto 1.5rem' }} />
+          <h2 style={{ color: 'white', marginBottom: '0.75rem', fontSize: '1.5rem', fontWeight: 800 }}>Account Disabled</h2>
+          <p style={{ color: 'hsl(var(--text-muted))', marginBottom: '2rem', fontSize: '0.9rem', lineHeight: 1.6 }}>Your account has been deactivated by the administrator. Please contact support to reactivate your account.</p>
+          <button 
+            onClick={async () => { await supabase.auth.signOut(); setSession(null); setProfile(null); }} 
+            className="btn btn-primary"
+            style={{ width: '100%', padding: '0.85rem' }}
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'hsl(var(--bg-main))', color: 'hsl(var(--text-main))', overflow: 'hidden' }}>
 
