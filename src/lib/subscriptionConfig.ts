@@ -71,13 +71,19 @@ export function getSubscriptionStatus(church: ChurchRecord): SubscriptionStatus 
 
   // ── FREE TRIAL ─────────────────────────────────────────────────────────
   const created = new Date(church.created_at);
-  const msElapsed = now.getTime() - created.getTime();
-  const daysElapsed = Math.floor(msElapsed / (1000 * 60 * 60 * 24));
-  const daysRemaining = Math.max(0, TRIAL_CONFIG.TRIAL_DAYS - daysElapsed);
-  const isExpired = daysRemaining === 0;
-  const isWarning = !isExpired && daysRemaining <= 7;
+  let trialEndDate = new Date(created.getTime() + TRIAL_CONFIG.TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  
+  // If admin manually extended the trial via subscription_end_date
+  if (church.subscription_end_date) {
+    const overrideDate = new Date(church.subscription_end_date);
+    if (overrideDate > trialEndDate) {
+      trialEndDate = overrideDate;
+    }
+  }
 
-  const trialEndDate = new Date(created.getTime() + TRIAL_CONFIG.TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  const daysRemaining = Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  const isExpired = now > trialEndDate;
+  const isWarning = !isExpired && daysRemaining <= 7;
 
   return {
     accessStatus: isExpired ? 'trial_expired' : isWarning ? 'trial_warning' : 'active_trial',
