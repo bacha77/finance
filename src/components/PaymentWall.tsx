@@ -176,7 +176,7 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{ width: '100%', maxWidth: '900px', position: 'relative', zIndex: 1 }}
+          style={{ width: '100%', maxWidth: '900px', position: 'relative', zIndex: 1, margin: '0 auto' }}
         >
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
@@ -378,11 +378,9 @@ const wallStyle: React.CSSProperties = {
   inset: 0,
   zIndex: 9999,
   background: 'var(--bg-dark)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '2rem',
+  padding: '4rem 1.5rem',
   overflowY: 'auto',
+  display: 'block', // Changed from flex/center to block to prevent cutoff on small screens
 };
 
 export default PaymentWall;
