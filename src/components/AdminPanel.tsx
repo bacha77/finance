@@ -273,8 +273,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
     }).length;
 
     const filtered = churches.filter(c => {
+        const churchEmail = profiles.find(p => p.id === c.owner_id)?.email || c.treasurer_email;
         const matchSearch = c.name?.toLowerCase().includes(search.toLowerCase()) ||
-            c.contact_email?.toLowerCase().includes(search.toLowerCase());
+            churchEmail?.toLowerCase().includes(search.toLowerCase());
         const matchPlan = filterPlan === 'all' || c.plan === filterPlan;
         return matchSearch && matchPlan;
     });
@@ -461,7 +462,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                                                 )}
                                             </div>
                                             <div style={{ fontSize: '0.7rem', color: '#334155', marginTop: '2px' }}>
-                                                {church.contact_email || church.admin_email || 'No email'} · ID: {church.id?.slice(0, 8)}...
+                                                {profiles.find(p => p.id === church.owner_id)?.email || church.treasurer_email || 'No email'} · ID: {church.id?.slice(0, 8)}...
                                             </div>
                                         </div>
 
@@ -546,7 +547,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                                                 {church.is_active !== false ? <Ban size={13} /> : <CheckCircle2 size={13} />}
                                             </button>
                                             <button
-                                                onClick={() => handleResetPassword(church.contact_email || church.admin_email)}
+                                                onClick={() => handleResetPassword(profiles.find(p => p.id === church.owner_id)?.email || church.treasurer_email)}
                                                 style={{
                                                     background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)',
                                                     borderRadius: '7px', padding: '5px', cursor: 'pointer', color: '#a855f7',
