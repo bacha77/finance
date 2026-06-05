@@ -170,6 +170,126 @@ const EditPlanModal: React.FC<{
     );
 };
 
+// ── Manual Payment Modal ───────────────────────────────────────────────────
+const PaymentModal: React.FC<{
+    church: any;
+    onClose: () => void;
+    onSave: (churchId: string, amount: number, method: string, notes: string) => Promise<void>;
+}> = ({ church, onClose, onSave }) => {
+    const [amount, setAmount] = useState('99.99');
+    const [method, setMethod] = useState('Check');
+    const [notes, setNotes] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+        if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+            alert('Please enter a valid amount');
+            return;
+        }
+        setSaving(true);
+        await onSave(church.id, parseFloat(amount), method, notes);
+        setSaving(false);
+        onClose();
+    };
+
+    return (
+        <div style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+        }} onClick={onClose}>
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                onClick={e => e.stopPropagation()}
+                style={{
+                    background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '24px', padding: '2rem', width: '100%', maxWidth: '420px',
+                    maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
+                }}
+            >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white' }}>Log Manual Payment</div>
+                        <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: '2px' }}>{church.name}</div>
+                    </div>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569' }}>
+                        <X size={18} />
+                    </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>
+                            Amount ($)
+                        </label>
+                        <input
+                            type="number" step="0.01" min="0" value={amount}
+                            onChange={e => setAmount(e.target.value)}
+                            style={{
+                                width: '100%', padding: '0.75rem', borderRadius: '10px',
+                                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                                color: 'white', fontFamily: 'inherit', fontSize: '1rem', fontWeight: 700
+                            }}
+                        />
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>
+                            Payment Method
+                        </label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                            {['Check', 'Cash', 'Wire', 'Zelle'].map(m => (
+                                <button key={m} onClick={() => setMethod(m)} style={{
+                                    padding: '0.65rem', borderRadius: '10px', cursor: 'pointer',
+                                    border: method === m ? `2px solid #10b981` : '1px solid rgba(255,255,255,0.07)',
+                                    background: method === m ? `#10b98118` : 'rgba(255,255,255,0.03)',
+                                    color: method === m ? '#10b981' : '#64748b',
+                                    fontWeight: 700, fontSize: '0.78rem', fontFamily: 'inherit',
+                                }}>{m}</button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>
+                            Notes / Reference (Optional)
+                        </label>
+                        <input
+                            type="text" value={notes} placeholder="Check #1234..."
+                            onChange={e => setNotes(e.target.value)}
+                            style={{
+                                width: '100%', padding: '0.75rem', borderRadius: '10px',
+                                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                                color: 'white', fontFamily: 'inherit', fontSize: '0.875rem'
+                            }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                        <button onClick={onClose} style={{
+                            flex: 1, padding: '0.75rem', borderRadius: '10px', cursor: 'pointer',
+                            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                            color: '#94a3b8', fontWeight: 700, fontFamily: 'inherit', fontSize: '0.875rem',
+                        }}>Cancel</button>
+                        <button onClick={handleSave} disabled={saving} style={{
+                            flex: 1, padding: '0.75rem', borderRadius: '10px', cursor: 'pointer',
+                            background: '#10b981', border: 'none',
+                            color: 'white', fontWeight: 700, fontFamily: 'inherit', fontSize: '0.875rem',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                            opacity: saving ? 0.7 : 1,
+                        }}>
+                            {saving ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <DollarSign size={16} />}
+                            {saving ? 'Saving...' : 'Log Payment'}
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
 // ── Main Admin Panel ───────────────────────────────────────────────────────
 const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
     const [churches, setChurches] = useState<any[]>([]);
@@ -180,7 +300,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
     const [editingChurch, setEditingChurch] = useState<any | null>(null);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [filterPlan, setFilterPlan] = useState<string>('all');
-    const [activeTab, setActiveTab] = useState<'churches' | 'users'>('churches');
+    const [activeTab, setActiveTab] = useState<'churches' | 'users' | 'admins'>('churches');
+    const [admins, setAdmins] = useState<string[]>([]);
+    const [payments, setPayments] = useState<any[]>([]);
+    const [recordingPayment, setRecordingPayment] = useState<any | null>(null);
 
     const fetchAll = useCallback(async () => {
         setSyncing(true);
@@ -212,6 +335,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
             if (profileData) {
                 setProfiles(profileData);
             }
+
+            const { data: adminData } = await supabase.from('admins').select('user_id');
+            if (adminData) {
+                setAdmins(adminData.map(a => a.user_id));
+            }
+
+            const { data: payData } = await supabase.from('admin_payments').select('*').order('created_at', { ascending: false });
+            if (payData) {
+                setPayments(payData);
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -230,6 +363,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
         await fetchAll();
     };
 
+    const handleSavePayment = async (churchId: string, amount: number, method: string, notes: string) => {
+        // Log the payment
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from('admin_payments').insert({
+            church_id: churchId,
+            amount,
+            payment_method: method,
+            notes,
+            created_by: user?.id,
+        });
+
+        // Automatically extend subscription end date by 1 month or year (default to 1 month for simplicity here, or just let them edit plan)
+        // Actually, we can just fetch the current church and extend it
+        const church = churches.find(c => c.id === churchId);
+        if (church) {
+            const currentEnd = church.subscription_end_date ? new Date(church.subscription_end_date) : new Date();
+            const newEnd = new Date(Math.max(currentEnd.getTime(), Date.now()));
+            // If they paid roughly 1 year (e.g. > $900), add a year. Else add a month.
+            if (amount >= 900) {
+                newEnd.setFullYear(newEnd.getFullYear() + 1);
+            } else {
+                newEnd.setMonth(newEnd.getMonth() + 1);
+            }
+            
+            await supabase.from('churches').update({
+                subscription_end_date: newEnd.toISOString(),
+                // If they were on trial, maybe bump them to starter? Let's leave plan as is.
+            }).eq('id', churchId);
+        }
+
+        await fetchAll();
+    };
+
     const handleToggleActive = async (churchId: string, currentStatus: boolean) => {
         if (!confirm(`Are you sure you want to ${currentStatus ? 'disable' : 'reactivate'} this account?`)) return;
         await supabase.from('churches').update({ is_active: !currentStatus }).eq('id', churchId);
@@ -239,6 +405,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
     const handleToggleUserActive = async (userId: string, currentStatus: boolean) => {
         if (!confirm(`Are you sure you want to ${currentStatus ? 'disable' : 'reactivate'} this user?`)) return;
         await supabase.from('profiles').update({ is_active: !currentStatus }).eq('id', userId);
+        await fetchAll();
+    };
+
+    const handleToggleAdmin = async (userId: string, isCurrentlyAdmin: boolean) => {
+        if (!confirm(`Are you sure you want to ${isCurrentlyAdmin ? 'revoke' : 'grant'} Super Admin access for this user?`)) return;
+        if (isCurrentlyAdmin) {
+            await supabase.from('admins').delete().eq('user_id', userId);
+        } else {
+            await supabase.from('admins').insert({ user_id: userId });
+        }
         await fetchAll();
     };
 
@@ -363,6 +539,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                     <div style={{ display: 'flex', background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', overflow: 'hidden', padding: '4px' }}>
                         <button onClick={() => setActiveTab('churches')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'churches' ? '#2563eb' : 'transparent', color: activeTab === 'churches' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Churches</button>
                         <button onClick={() => setActiveTab('users')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'users' ? '#2563eb' : 'transparent', color: activeTab === 'users' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Users</button>
+                        <button onClick={() => setActiveTab('admins')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'admins' ? '#2563eb' : 'transparent', color: activeTab === 'admins' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Admins</button>
                     </div>
                 </div>
 
@@ -534,6 +711,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                                                 <Edit3 size={13} />
                                             </button>
                                             <button
+                                                onClick={() => setRecordingPayment(church)}
+                                                style={{
+                                                    background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)',
+                                                    borderRadius: '7px', padding: '5px', cursor: 'pointer', color: '#10b981',
+                                                    display: 'flex', alignItems: 'center',
+                                                }}
+                                                title="Log Manual Payment"
+                                            >
+                                                <DollarSign size={13} />
+                                            </button>
+                                            <button
                                                 onClick={() => handleToggleActive(church.id, church.is_active !== false)}
                                                 style={{
                                                     background: church.is_active !== false ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)',
@@ -588,6 +776,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                                                         </div>
                                                     ))}
                                                 </div>
+                                                
+                                                {payments.filter(p => p.church_id === church.id).length > 0 && (
+                                                    <div style={{ padding: '0 1.5rem 1.5rem' }}>
+                                                        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.75rem' }}>Manual Payment History</div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                            {payments.filter(p => p.church_id === church.id).map(pay => (
+                                                                <div key={pay.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                                        <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#10b981' }}>+${pay.amount}</span>
+                                                                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '100px' }}>{pay.payment_method}</span>
+                                                                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{pay.notes || 'No notes'}</span>
+                                                                    </div>
+                                                                    <div style={{ fontSize: '0.7rem', color: '#475569' }}>
+                                                                        {new Date(pay.created_at).toLocaleDateString()}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
@@ -643,6 +851,49 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                     </div>
                 )}
 
+                {/* Admins Table */}
+                {activeTab === 'admins' && (
+                    <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 120px', padding: '0.75rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
+                            {['User', 'Church', 'Joined', 'Actions'].map(h => (
+                                <div key={h} style={{ fontSize: '0.65rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</div>
+                            ))}
+                        </div>
+                        {loading ? (
+                            <div style={{ padding: '4rem', textAlign: 'center', color: '#334155' }}>
+                                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ display: 'inline-block' }}>
+                                    <Loader2 size={20} />
+                                </motion.div>
+                            </div>
+                        ) : profiles.filter(p => p.full_name?.toLowerCase().includes(search.toLowerCase()) || p.email?.toLowerCase().includes(search.toLowerCase())).length === 0 ? (
+                            <div style={{ padding: '4rem', textAlign: 'center', color: '#334155', fontSize: '0.85rem' }}>
+                                No users match your search.
+                            </div>
+                        ) : profiles.filter(p => p.full_name?.toLowerCase().includes(search.toLowerCase()) || p.email?.toLowerCase().includes(search.toLowerCase())).map((profile, i) => {
+                            const isCurrentlyAdmin = admins.includes(profile.id);
+                            
+                            return (
+                                <motion.div key={profile.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 120px', padding: '1rem 1.5rem', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ fontWeight: 800, color: 'white', fontSize: '0.88rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            {profile.full_name || '—'}
+                                            {isCurrentlyAdmin && <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: '#2563eb20', color: '#60a5fa', borderRadius: '4px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '3px' }}><Crown size={10} /> Super Admin</span>}
+                                        </div>
+                                        <div style={{ fontSize: '0.75rem', color: '#60a5fa', marginTop: '2px' }}>{profile.email}</div>
+                                    </div>
+                                    <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{profile.churches?.name || 'No Church'}</div>
+                                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{profile.created_at ? new Date(profile.created_at).toLocaleDateString() : '—'}</div>
+                                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                        <button onClick={() => handleToggleAdmin(profile.id, isCurrentlyAdmin)} style={{ background: isCurrentlyAdmin ? 'rgba(239,68,68,0.1)' : 'rgba(37,99,235,0.1)', border: `1px solid ${isCurrentlyAdmin ? 'rgba(239,68,68,0.2)' : 'rgba(37,99,235,0.2)'}`, borderRadius: '7px', padding: '5px 10px', cursor: 'pointer', color: isCurrentlyAdmin ? '#ef4444' : '#60a5fa', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', fontWeight: 700 }} title={isCurrentlyAdmin ? "Revoke Admin Access" : "Grant Admin Access"}>
+                                            <Crown size={13} /> {isCurrentlyAdmin ? "Revoke" : "Make Admin"}
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                )}
+
                 {/* Footer */}
                 <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.7rem', color: '#1e293b' }}>
                     Storehouse Finance Admin Portal · Access restricted to authorized administrators only
@@ -656,6 +907,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout }) => {
                         church={editingChurch}
                         onClose={() => setEditingChurch(null)}
                         onSave={handleSavePlan}
+                    />
+                )}
+                {recordingPayment && (
+                    <PaymentModal
+                        church={recordingPayment}
+                        onClose={() => setRecordingPayment(null)}
+                        onSave={handleSavePayment}
                     />
                 )}
             </AnimatePresence>
