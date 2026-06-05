@@ -8,6 +8,7 @@ import {
     ChevronLeft, Church, Phone, User, Globe, CheckCircle2,
     RefreshCw, AlertCircle, Shield, DollarSign, Github, ShieldCheck
 } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 // ── Password strength ────────────────────────────────────────────────────────
 function getStrength(pw: string): { score: number; label: string; color: string } {
@@ -202,6 +203,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
     const [googleLoading, setGoogleLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [signedUpEmail, setSignedUpEmail] = useState('');
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
     const pwStrength = getStrength(password);
 
@@ -324,6 +326,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                         treasurer_phone: treasurerPhone.trim(),
                     },
                     emailRedirectTo: window.location.href.split('#')[0].split('?')[0],
+                    captchaToken: captchaToken || undefined,
                 },
             });
             if (error) throw error;
@@ -841,6 +844,16 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                     </motion.div>
                                 )}
 
+                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}>
+                                    <Turnstile 
+                                        siteKey="0x4AAAAAADfb8NGevQBHO8E0"
+                                        onSuccess={(token) => setCaptchaToken(token)}
+                                        onError={() => setError("Failed to verify CAPTCHA. Please refresh and try again.")}
+                                        onExpire={() => setCaptchaToken(null)}
+                                        options={{ theme: 'dark' }}
+                                    />
+                                </div>
+
                                 <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.25rem' }}>
                                     <button type="button" onClick={() => { setStep(0); setError(null); }}
                                         style={{
@@ -851,7 +864,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                         }}>
                                         <ChevronLeft size={15} /> {t('back')}
                                     </button>
-                                    <button type="submit" disabled={loading}
+                                    <button type="submit" disabled={loading || !captchaToken}
                                         style={{
                                             flex: 1, padding: '0.85rem', borderRadius: '10px', border: 'none',
                                             background: loading ? '#1e3a8a' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
