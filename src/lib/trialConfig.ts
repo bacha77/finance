@@ -21,6 +21,7 @@ export interface Plan {
     badge?: string;
     color: string;
     features: string[];
+    paypalPlanId?: string;
 }
 
 export const PLANS: Plan[] = [
@@ -56,6 +57,7 @@ export const PLANS: Plan[] = [
             'Email & Chat support',
             'Monthly reports',
         ],
+        paypalPlanId: import.meta.env.VITE_PAYPAL_PLAN_STARTER || '',
     },
     {
         id: 'growth',
@@ -75,6 +77,7 @@ export const PLANS: Plan[] = [
             'Custom departments',
             'Bulk statements',
         ],
+        paypalPlanId: import.meta.env.VITE_PAYPAL_PLAN_GROWTH || '',
     },
     {
         id: 'enterprise',
@@ -93,6 +96,7 @@ export const PLANS: Plan[] = [
             'On-site training',
             'SLA guarantee',
         ],
+        paypalPlanId: import.meta.env.VITE_PAYPAL_PLAN_ENTERPRISE || '',
     },
 ];
 

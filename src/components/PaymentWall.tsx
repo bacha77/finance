@@ -27,11 +27,13 @@ const PLAN_ICONS: Record<string, React.ElementType> = {
 function PayPalButtonsWrapper({
   plan,
   churchId,
+  isAutoPay,
   onSuccess,
   onError,
 }: {
   plan: typeof PAID_PLANS[0];
   churchId: string;
+  isAutoPay: boolean;
   onSuccess: () => void;
   onError: (msg: string) => void;
 }) {
@@ -89,19 +91,49 @@ function PayPalButtonsWrapper({
     );
   }
 
-  return (
+  return isAutoPay ? (
     <PayPalButtons
-      style={{
-        layout: 'vertical',
-        color: 'gold',
-        shape: 'rect',
-        label: 'pay',
-        height: 45,
+      style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'subscribe', height: 45 }}
+      createSubscription={(_data, actions) => {
+        if (!plan.paypalPlanId) {
+          const err = 'PayPal Plan ID not configured for Auto-Pay.';
+          onError(err);
+          throw new Error(err);
+        }
+        return actions.subscription.create({
+          plan_id: plan.paypalPlanId,
+        });
       }}
+      onApprove={async (data, _actions) => {
+        try {
+          const subscriptionId = data.subscriptionID;
+          const nextBilling = getNextBillingDate();
+
+          const { error } = await supabase
+            .from('churches')
+            .update({
+              plan: plan.id,
+              subscription_end_date: nextBilling,
+              paypal_order_id: `sub_${subscriptionId}`,
+            })
+            .eq('id', churchId);
+
+          if (error) throw new Error(error.message);
+          onSuccess();
+        } catch (err: any) {
+          onError(err.message || 'Payment failed. Please try again.');
+        }
+      }}
+      onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
+      forceReRender={[plan.id, isAutoPay]}
+    />
+  ) : (
+    <PayPalButtons
+      style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 45 }}
       createOrder={createOrder}
       onApprove={onApprove}
       onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
-      forceReRender={[plan.id]}
+      forceReRender={[plan.id, isAutoPay]}
     />
   );
 }
@@ -115,6 +147,7 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
 }) => {
   const { t } = useLanguage();
   const [selectedPlanId, setSelectedPlanId] = useState<string>('growth');
+  const [isAutoPay, setIsAutoPay] = useState<boolean>(true);
   const [payError, setPayError] = useState<string | null>(null);
   const [paySuccess, setPaySuccess] = useState(false);
 
@@ -160,7 +193,8 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
       options={{
         clientId: PAYPAL_CLIENT_ID,
         currency: 'USD',
-        intent: 'capture',
+        intent: isAutoPay ? 'capture' : 'capture',
+        vault: isAutoPay ? true : false,
         components: 'buttons',
         disableFunding: '',
         enableFunding: 'card',
@@ -199,6 +233,32 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
             <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '500px', margin: '0 auto' }}>
               {t('choosePlanBelow')}
             </p>
+
+            {/* Toggle AutoPay */}
+            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0.4rem', display: 'inline-flex', gap: '0.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <button
+                  onClick={() => setIsAutoPay(false)}
+                  style={{
+                    padding: '0.5rem 1.25rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', transition: 'all 0.2s',
+                    background: !isAutoPay ? '#4f46e5' : 'transparent',
+                    color: !isAutoPay ? 'white' : '#64748b'
+                  }}
+                >
+                  One-time Manual
+                </button>
+                <button
+                  onClick={() => setIsAutoPay(true)}
+                  style={{
+                    padding: '0.5rem 1.25rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', transition: 'all 0.2s',
+                    background: isAutoPay ? '#10b981' : 'transparent',
+                    color: isAutoPay ? 'white' : '#64748b'
+                  }}
+                >
+                  Auto-Pay Subscription
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Plan Cards */}
@@ -334,11 +394,12 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
               >
-                <PayPalButtonsWrapper
-                  plan={selectedPlan}
-                  churchId={churchId}
-                  onSuccess={handleSuccess}
-                  onError={setPayError}
+                <PayPalButtonsWrapper 
+                  plan={selectedPlan} 
+                  churchId={churchId} 
+                  isAutoPay={isAutoPay}
+                  onSuccess={handleSuccess} 
+                  onError={(err) => setPayError(err)} 
                 />
               </motion.div>
             </AnimatePresence>

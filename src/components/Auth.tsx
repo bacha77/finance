@@ -846,9 +846,9 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
 
                                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}>
                                     <Turnstile 
-                                        siteKey="0x4AAAAAADfb8NGevQBHO8E0"
+                                        siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || (isLocal ? "1x00000000000000000000AA" : "0x4AAAAAADfb8NGevQBHO8E0")}
                                         onSuccess={(token) => setCaptchaToken(token)}
-                                        onError={() => setError("Failed to verify CAPTCHA. Please refresh and try again.")}
+                                        onError={() => !isLocal && setError("Failed to verify CAPTCHA. Please refresh and try again.")}
                                         onExpire={() => setCaptchaToken(null)}
                                         options={{ theme: 'dark' }}
                                     />
@@ -864,7 +864,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                         }}>
                                         <ChevronLeft size={15} /> {t('back')}
                                     </button>
-                                    <button type="submit" disabled={loading || !captchaToken}
+                                    <button type="submit" disabled={loading || (!captchaToken && !isLocal)}
                                         style={{
                                             flex: 1, padding: '0.85rem', borderRadius: '10px', border: 'none',
                                             background: loading ? '#1e3a8a' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
