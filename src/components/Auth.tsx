@@ -848,7 +848,12 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                     <Turnstile 
                                         siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || (isLocal ? "1x00000000000000000000AA" : "0x4AAAAAADfb8NGevQBHO8E0")}
                                         onSuccess={(token) => setCaptchaToken(token)}
-                                        onError={() => !isLocal && setError("Failed to verify CAPTCHA. Please refresh and try again.")}
+                                        onError={(err) => {
+                                            if (!isLocal) {
+                                                const code = typeof err === 'string' ? err : JSON.stringify(err);
+                                                setError(`Failed to verify CAPTCHA (Error Code: ${code || 'unknown'}). Please verify that your sitekey is correct and that the domain '${window.location.hostname}' is allowed in your Cloudflare Turnstile dashboard.`);
+                                            }
+                                        }}
                                         onExpire={() => setCaptchaToken(null)}
                                         options={{ theme: 'dark' }}
                                     />
@@ -864,7 +869,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                         }}>
                                         <ChevronLeft size={15} /> {t('back')}
                                     </button>
-                                    <button type="submit" disabled={loading || (!captchaToken && !isLocal)}
+                                    <button type="submit" disabled={loading}
                                         style={{
                                             flex: 1, padding: '0.85rem', borderRadius: '10px', border: 'none',
                                             background: loading ? '#1e3a8a' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
