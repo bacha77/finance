@@ -8,7 +8,7 @@ import {
     ChevronLeft, Church, Phone, User, Globe, CheckCircle2,
     RefreshCw, AlertCircle, Shield, DollarSign, Github, ShieldCheck
 } from 'lucide-react';
-import { Turnstile } from '@marsidev/react-turnstile';
+
 
 // ── Password strength ────────────────────────────────────────────────────────
 function getStrength(pw: string): { score: number; label: string; color: string } {
@@ -203,7 +203,6 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
     const [googleLoading, setGoogleLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [signedUpEmail, setSignedUpEmail] = useState('');
-    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
     const pwStrength = getStrength(password);
 
@@ -326,7 +325,6 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                         treasurer_phone: treasurerPhone.trim(),
                     },
                     emailRedirectTo: window.location.href.split('#')[0].split('?')[0],
-                    captchaToken: captchaToken || undefined,
                 },
             });
             if (error) throw error;
@@ -844,20 +842,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                     </motion.div>
                                 )}
 
-                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}>
-                                    <Turnstile 
-                                        siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || (isLocal ? "1x00000000000000000000AA" : "0x4AAAAAADfb8NGevQBHO8E0")}
-                                        onSuccess={(token) => setCaptchaToken(token)}
-                                        onError={(err) => {
-                                            if (!isLocal) {
-                                                const code = typeof err === 'string' ? err : JSON.stringify(err);
-                                                setError(`Failed to verify CAPTCHA (Error Code: ${code || 'unknown'}). Please verify that your sitekey is correct and that the domain '${window.location.hostname}' is allowed in your Cloudflare Turnstile dashboard.`);
-                                            }
-                                        }}
-                                        onExpire={() => setCaptchaToken(null)}
-                                        options={{ theme: 'dark' }}
-                                    />
-                                </div>
+
 
                                 <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.25rem' }}>
                                     <button type="button" onClick={() => { setStep(0); setError(null); }}
