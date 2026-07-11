@@ -1,8 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   /* Dynamic Palette (HSL) */
@@ -319,6 +317,7 @@ tr:hover td { background: hsla(var(--p) / 0.03); color: hsl(var(--text-main)); }
 }
 
 /* ── MODALS ──────────────────────────────────────────────────────────── */
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
