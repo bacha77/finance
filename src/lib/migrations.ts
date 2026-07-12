@@ -475,7 +475,7 @@ const MIGRATIONS: { name: string; sql: string }[] = [
                     LOOP
                         -- Avoid duplicates if the schema allows it, but basic insert:
                         BEGIN
-                            INSERT INTO public.admins (user_id, role) VALUES (new.id, r);
+                            INSERT INTO public.admins (user_id, email, role) VALUES (new.id, new.email, r);
                         EXCEPTION WHEN unique_violation THEN
                             -- Do nothing if duplicate
                         END;

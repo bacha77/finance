@@ -465,10 +465,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
 
         // 2. Send Magic Link Email via Supabase Auth
         const { error: emailError } = await supabase.auth.signInWithOtp({
-            email: inviteEmail.toLowerCase().trim(),
-            options: {
-                emailRedirectTo: window.location.origin + '/admin'
-            }
+            email: inviteEmail.toLowerCase().trim()
         });
 
         if (emailError) {
