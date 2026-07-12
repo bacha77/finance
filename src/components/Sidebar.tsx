@@ -183,7 +183,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <img
               src={`${import.meta.env.BASE_URL}logo.png`}
               alt="Storehouse Finance"
-              style={{ width: '130px', height: 'auto', filter: 'brightness(0) invert(1)' }}
+              style={{ maxHeight: '42px', maxWidth: '160px', width: 'auto', height: 'auto', objectFit: 'contain' }}
             />
           )}
           {isMobile && (
