@@ -171,6 +171,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
                     treasurer_email: treasurerEmail || null,
                     treasurer_phone: treasurerPhone || null,
                     referral_source: userMetadata.referral_source || null,
+                    referred_by: new URLSearchParams(window.location.search).get('ref') || null,
                 })
                 .select()
                 .single();

@@ -24,6 +24,7 @@ import { supabase } from './lib/supabase';
 import { getSubscriptionStatus } from './lib/subscriptionConfig';
 import { runMigrations } from './lib/migrations';
 import type { SubscriptionStatus } from './lib/subscriptionConfig';
+import StaffSetup from './components/StaffSetup';
 import {
   Search, Bell, ChevronDown, CheckCircle2, Command as CmdIcon,
   User, Settings as SettingsIcon, LogOut, BellRing, LayoutDashboard, Shield, Crown
@@ -300,14 +301,6 @@ function App() {
 
   if (!session) return <Auth onBypass={handleBypass} />;
 
-  if (isAdmin && viewingAdminPanel) {
-    return <AdminPanel 
-      adminEmail={session.user.email!} 
-      onLogout={() => supabase.auth.signOut()} 
-      onSwitchToUser={() => setViewingAdminPanel(false)}
-      onImpersonate={handleImpersonate}
-    />;
-  }
 
   if (profileLoading || fetchError) {
     return (
@@ -334,6 +327,18 @@ function App() {
         </motion.div>
       </div>
     );
+  }
+
+  if (isAdmin && viewingAdminPanel) {
+    if (profile && !profile.working_hours) {
+      return <StaffSetup profile={profile} onComplete={() => fetchProfile(session.user.id)} />;
+    }
+    return <AdminPanel 
+      adminEmail={session.user.email!} 
+      onLogout={() => supabase.auth.signOut()} 
+      onSwitchToUser={() => setViewingAdminPanel(false)}
+      onImpersonate={handleImpersonate}
+    />;
   }
 
   if (!profile || !profile.churches) {

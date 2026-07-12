@@ -25,9 +25,9 @@ const PLAN_COLORS: Record<string, string> = {
 
 const PLAN_LABELS: Record<string, string> = {
     trial: 'Free Trial',
-    starter: 'Starter $99.99',
-    growth: 'Growth $149.99',
-    enterprise: 'Enterprise $300',
+    starter: 'Starter $199.99',
+    growth: 'Growth $399.99',
+    enterprise: 'Enterprise $399.99', // Keep as fallback if needed
 };
 
 const fmt = (n: number) =>
@@ -306,6 +306,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
     const [activeTab, setActiveTab] = useState<'churches' | 'users' | 'admins' | 'marketing' | 'sales' | 'support'>('churches');
     const [admins, setAdmins] = useState<{user_id: string, role: string}[]>([]);
     const [myRole, setMyRole] = useState<'super_admin' | 'marketing' | 'sales' | 'support'>('super_admin');
+    const [myUserId, setMyUserId] = useState<string | null>(null);
     const [systemInvites, setSystemInvites] = useState<{email: string, roles: string[], job_title?: string}[]>([]);
     const [payments, setPayments] = useState<any[]>([]);
     const [recordingPayment, setRecordingPayment] = useState<any | null>(null);
@@ -352,6 +353,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
             if (adminData) {
                 setAdmins(adminData);
                 const { data: { user } } = await supabase.auth.getUser();
+                if (user) setMyUserId(user.id);
                 const me = adminData.filter(a => a.user_id === user?.id).map(a => a.role);
                 if (me.length > 0) setMyRole(me as any);
             }
@@ -523,7 +525,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
     const totalRevenue = churches
         .filter(c => c.plan !== 'trial')
         .reduce((sum, c) => {
-            const prices: Record<string, number> = { starter: 99.99, growth: 149.99, enterprise: 300 };
+            const prices: Record<string, number> = { starter: 199.99, growth: 399.99, enterprise: 399.99 };
             return sum + (prices[c.plan] || 0);
         }, 0);
 
@@ -541,6 +543,51 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
         const matchPlan = filterPlan === 'all' || c.plan === filterPlan;
         return matchSearch && matchPlan;
     });
+
+    // Staff Commission Metrics
+    const myClients = churches.filter(c => c.referred_by === myUserId);
+    const myCommission = myClients.filter(c => c.plan !== 'trial').reduce((sum, c) => {
+        const prices: Record<string, number> = { starter: 199.99, growth: 399.99, enterprise: 399.99 };
+        return sum + ((prices[c.plan] || 0) * 0.2);
+    }, 0);
+    const myReferralLink = `${window.location.origin}/?ref=${myUserId}`;
+
+    const staffMetricsView = (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(59,130,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <DollarSign size={20} color="#60a5fa" />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>My Commissions (MRR)</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{fmt(myCommission)}<span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600 }}>/mo</span></div>
+                    </div>
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Based on 20% of your paying client subscriptions.</div>
+            </div>
+            <div style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Users size={20} color="#10b981" />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>My Clients</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{myClients.length} <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600 }}>signed up</span></div>
+                    </div>
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{myClients.filter(c => c.plan !== 'trial').length} paying • {myClients.filter(c => c.plan === 'trial').length} on trial</div>
+            </div>
+            <div style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>My Referral Link</div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input type="text" readOnly value={myReferralLink} style={{ flex: 1, padding: '0.5rem', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#cbd5e1', fontSize: '0.8rem' }} />
+                    <button onClick={() => navigator.clipboard.writeText(myReferralLink)} style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '8px', padding: '0 1rem', color: '#60a5fa', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>Copy</button>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Send this link to prospects so they are automatically credited to your commissions.</div>
+            </div>
+        </div>
+    );
 
     return (
         <div style={{
@@ -1129,6 +1176,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                 {/* Marketing Playbook Tab */}
                 {activeTab === 'marketing' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        {staffMetricsView}
                         <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '2rem' }}>
                             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>Marketing & Outreach Playbook</h2>
                             <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '2rem', lineHeight: '1.6' }}>
@@ -1168,6 +1216,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                 {/* Sales Tab */}
                 {activeTab === 'sales' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        {staffMetricsView}
                         <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '3rem', textAlign: 'center' }}>
                             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>Sales Dashboard</h2>
                             <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Use the Leads CRM below to track sales targets and conversions.</p>

@@ -505,6 +505,13 @@ const MIGRATIONS: { name: string; sql: string }[] = [
             CREATE POLICY "Staff can delete marketing leads" ON public.marketing_leads FOR DELETE 
             USING (EXISTS (SELECT 1 FROM public.admins WHERE user_id = auth.uid() AND role IN ('super_admin', 'marketing', 'sales')));
         `
+    },
+    {
+        name: 'staff_tracking_v1',
+        sql: `
+            ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS working_hours TEXT;
+            ALTER TABLE public.churches ADD COLUMN IF NOT EXISTS referred_by UUID REFERENCES auth.users(id);
+        `
     }
 ];
 
