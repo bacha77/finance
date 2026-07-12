@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import LeadsCRM from './LeadsCRM';
 
 interface AdminPanelProps {
     adminEmail: string;
@@ -305,12 +306,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
     const [activeTab, setActiveTab] = useState<'churches' | 'users' | 'admins' | 'marketing' | 'sales' | 'support'>('churches');
     const [admins, setAdmins] = useState<{user_id: string, role: string}[]>([]);
     const [myRole, setMyRole] = useState<'super_admin' | 'marketing' | 'sales' | 'support'>('super_admin');
-    const [systemInvites, setSystemInvites] = useState<{email: string, role: string}[]>([]);
+    const [systemInvites, setSystemInvites] = useState<{email: string, roles: string[], job_title?: string}[]>([]);
     const [payments, setPayments] = useState<any[]>([]);
     const [recordingPayment, setRecordingPayment] = useState<any | null>(null);
 
     const [inviteEmail, setInviteEmail] = useState('');
-    const [inviteRole, setInviteRole] = useState('marketing');
+    const [inviteFirstName, setInviteFirstName] = useState('');
+    const [inviteLastName, setInviteLastName] = useState('');
+    const [invitePhone, setInvitePhone] = useState('');
+    const [inviteJobTitle, setInviteJobTitle] = useState('');
+    const [inviteRoles, setInviteRoles] = useState<string[]>([]);
 
     const fetchAll = useCallback(async () => {
         setSyncing(true);
@@ -347,11 +352,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
             if (adminData) {
                 setAdmins(adminData);
                 const { data: { user } } = await supabase.auth.getUser();
-                const me = adminData.find(a => a.user_id === user?.id);
-                if (me?.role) setMyRole(me.role as any);
+                const me = adminData.filter(a => a.user_id === user?.id).map(a => a.role);
+                if (me.length > 0) setMyRole(me as any);
             }
 
-            const { data: inviteData } = await supabase.from('system_invites').select('email, role');
+            const { data: inviteData } = await supabase.from('system_invites').select('email, roles, job_title');
             if (inviteData) {
                 setSystemInvites(inviteData);
             }
@@ -434,18 +439,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
     };
 
     const handleSendInvite = async () => {
-        if (!inviteEmail) return;
+        if (!inviteEmail || inviteRoles.length === 0) {
+            alert('Please provide an email and select at least one role.');
+            return;
+        }
         const { data: { user } } = await supabase.auth.getUser();
-        const { error } = await supabase.from('system_invites').insert({
+        
+        // 1. Save detailed invite
+        const { error: insertError } = await supabase.from('system_invites').insert({
             email: inviteEmail.toLowerCase().trim(),
-            role: inviteRole,
+            first_name: inviteFirstName,
+            last_name: inviteLastName,
+            phone: invitePhone,
+            job_title: inviteJobTitle,
+            roles: inviteRoles,
             invited_by: user?.id
         });
-        if (error) {
-            alert(`Error sending invite: ${error.message}`);
+        
+        if (insertError) {
+            alert(`Error saving invite: ${insertError.message}`);
+            return;
+        }
+
+        // 2. Send Magic Link Email via Supabase Auth
+        const { error: emailError } = await supabase.auth.signInWithOtp({
+            email: inviteEmail.toLowerCase().trim(),
+            options: {
+                emailRedirectTo: window.location.origin + '/admin'
+            }
+        });
+
+        if (emailError) {
+            alert(`Invite saved, but error sending automated email: ${emailError.message}. You can still send them a manual email.`);
         } else {
-            alert(`Staff Invite saved for ${inviteEmail}. Tell them to sign up!`);
+            alert(`Success! An automated email invite has been sent to ${inviteEmail}.`);
             setInviteEmail('');
+            setInviteFirstName('');
+            setInviteLastName('');
+            setInvitePhone('');
+            setInviteJobTitle('');
+            setInviteRoles([]);
             await fetchAll();
         }
     };
@@ -591,15 +624,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                     
                     <div style={{ display: 'flex', background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', overflow: 'hidden', padding: '4px', flexWrap: 'wrap' }}>
                         <button onClick={() => setActiveTab('churches')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'churches' ? '#2563eb' : 'transparent', color: activeTab === 'churches' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Churches</button>
-                        {myRole === 'super_admin' && (
+                        {(myRole.includes('super_admin') || myRole === 'super_admin') && (
                             <>
                                 <button onClick={() => setActiveTab('users')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'users' ? '#2563eb' : 'transparent', color: activeTab === 'users' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Users</button>
                                 <button onClick={() => setActiveTab('admins')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'admins' ? '#2563eb' : 'transparent', color: activeTab === 'admins' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Staff Directory</button>
                             </>
                         )}
-                        {(myRole === 'super_admin' || myRole === 'marketing') && <button onClick={() => setActiveTab('marketing')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'marketing' ? '#2563eb' : 'transparent', color: activeTab === 'marketing' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Marketing</button>}
-                        {(myRole === 'super_admin' || myRole === 'sales') && <button onClick={() => setActiveTab('sales')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'sales' ? '#2563eb' : 'transparent', color: activeTab === 'sales' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Sales</button>}
-                        {(myRole === 'super_admin' || myRole === 'support') && <button onClick={() => setActiveTab('support')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'support' ? '#2563eb' : 'transparent', color: activeTab === 'support' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Support</button>}
+                        {(myRole.includes('super_admin') || myRole.includes('marketing') || myRole === 'super_admin') && <button onClick={() => setActiveTab('marketing')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'marketing' ? '#2563eb' : 'transparent', color: activeTab === 'marketing' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Marketing</button>}
+                        {(myRole.includes('super_admin') || myRole.includes('sales') || myRole === 'super_admin') && <button onClick={() => setActiveTab('sales')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'sales' ? '#2563eb' : 'transparent', color: activeTab === 'sales' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Sales</button>}
+                        {(myRole.includes('super_admin') || myRole.includes('support') || myRole === 'super_admin') && <button onClick={() => setActiveTab('support')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'support' ? '#2563eb' : 'transparent', color: activeTab === 'support' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Support</button>}
                     </div>
                 </div>
 
@@ -925,7 +958,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                 )}
 
                 {/* Staff Directory Table */}
-                {activeTab === 'admins' && myRole === 'super_admin' && (
+                {activeTab === 'admins' && (myRole.includes('super_admin') || myRole === 'super_admin') && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                         
                         {/* Invite Section */}
@@ -933,25 +966,67 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                             <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <Send size={16} color="#60a5fa" /> Invite Staff Member
                             </h2>
+                            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                                <input 
+                                    type="text"
+                                    placeholder="First Name"
+                                    value={inviteFirstName}
+                                    onChange={(e) => setInviteFirstName(e.target.value)}
+                                    style={{ flex: 1, minWidth: '150px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', color: 'white', fontSize: '0.85rem' }}
+                                />
+                                <input 
+                                    type="text"
+                                    placeholder="Last Name"
+                                    value={inviteLastName}
+                                    onChange={(e) => setInviteLastName(e.target.value)}
+                                    style={{ flex: 1, minWidth: '150px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', color: 'white', fontSize: '0.85rem' }}
+                                />
+                                <input 
+                                    type="tel"
+                                    placeholder="Phone Number"
+                                    value={invitePhone}
+                                    onChange={(e) => setInvitePhone(e.target.value)}
+                                    style={{ flex: 1, minWidth: '150px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', color: 'white', fontSize: '0.85rem' }}
+                                />
+                            </div>
                             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                 <input 
                                     type="email"
                                     placeholder="Employee Email Address..."
                                     value={inviteEmail}
                                     onChange={(e) => setInviteEmail(e.target.value)}
-                                    style={{ flex: 1, minWidth: '250px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', color: 'white', fontSize: '0.85rem' }}
+                                    style={{ flex: 2, minWidth: '250px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', color: 'white', fontSize: '0.85rem' }}
                                 />
-                                <select 
-                                    value={inviteRole}
-                                    onChange={(e) => setInviteRole(e.target.value)}
-                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', color: 'white', fontSize: '0.85rem', cursor: 'pointer' }}
-                                >
-                                    <option value="super_admin">Full Admin</option>
-                                    <option value="marketing">Marketing</option>
-                                    <option value="sales">Sales</option>
-                                    <option value="support">Tech Support</option>
-                                </select>
-                                <button onClick={handleSendInvite} style={{ background: '#2563eb', color: 'white', border: 'none', padding: '0.6rem 1.5rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem' }}>Send Invite</button>
+                                <input 
+                                    type="text"
+                                    placeholder="Job Title (e.g. Head of Marketing)"
+                                    value={inviteJobTitle}
+                                    onChange={(e) => setInviteJobTitle(e.target.value)}
+                                    style={{ flex: 1, minWidth: '200px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', color: 'white', fontSize: '0.85rem' }}
+                                />
+                            </div>
+                            
+                            <div style={{ marginTop: '1rem' }}>
+                                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem', fontWeight: 600 }}>Assign Roles:</div>
+                                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                    {['super_admin', 'marketing', 'sales', 'support'].map(r => (
+                                        <label key={r} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                            <input 
+                                                type="checkbox"
+                                                checked={inviteRoles.includes(r)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) setInviteRoles([...inviteRoles, r]);
+                                                    else setInviteRoles(inviteRoles.filter(role => role !== r));
+                                                }}
+                                            />
+                                            {r === 'super_admin' ? 'Full Admin' : r.charAt(0).toUpperCase() + r.slice(1)}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            <div style={{ marginTop: '1.5rem' }}>
+                                <button onClick={handleSendInvite} style={{ background: '#2563eb', color: 'white', border: 'none', padding: '0.6rem 1.5rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem' }}>Send Invite & Magic Link</button>
                             </div>
                             
                             {systemInvites.length > 0 && (
@@ -962,7 +1037,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                             <div key={inv.email} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                                     <span style={{ color: 'white', fontSize: '0.85rem', fontWeight: 600 }}>{inv.email}</span>
-                                                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', borderRadius: '4px', textTransform: 'uppercase' }}>{inv.role.replace('_', ' ')}</span>
+                                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                                        {inv.roles?.map((r: string) => (
+                                                            <span key={r} style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', borderRadius: '4px', textTransform: 'uppercase' }}>{r.replace('_', ' ')}</span>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                                 <button onClick={() => handleRevokeInvite(inv.email)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 700 }}>Revoke</button>
                                             </div>
@@ -978,7 +1057,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                 <h2 style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Current Staff Directory</h2>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 180px', padding: '0.75rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.2)' }}>
-                                {['User', 'Church', 'Joined', 'Actions'].map(h => (
+                                {['User', 'Church / Dept', 'Joined', 'Actions'].map(h => (
                                     <div key={h} style={{ fontSize: '0.65rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</div>
                                 ))}
                             </div>
@@ -992,22 +1071,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                 <div style={{ padding: '4rem', textAlign: 'center', color: '#334155', fontSize: '0.85rem' }}>
                                     No staff members found.
                                 </div>
-                            ) : profiles.filter(p => admins.find(a => a.user_id === p.id)).map((profile, i) => {
-                                const adminRecord = admins.find(a => a.user_id === profile.id)!;
+                            ) : Array.from(new Set(profiles.filter(p => admins.find(a => a.user_id === p.id)).map(p => p.id))).map((profileId, i) => {
+                                const profile = profiles.find(p => p.id === profileId)!;
+                                const userRoles = admins.filter(a => a.user_id === profile.id).map(a => a.role);
                                 
                                 return (
                                     <motion.div key={profile.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 180px', padding: '1rem 1.5rem', alignItems: 'center' }}>
                                         <div>
-                                            <div style={{ fontWeight: 800, color: 'white', fontSize: '0.88rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            <div style={{ fontWeight: 800, color: 'white', fontSize: '0.88rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                                 {profile.full_name || '—'}
-                                                <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(255,255,255,0.05)', color: '#94a3b8', borderRadius: '4px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                    {adminRecord.role === 'super_admin' && <Crown size={10} color="#60a5fa" />} 
-                                                    {adminRecord.role.replace('_', ' ')}
-                                                </span>
+                                                <div style={{ display: 'flex', gap: '4px' }}>
+                                                    {userRoles.map(r => (
+                                                        <span key={r} style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(255,255,255,0.05)', color: '#94a3b8', borderRadius: '4px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                            {r === 'super_admin' && <Crown size={10} color="#60a5fa" />} 
+                                                            {r.replace('_', ' ')}
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: '#60a5fa', marginTop: '2px' }}>{profile.email}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#60a5fa', marginTop: '2px' }}>{profile.email} {profile.phone && `• ${profile.phone}`}</div>
                                         </div>
-                                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{profile.churches?.name || 'No Church'}</div>
+                                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                                            {/* We can show Job Title here if we had it in profiles, fallback to church name */}
+                                            {profile.churches?.name || 'Storehouse HQ'}
+                                        </div>
                                         <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{profile.created_at ? new Date(profile.created_at).toLocaleDateString() : '—'}</div>
                                         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                                             <button onClick={() => handleToggleAdmin(profile.id, true)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '7px', padding: '5px 10px', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', fontWeight: 700 }} title="Revoke Admin Access">
@@ -1056,14 +1143,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                 </div>
                             </div>
                         </div>
+                        <LeadsCRM />
                     </div>
                 )}
 
                 {/* Sales Tab */}
                 {activeTab === 'sales' && (
-                    <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '3rem', textAlign: 'center' }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>Sales Dashboard</h2>
-                        <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Sales pipelines and CRM tools will be integrated here.</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '3rem', textAlign: 'center' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>Sales Dashboard</h2>
+                            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Use the Leads CRM below to track sales targets and conversions.</p>
+                        </div>
+                        <LeadsCRM />
                     </div>
                 )}
 
