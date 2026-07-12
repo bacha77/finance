@@ -302,8 +302,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
     const [editingChurch, setEditingChurch] = useState<any | null>(null);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [filterPlan, setFilterPlan] = useState<string>('all');
-    const [activeTab, setActiveTab] = useState<'churches' | 'users' | 'admins'>('churches');
-    const [admins, setAdmins] = useState<string[]>([]);
+    const [activeTab, setActiveTab] = useState<'churches' | 'users' | 'admins' | 'marketing'>('churches');
+    const [admins, setAdmins] = useState<{user_id: string, role: string}[]>([]);
+    const [myRole, setMyRole] = useState<'super_admin' | 'marketing'>('super_admin');
     const [payments, setPayments] = useState<any[]>([]);
     const [recordingPayment, setRecordingPayment] = useState<any | null>(null);
 
@@ -338,9 +339,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                 setProfiles(profileData);
             }
 
-            const { data: adminData } = await supabase.from('admins').select('user_id');
+            const { data: adminData } = await supabase.from('admins').select('user_id, role');
             if (adminData) {
-                setAdmins(adminData.map(a => a.user_id));
+                setAdmins(adminData);
+                const { data: { user } } = await supabase.auth.getUser();
+                const me = adminData.find(a => a.user_id === user?.id);
+                if (me?.role) setMyRole(me.role as 'super_admin' | 'marketing');
             }
 
             const { data: payData } = await supabase.from('admin_payments').select('*').order('created_at', { ascending: false });
@@ -410,12 +414,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
         await fetchAll();
     };
 
-    const handleToggleAdmin = async (userId: string, isCurrentlyAdmin: boolean) => {
-        if (!confirm(`Are you sure you want to ${isCurrentlyAdmin ? 'revoke' : 'grant'} Super Admin access for this user?`)) return;
+    const handleToggleAdmin = async (userId: string, isCurrentlyAdmin: boolean, role: string = 'super_admin') => {
+        if (!confirm(`Are you sure you want to ${isCurrentlyAdmin ? 'revoke' : 'grant ' + role + ' '}Admin access for this user?`)) return;
         if (isCurrentlyAdmin) {
             await supabase.from('admins').delete().eq('user_id', userId);
         } else {
-            await supabase.from('admins').insert({ user_id: userId });
+            await supabase.from('admins').insert({ user_id: userId, role });
         }
         await fetchAll();
     };
@@ -555,8 +559,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                     
                     <div style={{ display: 'flex', background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', overflow: 'hidden', padding: '4px' }}>
                         <button onClick={() => setActiveTab('churches')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'churches' ? '#2563eb' : 'transparent', color: activeTab === 'churches' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Churches</button>
-                        <button onClick={() => setActiveTab('users')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'users' ? '#2563eb' : 'transparent', color: activeTab === 'users' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Users</button>
-                        <button onClick={() => setActiveTab('admins')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'admins' ? '#2563eb' : 'transparent', color: activeTab === 'admins' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Admins</button>
+                        {myRole === 'super_admin' && (
+                            <>
+                                <button onClick={() => setActiveTab('users')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'users' ? '#2563eb' : 'transparent', color: activeTab === 'users' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Users</button>
+                                <button onClick={() => setActiveTab('admins')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'admins' ? '#2563eb' : 'transparent', color: activeTab === 'admins' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Admins</button>
+                            </>
+                        )}
+                        <button onClick={() => setActiveTab('marketing')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'marketing' ? '#2563eb' : 'transparent', color: activeTab === 'marketing' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Marketing</button>
                     </div>
                 </div>
 
@@ -837,7 +846,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                 )}
 
                 {/* Users Table */}
-                {activeTab === 'users' && (
+                {activeTab === 'users' && myRole === 'super_admin' && (
                     <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 120px', padding: '0.75rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
                             {['User', 'Church', 'Role', 'Joined', 'Actions'].map(h => (
@@ -882,9 +891,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                 )}
 
                 {/* Admins Table */}
-                {activeTab === 'admins' && (
+                {activeTab === 'admins' && myRole === 'super_admin' && (
                     <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 120px', padding: '0.75rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 180px', padding: '0.75rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
                             {['User', 'Church', 'Joined', 'Actions'].map(h => (
                                 <div key={h} style={{ fontSize: '0.65rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</div>
                             ))}
@@ -900,27 +909,81 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                 No users match your search.
                             </div>
                         ) : profiles.filter(p => p.full_name?.toLowerCase().includes(search.toLowerCase()) || p.email?.toLowerCase().includes(search.toLowerCase())).map((profile, i) => {
-                            const isCurrentlyAdmin = admins.includes(profile.id);
+                            const adminRecord = admins.find(a => a.user_id === profile.id);
+                            const isCurrentlyAdmin = !!adminRecord;
                             
                             return (
-                                <motion.div key={profile.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 120px', padding: '1rem 1.5rem', alignItems: 'center' }}>
+                                <motion.div key={profile.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 180px', padding: '1rem 1.5rem', alignItems: 'center' }}>
                                     <div>
                                         <div style={{ fontWeight: 800, color: 'white', fontSize: '0.88rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                             {profile.full_name || '—'}
-                                            {isCurrentlyAdmin && <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: '#2563eb20', color: '#60a5fa', borderRadius: '4px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '3px' }}><Crown size={10} /> Super Admin</span>}
+                                            {isCurrentlyAdmin && (
+                                                <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: adminRecord.role === 'marketing' ? '#a855f720' : '#2563eb20', color: adminRecord.role === 'marketing' ? '#c084fc' : '#60a5fa', borderRadius: '4px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                    <Crown size={10} /> {adminRecord.role === 'marketing' ? 'Marketing' : 'Super Admin'}
+                                                </span>
+                                            )}
                                         </div>
                                         <div style={{ fontSize: '0.75rem', color: '#60a5fa', marginTop: '2px' }}>{profile.email}</div>
                                     </div>
                                     <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{profile.churches?.name || 'No Church'}</div>
                                     <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{profile.created_at ? new Date(profile.created_at).toLocaleDateString() : '—'}</div>
-                                    <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                        <button onClick={() => handleToggleAdmin(profile.id, isCurrentlyAdmin)} style={{ background: isCurrentlyAdmin ? 'rgba(239,68,68,0.1)' : 'rgba(37,99,235,0.1)', border: `1px solid ${isCurrentlyAdmin ? 'rgba(239,68,68,0.2)' : 'rgba(37,99,235,0.2)'}`, borderRadius: '7px', padding: '5px 10px', cursor: 'pointer', color: isCurrentlyAdmin ? '#ef4444' : '#60a5fa', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', fontWeight: 700 }} title={isCurrentlyAdmin ? "Revoke Admin Access" : "Grant Admin Access"}>
-                                            <Crown size={13} /> {isCurrentlyAdmin ? "Revoke" : "Make Admin"}
-                                        </button>
+                                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                        {isCurrentlyAdmin ? (
+                                            <button onClick={() => handleToggleAdmin(profile.id, true)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '7px', padding: '5px 10px', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', fontWeight: 700 }} title="Revoke Admin Access">
+                                                <Crown size={13} /> Revoke Access
+                                            </button>
+                                        ) : (
+                                            <>
+                                                <button onClick={() => handleToggleAdmin(profile.id, false, 'super_admin')} style={{ background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.2)', borderRadius: '7px', padding: '5px 10px', cursor: 'pointer', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                                    + Super Admin
+                                                </button>
+                                                <button onClick={() => handleToggleAdmin(profile.id, false, 'marketing')} style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)', borderRadius: '7px', padding: '5px 10px', cursor: 'pointer', color: '#c084fc', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                                    + Marketing
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </motion.div>
                             );
                         })}
+                    </div>
+                )}
+
+                {/* Marketing Playbook Tab */}
+                {activeTab === 'marketing' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '2rem' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>Marketing & Outreach Playbook</h2>
+                            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '2rem', lineHeight: '1.6' }}>
+                                Use these proven templates to reach out to pastors, treasurers, and local church boards. Click any template to copy it to your clipboard.
+                            </p>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                                {/* Template 1 */}
+                                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e2e8f0' }}>Inner Circle Approach</h3>
+                                        <button onClick={() => navigator.clipboard.writeText("Hi [Pastor/Treasurer Name],\n\nI’m part of the [Your Local Church Name] community. I’ve noticed the challenges our finance team faces tracking funds, managing the ledger, and ensuring complete transparency.\n\nI wanted to share a platform designed specifically for churches like ours: **Storehouse Finance** (storehouse-finance.com). It provides a real-time ledger, distinct fund tracking, and built-in budget safeguards to prevent overspending.\n\nIt could significantly lighten the administrative load. Let me know if you’d like to see how it works!\n\nBest,\n[Your Name]")} style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '6px', padding: '4px 10px', fontSize: '0.7rem', color: '#60a5fa', cursor: 'pointer', fontWeight: 600 }}>Copy</button>
+                                    </div>
+                                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '1rem' }}>Best for reaching out to churches where you have a personal connection.</p>
+                                    <div style={{ background: '#0f172a', padding: '1rem', borderRadius: '8px', fontSize: '0.75rem', color: '#cbd5e1', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+                                        Hi [Pastor/Treasurer Name],<br/><br/>I’m part of the [Your Local Church Name] community... (Click copy for full text)
+                                    </div>
+                                </div>
+
+                                {/* Template 2 */}
+                                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e2e8f0' }}>Direct Email Campaign</h3>
+                                        <button onClick={() => navigator.clipboard.writeText("Subject: Modernizing [Church Name]'s Finances\n\nDear [Pastor/Leader Name],\n\nManaging church finances shouldn't require a degree in accounting or wrestling with complex spreadsheets.\n\n**Storehouse Finance** is a new, secure platform built exclusively for ministries. It replaces outdated spreadsheets with a real-time, double-entry ledger, clear fund separation, and automated compliance checks.\n\nWe offer a 30-day free trial, allowing your team to experience the platform with no risk. You can learn more and sign up at storehouse-finance.com.\n\nIn His Service,\n[Your Name/Storehouse Team]")} style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '6px', padding: '4px 10px', fontSize: '0.7rem', color: '#60a5fa', cursor: 'pointer', fontWeight: 600 }}>Copy</button>
+                                    </div>
+                                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '1rem' }}>Cold outreach to local ministries in your area.</p>
+                                    <div style={{ background: '#0f172a', padding: '1rem', borderRadius: '8px', fontSize: '0.75rem', color: '#cbd5e1', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+                                        Subject: Modernizing [Church Name]'s Finances<br/><br/>Dear [Pastor/Leader Name]... (Click copy for full text)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 

@@ -394,6 +394,10 @@ const MIGRATIONS: { name: string; sql: string }[] = [
             CREATE POLICY "Users can view their own profile" ON public.profiles 
             FOR SELECT USING (id = auth.uid() OR church_id = public.get_my_church_id() OR (SELECT public.get_my_church_id()) IS NULL);
         `
+    },
+    {
+        name: 'admin_rbac_v1',
+        sql: `ALTER TABLE public.admins ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'super_admin'`
     }
 ];
 
