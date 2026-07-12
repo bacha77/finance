@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Zap, Star, Crown, Gift, X, CreditCard, Shield, Loader } from 'lucide-react';
-import { PayPalScriptProvider, PayPalButtons, usePayPalScriptReducer } from '@paypal/react-paypal-js';
+import { PayPalScriptProvider, PayPalButtons, usePayPalScriptReducer, FUNDING } from '@paypal/react-paypal-js';
 import { supabase } from '../lib/supabase';
 import { PLANS, type Plan } from '../lib/trialConfig';
 import { PAYPAL_CLIENT_ID, getNextBillingDate } from '../lib/subscriptionConfig';
@@ -72,13 +72,40 @@ function CheckoutButtons({
     }
 
     return (
-        <PayPalButtons
-            style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 48 }}
-            createOrder={createOrder}
-            onApprove={onApprove}
-            onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
-            forceReRender={[plan.id]}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <PayPalButtons
+                fundingSource={FUNDING.CARD}
+                style={{ layout: 'vertical', color: 'black', shape: 'rect', label: 'pay', height: 48 }}
+                createOrder={createOrder}
+                onApprove={onApprove}
+                onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
+                forceReRender={[plan.id]}
+            />
+            <PayPalButtons
+                fundingSource={FUNDING.PAYPAL}
+                style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 48 }}
+                createOrder={createOrder}
+                onApprove={onApprove}
+                onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
+                forceReRender={[plan.id]}
+            />
+            <PayPalButtons
+                fundingSource={FUNDING.VENMO}
+                style={{ layout: 'vertical', color: 'blue', shape: 'rect', label: 'pay', height: 48 }}
+                createOrder={createOrder}
+                onApprove={onApprove}
+                onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
+                forceReRender={[plan.id]}
+            />
+            <PayPalButtons
+                fundingSource={FUNDING.PAYLATER}
+                style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 48 }}
+                createOrder={createOrder}
+                onApprove={onApprove}
+                onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
+                forceReRender={[plan.id]}
+            />
+        </div>
     );
 }
 
