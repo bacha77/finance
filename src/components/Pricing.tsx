@@ -24,26 +24,31 @@ interface PricingProps {
 function CheckoutButtons({
     plan,
     churchId,
+    isAnnual,
     onSuccess,
     onError,
 }: {
     plan: Plan;
     churchId: string;
+    isAnnual: boolean;
     onSuccess: () => void;
     onError: (msg: string) => void;
 }) {
     const [{ isPending }] = usePayPalScriptReducer();
+
+    const amount = isAnnual ? (plan.price! * 12 * 0.8).toFixed(2) : plan.price!.toFixed(2);
+    const description = isAnnual ? `Storehouse Finance — ${plan.name} Plan (Annual)` : `Storehouse Finance — ${plan.name} Plan (Monthly)`;
 
     const createOrder = useCallback(
         (_data: unknown, actions: any) =>
             actions.order.create({
                 intent: 'CAPTURE',
                 purchase_units: [{
-                    description: `Storehouse Finance — ${plan.name} Plan (30 days)`,
-                    amount: { currency_code: 'USD', value: plan.price!.toFixed(2) },
+                    description,
+                    amount: { currency_code: 'USD', value: amount },
                 }],
             }),
-        [plan]
+        [amount, description]
     );
 
     const onApprove = useCallback(
@@ -113,11 +118,13 @@ function CheckoutButtons({
 function CheckoutModal({
     plan,
     churchId,
+    isAnnual,
     onClose,
     onSuccess,
 }: {
     plan: Plan;
     churchId: string;
+    isAnnual: boolean;
     onClose: () => void;
     onSuccess: () => void;
 }) {
@@ -184,7 +191,7 @@ function CheckoutModal({
                                         {plan.name} Plan
                                     </div>
                                     <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                                        ${plan.price!.toFixed(2)} / month · billed every 30 days
+                                        {isAnnual ? `$${(plan.price! * 12 * 0.8).toFixed(2)} / year · billed annually` : `$${plan.price!.toFixed(2)} / month · billed every 30 days`}
                                     </div>
                                 </div>
                             </div>
@@ -242,6 +249,7 @@ function CheckoutModal({
                             <CheckoutButtons
                                 plan={plan}
                                 churchId={churchId}
+                                isAnnual={isAnnual}
                                 onSuccess={handleSuccess}
                                 onError={setError}
                             />
@@ -499,6 +507,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan = 'trial', churchId, onUp
                     <CheckoutModal
                         plan={checkoutPlan}
                         churchId={churchId}
+                        isAnnual={isAnnual}
                         onClose={() => setCheckoutPlan(null)}
                         onSuccess={handleSuccess}
                     />
