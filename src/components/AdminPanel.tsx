@@ -447,8 +447,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
         }
         const { data: { user } } = await supabase.auth.getUser();
         
-        // 1. Save detailed invite
-        const { error: insertError } = await supabase.from('system_invites').insert({
+        // 1. Save detailed invite (use upsert to prevent primary key violation if email already exists)
+        const { error: insertError } = await supabase.from('system_invites').upsert({
             email: inviteEmail.toLowerCase().trim(),
             first_name: inviteFirstName,
             last_name: inviteLastName,
