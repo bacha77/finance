@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Mail, Lock, LogIn, UserPlus, Eye, EyeOff, ChevronRight,
     ChevronLeft, Church, Phone, User, Globe, CheckCircle2,
-    RefreshCw, AlertCircle, Shield, DollarSign, Github, ShieldCheck, MapPin
+    RefreshCw, AlertCircle, Shield, DollarSign, ShieldCheck, MapPin
 } from 'lucide-react';
 
 function getStrength(pw: string): { score: number; label: string; color: string } {
@@ -443,7 +443,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                     {mode === 'login' && (
                         <motion.div key="login" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }}>
                             {/* Social Logins */}
-                            <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="grid grid-cols-1 gap-4 mb-6">
                                 <button type="button" onClick={handleGoogleSignIn} disabled={googleLoading || loading}
                                     className="flex items-center justify-center gap-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 font-bold shadow-sm transition-all hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed"
                                     style={{ padding: '14px', fontSize: '15px' }}
@@ -455,13 +455,6 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                                     </svg>
                                     Google
-                                </button>
-                                <button type="button" onClick={() => supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: window.location.origin } })}
-                                    className="flex items-center justify-center gap-2.5 rounded-xl bg-slate-800 text-white font-bold shadow-sm transition-all hover:bg-slate-700"
-                                    style={{ padding: '14px', fontSize: '15px' }}
-                                >
-                                    <Github size={16} />
-                                    GitHub
                                 </button>
                             </div>
 
@@ -585,7 +578,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
 
                             {!isInvited && (
                                 <>
-                                    <div className="grid grid-cols-2 gap-3 mb-5">
+                                    <div className="grid grid-cols-1 gap-3 mb-5">
                                         <button type="button" onClick={handleGoogleSignIn} disabled={googleLoading || loading}
                                             className="flex items-center justify-center gap-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 font-bold shadow-sm transition-all hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed"
                                             style={{ padding: '14px', fontSize: '15px' }}
@@ -597,13 +590,6 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                                                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                                             </svg>
                                             Google
-                                        </button>
-                                        <button type="button" onClick={() => supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: window.location.origin } })}
-                                            className="flex items-center justify-center gap-2.5 rounded-xl bg-slate-800 text-white font-bold shadow-sm transition-all hover:bg-slate-700"
-                                            style={{ padding: '14px', fontSize: '15px' }}
-                                        >
-                                            <Github size={16} />
-                                            GitHub
                                         </button>
                                     </div>
 
