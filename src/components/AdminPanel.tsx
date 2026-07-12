@@ -489,6 +489,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
         await fetchAll();
     };
 
+    const handleResendInvite = async (email: string) => {
+        if (!confirm(`Resend invite email to ${email}?`)) return;
+        const { error } = await supabase.auth.signInWithOtp({
+            email: email,
+            options: {
+                emailRedirectTo: window.location.origin + '/admin'
+            }
+        });
+        if (error) {
+            alert(`Error sending email: ${error.message}`);
+        } else {
+            alert(`A new magic link has been sent to ${email}.`);
+        }
+    };
+
     const handleResetPassword = async (email: string) => {
         if (!email) {
             alert('No email address on file for this account.');
@@ -1043,7 +1058,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                                         ))}
                                                     </div>
                                                 </div>
-                                                <button onClick={() => handleRevokeInvite(inv.email)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 700 }}>Revoke</button>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button onClick={() => handleResendInvite(inv.email)} style={{ background: 'transparent', border: 'none', color: '#60a5fa', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 700 }}>Resend</button>
+                                                    <button onClick={() => handleRevokeInvite(inv.email)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 700 }}>Revoke</button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

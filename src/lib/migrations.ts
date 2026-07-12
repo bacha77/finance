@@ -5,8 +5,7 @@
  * All statements use IF NOT EXISTS, so they are safe to run repeatedly.
  */
 import { supabase } from './supabase';
-
-const MIGRATION_KEY = 'sf_migrations_v9';
+const MIGRATION_KEY = 'sf_migrations_v10';
 
 const MIGRATIONS: { name: string; sql: string }[] = [
     {
