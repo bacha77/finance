@@ -398,6 +398,58 @@ const MIGRATIONS: { name: string; sql: string }[] = [
     {
         name: 'admin_rbac_v1',
         sql: `ALTER TABLE public.admins ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'super_admin'`
+    },
+    {
+        name: 'staff_invites_v1',
+        sql: `
+            CREATE TABLE IF NOT EXISTS public.system_invites (
+                email TEXT PRIMARY KEY,
+                role TEXT NOT NULL,
+                invited_by UUID REFERENCES auth.users(id),
+                created_at TIMESTAMPTZ DEFAULT now()
+            );
+
+            ALTER TABLE public.system_invites ENABLE ROW LEVEL SECURITY;
+
+            -- Update handle_new_user to also handle system_invites
+            CREATE OR REPLACE FUNCTION public.handle_new_user()
+            RETURNS TRIGGER AS $$
+            DECLARE
+                target_church_id UUID;
+                target_role TEXT;
+                sys_role TEXT;
+            BEGIN
+                -- Check if this email was invited to a specific church
+                SELECT church_id, role INTO target_church_id, target_role 
+                FROM public.invites 
+                WHERE email = new.email 
+                LIMIT 1;
+
+                INSERT INTO public.profiles (id, email, full_name, church_id, role)
+                VALUES (
+                    new.id, 
+                    new.email, 
+                    new.raw_user_meta_data->>'full_name', 
+                    target_church_id, 
+                    COALESCE(target_role, 'admin')
+                );
+                
+                -- Cleanup used church invites
+                IF target_church_id IS NOT NULL THEN
+                    DELETE FROM public.invites WHERE email = new.email AND church_id = target_church_id;
+                END IF;
+
+                -- Check system invites for admin roles
+                SELECT role INTO sys_role FROM public.system_invites WHERE email = new.email LIMIT 1;
+                IF sys_role IS NOT NULL THEN
+                    INSERT INTO public.admins (user_id, role) VALUES (new.id, sys_role);
+                    DELETE FROM public.system_invites WHERE email = new.email;
+                END IF;
+
+                RETURN new;
+            END;
+            $$ LANGUAGE plpgsql SECURITY DEFINER;
+        `
     }
 ];
 
