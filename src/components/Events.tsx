@@ -45,15 +45,15 @@ export default function Events({ churchId, userRole, userName, userEmail }: { ch
         if (isAdmin) fetchTickets();
     }, [churchId, isAdmin]);
 
-    const fetchEvents = async () => {
+    async function fetchEvents() {
         const { data } = await supabase.from('events').select('*').eq('church_id', churchId).order('date', { ascending: true });
         if (data) setEvents(data);
-    };
+    }
 
-    const fetchTickets = async () => {
+    async function fetchTickets() {
         const { data } = await supabase.from('tickets').select('*').eq('church_id', churchId);
         if (data) setTickets(data);
-    };
+    }
 
     const handleCreateEvent = async (e: React.FormEvent) => {
         e.preventDefault();

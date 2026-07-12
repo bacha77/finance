@@ -24,10 +24,10 @@ export default function Reimbursements({ churchId, userRole, userName }: { churc
         fetchReimbursements();
     }, [churchId]);
 
-    const fetchReimbursements = async () => {
+    async function fetchReimbursements() {
         const { data } = await supabase.from('reimbursements').select('*').eq('church_id', churchId).order('created_at', { ascending: false });
         if (data) setReimbursements(data);
-    };
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
