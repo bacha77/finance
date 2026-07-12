@@ -456,7 +456,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
             job_title: inviteJobTitle,
             roles: inviteRoles,
             invited_by: user?.id
-        });
+        }, { onConflict: 'email' });
         
         if (insertError) {
             alert(`Error saving invite: ${insertError.message}`);
