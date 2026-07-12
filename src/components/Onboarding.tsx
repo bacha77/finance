@@ -13,6 +13,7 @@ interface OnboardingProps {
     userId: string;
     userEmail: string;
     initialName?: string;
+    userMetadata?: any;
     onComplete: () => void;
     onLogout: () => void;
 }
@@ -67,23 +68,23 @@ const OnboardingInput = ({ label, value, onChange, placeholder, type = "text", i
 // MAIN COMPONENT
 // ──────────────────────────────────────────────────────────────────────────
 
-const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName = '', onComplete, onLogout }) => {
+const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName = '', userMetadata = {}, onComplete, onLogout }) => {
     const [step, setStep] = useState(1);
     
-    // Form State
-    const [churchName, setChurchName] = useState('');
-    const [churchAddress, setChurchAddress] = useState('');
+    // Form State (Pre-filled from Auth metadata if available)
+    const [churchName, setChurchName] = useState(userMetadata.church_name || '');
+    const [churchAddress, setChurchAddress] = useState(userMetadata.address || '');
     const [churchCity, setChurchCity] = useState('');
     const [churchState, setChurchState] = useState('');
     const [churchZip, setChurchZip] = useState('');
-    const [churchCountry, setChurchCountry] = useState('United States');
-    const [denomination, setDenomination] = useState('');
+    const [churchCountry, setChurchCountry] = useState(userMetadata.country || 'United States');
+    const [denomination, setDenomination] = useState(userMetadata.denomination || '');
     const [churchSize, setChurchSize] = useState('');
-    const [adminName, setAdminName] = useState(initialName);
-    const [adminPhone, setAdminPhone] = useState('');
-    const [treasurerName, setTreasurerName] = useState('');
-    const [treasurerEmail, setTreasurerEmail] = useState('');
-    const [treasurerPhone, setTreasurerPhone] = useState('');
+    const [adminName, setAdminName] = useState(userMetadata.full_name || initialName);
+    const [adminPhone, setAdminPhone] = useState(userMetadata.phone || '');
+    const [treasurerName, setTreasurerName] = useState(userMetadata.treasurer_name || '');
+    const [treasurerEmail, setTreasurerEmail] = useState(userMetadata.treasurer_email || '');
+    const [treasurerPhone, setTreasurerPhone] = useState(userMetadata.treasurer_phone || '');
     
     // UI State
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
@@ -169,6 +170,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
                     treasurer_name: treasurerName || null,
                     treasurer_email: treasurerEmail || null,
                     treasurer_phone: treasurerPhone || null,
+                    referral_source: userMetadata.referral_source || null,
                 })
                 .select()
                 .single();
@@ -198,7 +200,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
                     full_name: adminName,
                     phone: adminPhone || null,
                     church_id: church.id,
-                    role: 'admin',
+                    role: userMetadata.role || 'admin',
                 });
 
             if (profileError) throw profileError;

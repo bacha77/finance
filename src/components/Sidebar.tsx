@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
-import { GripVertical, Clock } from 'lucide-react';
+import { GripVertical, Clock, Calendar } from 'lucide-react';
 import { getTrialStatus } from '../lib/trialConfig';
 
 const NavItem = ({ id, item, isActive, setActiveTab, isMobile, setOpen }: any) => {
@@ -133,7 +133,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [orderedItems, setOrderedItems] = React.useState<string[]>(() => {
     const saved = localStorage.getItem('sidebar_menu_order');
     if (saved) return JSON.parse(saved);
-    return ['dashboard', 'accounting', 'departments', 'expenses', 'members', 'payroll', 'budget', 'reports', 'pricing'];
+    return ['dashboard', 'accounting', 'departments', 'expenses', 'reimbursements', 'events', 'members', 'payroll', 'budget', 'reports', 'pricing'];
   });
 
   React.useEffect(() => {
@@ -145,6 +145,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     accounting: { icon: Wallet, label: t('accounting') },
     departments: { icon: LayoutGrid, label: t('departments') },
     expenses: { icon: CreditCard, label: t('expenses') },
+    reimbursements: { icon: FileText, label: 'Reimbursements' },
+    events: { icon: Calendar, label: 'Events' },
     members: { icon: Users, label: t('members') },
     payroll: { icon: CreditCard, label: t('payroll') },
     budget: { icon: PieChart, label: t('budget') },

@@ -10,6 +10,14 @@ const MIGRATION_KEY = 'sf_migrations_v9';
 
 const MIGRATIONS: { name: string; sql: string }[] = [
     {
+        name: 'add_profiles_role',
+        sql: `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'admin'`,
+    },
+    {
+        name: 'add_churches_referral_source',
+        sql: `ALTER TABLE public.churches ADD COLUMN IF NOT EXISTS referral_source TEXT`,
+    },
+    {
         name: 'add_members_phone',
         sql: `ALTER TABLE public.members ADD COLUMN IF NOT EXISTS phone TEXT`,
     },
@@ -110,6 +118,56 @@ const MIGRATIONS: { name: string; sql: string }[] = [
         sql: `ALTER TABLE public.staff ADD COLUMN IF NOT EXISTS state_tax_rate NUMERIC DEFAULT 0.05`,
     },
     {
+        name: 'create_reimbursements_table',
+        sql: `
+            CREATE TABLE IF NOT EXISTS public.reimbursements (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                church_id UUID REFERENCES public.churches(id) ON DELETE CASCADE,
+                amount NUMERIC NOT NULL,
+                description TEXT,
+                receipt_url TEXT,
+                status TEXT DEFAULT 'pending',
+                submitted_by TEXT NOT NULL,
+                fund_id UUID,
+                department TEXT DEFAULT 'General',
+                reviewed_by TEXT,
+                reviewed_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT now()
+            );
+            ALTER TABLE public.reimbursements ENABLE ROW LEVEL SECURITY;
+        `
+    },
+    {
+        name: 'create_events_and_tickets',
+        sql: `
+            CREATE TABLE IF NOT EXISTS public.events (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                church_id UUID REFERENCES public.churches(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                description TEXT,
+                date TIMESTAMPTZ NOT NULL,
+                location TEXT,
+                price NUMERIC DEFAULT 0,
+                capacity INTEGER,
+                created_at TIMESTAMPTZ DEFAULT now()
+            );
+            ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+
+            CREATE TABLE IF NOT EXISTS public.tickets (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
+                church_id UUID REFERENCES public.churches(id) ON DELETE CASCADE,
+                purchaser_name TEXT NOT NULL,
+                purchaser_email TEXT,
+                quantity INTEGER DEFAULT 1,
+                amount_paid NUMERIC DEFAULT 0,
+                status TEXT DEFAULT 'reserved',
+                created_at TIMESTAMPTZ DEFAULT now()
+            );
+            ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
+        `
+    },
+    {
         name: 'departments_annual_budget',
         sql: `ALTER TABLE public.departments ADD COLUMN IF NOT EXISTS annual_budget NUMERIC DEFAULT 0`,
     },
@@ -166,8 +224,24 @@ const MIGRATIONS: { name: string; sql: string }[] = [
         sql: `
             DO $$ 
             BEGIN 
-                -- Ledger Positive Amount Constraint
-                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ledger_amount_positive') THEN
+                -- Reimbursement Policy
+            DO $$ BEGIN
+                DROP POLICY IF EXISTS "Users can view own church reimbursements" ON public.reimbursements;
+                CREATE POLICY "Users can view own church reimbursements" ON public.reimbursements 
+                FOR ALL USING ( church_id = public.get_my_church_id() );
+            EXCEPTION WHEN others THEN NULL; END $$;
+
+            DO $$ BEGIN
+                DROP POLICY IF EXISTS "Users can view own church events" ON public.events;
+                CREATE POLICY "Users can view own church events" ON public.events 
+                FOR ALL USING ( church_id = public.get_my_church_id() );
+                DROP POLICY IF EXISTS "Users can view own church tickets" ON public.tickets;
+                CREATE POLICY "Users can view own church tickets" ON public.tickets 
+                FOR ALL USING ( church_id = public.get_my_church_id() );
+            EXCEPTION WHEN others THEN NULL; END $$;
+
+            -- Staff constraints
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'staff_salary_positive') THEN
                     ALTER TABLE public.ledger ADD CONSTRAINT ledger_amount_positive CHECK (amount >= 0);
                 END IF;
 
@@ -190,6 +264,9 @@ const MIGRATIONS: { name: string; sql: string }[] = [
             ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
             ALTER TABLE public.payroll ENABLE ROW LEVEL SECURITY;
             ALTER TABLE public.goals ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE public.reimbursements ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
         `,
     },
     {

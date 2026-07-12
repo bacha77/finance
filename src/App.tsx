@@ -7,6 +7,8 @@ import Payroll from './components/Payroll';
 import Reports from './components/Reports';
 import Departments from './components/Departments';
 import Expenses from './components/Expenses';
+import Reimbursements from './components/Reimbursements';
+import Events from './components/Events';
 import Budget from './components/Budget';
 import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
@@ -345,6 +347,7 @@ function App() {
         userId={session.user.id}
         userEmail={session.user.email || ''}
         initialName={session.user.user_metadata?.full_name || ''}
+        userMetadata={session.user.user_metadata}
         onComplete={() => fetchProfile(session.user.id)}
         onLogout={async () => {
           await supabase.auth.signOut();
@@ -708,7 +711,9 @@ function App() {
                     {activeTab === 'reports' && <Reports churchId={church.id} userRole={userRole} />}
                     {activeTab === 'departments' && <Departments setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
                     {activeTab === 'expenses' && <Expenses setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
-                    {activeTab === 'budget' && <Budget setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
+                    {activeTab === 'reimbursements' && <Reimbursements churchId={church.id} userRole={profile.role} userName={profile.full_name} />}
+                    {activeTab === 'events' && <Events churchId={church.id} userRole={profile.role} userName={profile.full_name} userEmail={session.user.email} />}
+                    {activeTab === 'budget' && <Budget setActiveTab={setActiveTab} churchId={church.id} userRole={profile.role} />}
                     {activeTab === 'tax' && <TaxCompliance churchId={church.id} churchName={church.name} userRole={userRole} />}
                     {activeTab === 'settings' && <Settings churchData={church} onUpdateChurch={handleUpdateChurch} initialSection={settingsSection} profile={profile} />}
                     {activeTab === 'pricing' && <Pricing currentPlan={church.plan} churchId={church.id} />}
