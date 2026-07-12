@@ -347,27 +347,52 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4 relative font-['Plus_Jakarta_Sans',Inter,sans-serif]">
-            {/* Background glows */}
-            <div className="fixed inset-0 pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse 80% 60% at 50% -20%, rgba(37,99,235,0.15) 0%, transparent 70%)' }}
-            />
-            <div className="fixed inset-0 pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse 60% 40% at 80% 60%, rgba(124,58,237,0.08) 0%, transparent 70%)' }}
-            />
+        <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 font-['Plus_Jakarta_Sans',Inter,sans-serif]">
+            {/* Left Side: Marketing & Testimonial */}
+            <div className="hidden md:flex md:w-[45%] lg:w-1/2 relative bg-slate-900 overflow-hidden items-center justify-center p-12 border-r border-white/5">
+                {/* Background glows */}
+                <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% -20%, rgba(37,99,235,0.15) 0%, transparent 70%)' }} />
+                <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 60% 40% at 80% 60%, rgba(124,58,237,0.08) 0%, transparent 70%)' }} />
+                
+                <div className="relative z-10 max-w-lg text-left">
+                    <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Storehouse Finance" className="h-12 mb-8 drop-shadow-[0_0_16px_rgba(37,99,235,0.4)]" />
+                    <h1 className="text-4xl lg:text-5xl font-black text-white mb-6 leading-tight">
+                        Modern Finance for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Growing Churches</span>.
+                    </h1>
+                    <p className="text-slate-400 text-lg mb-10 leading-relaxed">
+                        Join pastors and treasurers everywhere who have abandoned spreadsheets for an all-in-one financial, payroll, and member management platform.
+                    </p>
+                    <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-sm w-max">
+                        <div className="flex -space-x-3">
+                            <div className="w-10 h-10 rounded-full border-2 border-slate-900 bg-slate-800 flex items-center justify-center text-xs font-bold text-white">PJ</div>
+                            <div className="w-10 h-10 rounded-full border-2 border-slate-900 bg-blue-900 flex items-center justify-center text-xs font-bold text-white">MK</div>
+                            <div className="w-10 h-10 rounded-full border-2 border-slate-900 bg-emerald-900 flex items-center justify-center text-xs font-bold text-white">DR</div>
+                        </div>
+                        <div className="text-sm">
+                            <div className="text-white font-bold">Trusted by 100+</div>
+                            <div className="text-slate-400 text-xs">Fastest growing church app in the market</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, ease: 'easeOut' }}
-                className="w-full relative z-10 bg-slate-900/85 backdrop-blur-xl border border-white/10 rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out max-h-[calc(100vh-2rem)] overflow-y-auto"
-                style={{ 
-                    padding: '40px', 
-                    maxWidth: mode === 'signup' && step === 1 ? '600px' : '500px', 
-                    margin: '0 auto' 
-                }}
-            >
-                {/* 30-Day Free Trial Banner for Sign Up */}
+            {/* Right Side: Auth Form */}
+            <div className="w-full md:w-[55%] lg:w-1/2 flex items-center justify-center p-4 relative min-h-screen md:min-h-0 bg-slate-950">
+                {/* Mobile background glows */}
+                <div className="md:hidden absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% -20%, rgba(37,99,235,0.15) 0%, transparent 70%)' }} />
+                
+                <motion.div
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease: 'easeOut' }}
+                    className="w-full relative z-10 bg-slate-900/85 md:bg-transparent backdrop-blur-xl md:backdrop-blur-none border border-white/10 md:border-none rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] md:shadow-none transition-all duration-300 ease-in-out max-h-[calc(100vh-2rem)] md:max-h-none overflow-y-auto md:overflow-visible"
+                    style={{ 
+                        padding: '40px', 
+                        maxWidth: mode === 'signup' && step === 1 ? '600px' : '480px', 
+                        margin: '0 auto' 
+                    }}
+                >
+                    {/* 30-Day Free Trial Banner for Sign Up */}
                 {mode === 'signup' && step === 0 && !isInvited && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest py-1 px-3 rounded-full shadow-lg border border-white/10">
                         Start your 30-Day Free Trial
@@ -828,6 +853,7 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                     onClose={() => setLegalModal({ ...legalModal, open: false })}
                 />
             </motion.div>
+            </div>
         </div>
     );
 };
