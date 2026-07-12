@@ -12,6 +12,7 @@ import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { sendResendEmail } from '../lib/resend';
 import { useFinanceData } from '../hooks/useFinanceData';
+import { getFiscalYear } from '../lib/fiscalUtils';
 import AuditLogs from './AuditLogs';
 import {
     XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
@@ -72,7 +73,10 @@ const Reports: React.FC<ReportsProps> = ({ churchId, userRole = 'viewer' }) => {
                 supabase.from('members').select('*').eq('church_id', churchId)
             ]);
             
-            if (churchData) setChurch(churchData);
+            if (churchData) {
+                setChurch(churchData);
+                setSelectedYear(getFiscalYear(new Date(), churchData.fiscal_year_start));
+            }
             if (docsData) setDocuments(docsData);
             if (membersData) setMembers(membersData);
             if (!isFinanceLoading) setIsLoading(false);

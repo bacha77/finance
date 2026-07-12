@@ -270,6 +270,7 @@ function App() {
           ...newData,
           // Map snake_case from DB back to the camelCase local if needed, 
           // or just ensure church object reflects standard naming
+          fiscal_year_start: newData.fiscalYearStart,
           logo_url: newData.logo_url
         }
       });

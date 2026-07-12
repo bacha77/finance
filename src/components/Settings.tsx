@@ -478,6 +478,18 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
                 style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem', borderRadius: '0.75rem', color: 'white', outline: 'none' }}
               />
             </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Fiscal Year Start Month</label>
+              <select 
+                value={formData.fiscalYearStart}
+                onChange={(e) => setFormData({ ...formData, fiscalYearStart: e.target.value })}
+                style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem', borderRadius: '0.75rem', color: 'white', outline: 'none', appearance: 'none' }}
+              >
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
+                  <option key={m} value={m} style={{ background: 'var(--bg-main)' }}>{m}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>{t('physicalAddress')}</label>

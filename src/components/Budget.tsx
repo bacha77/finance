@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useFinanceData } from '../hooks/useFinanceData';
+import { getFiscalYear } from '../lib/fiscalUtils';
 
 interface BudgetAllocation {
     deptId: string;
@@ -44,7 +45,10 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
 
     const { t, language } = useLanguage();
     const [budgets, setBudgets] = useState<BudgetYear[]>([]);
+    
+    // We will initialize it with the default calendar year, but update it in a useEffect once we load the church
     const [activeYear, setActiveYear] = useState(new Date().getFullYear());
+    
     const [departments, setDepartments] = useState<any[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -61,6 +65,11 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
             if (!churchId) return;
             const { data: deptData } = await supabase.from('departments').select('*').eq('church_id', churchId);
             if (deptData) setDepartments(deptData);
+            
+            const { data: churchData } = await supabase.from('churches').select('fiscal_year_start').eq('id', churchId).single();
+            if (churchData) {
+                setActiveYear(getFiscalYear(new Date(), churchData.fiscal_year_start));
+            }
 
             const { data: budgetData } = await supabase.from('budgets').select('*').eq('church_id', churchId);
             setBudgets(budgetData ? budgetData.map(b => ({
