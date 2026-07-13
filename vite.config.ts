@@ -15,6 +15,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         finance: resolve(__dirname, 'finance/index.html'),
+        employee: resolve(__dirname, 'employee/index.html'),
       },
     },
   },
