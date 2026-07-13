@@ -16,6 +16,42 @@ interface AdminPanelProps {
     onImpersonate?: (churchId: string) => void;
 }
 
+const TemplateCard = ({ title, description, content, emailSubject = '' }: { title: string, description: string, content: string, emailSubject?: string }) => {
+    const [copied, setCopied] = useState(false);
+    
+    const handleCopy = () => {
+        navigator.clipboard.writeText(emailSubject ? `Subject: ${emailSubject}\n\n${content}` : content);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
+                <div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.25rem' }}>{title}</h3>
+                    <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{description}</p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {emailSubject && (
+                        <a href={`mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(content)}`} style={{ textDecoration: 'none', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '6px', padding: '6px 12px', fontSize: '0.75rem', color: '#34d399', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Send size={12} /> Email
+                        </a>
+                    )}
+                    <button onClick={handleCopy} style={{ background: copied ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)', border: copied ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(59,130,246,0.2)', borderRadius: '6px', padding: '6px 12px', fontSize: '0.75rem', color: copied ? '#34d399' : '#60a5fa', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {copied ? <><CheckCircle2 size={12}/> Copied!</> : 'Copy'}
+                    </button>
+                </div>
+            </div>
+            <div style={{ background: '#0f172a', padding: '1rem', borderRadius: '8px', fontSize: '0.75rem', color: '#cbd5e1', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', flexGrow: 1, lineHeight: '1.6' }}>
+                {emailSubject && <div style={{ marginBottom: '1rem', color: '#94a3b8', fontWeight: 700 }}>Subject: {emailSubject}</div>}
+                {content}
+            </div>
+        </div>
+    );
+};
+
+
 const PLAN_COLORS: Record<string, string> = {
     trial: '#f59e0b',
     starter: '#2563eb',
@@ -355,7 +391,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) setMyUserId(user.id);
                 const me = adminData.filter(a => a.user_id === user?.id).map(a => a.role);
-                if (me.length > 0) setMyRole(me as any);
+                if (me.length > 0) {
+                    const role = me[0];
+                    setMyRole(role as any);
+                    // Default to their specific tab if they are not super_admin
+                    if (role === 'sales') setActiveTab('sales');
+                    else if (role === 'marketing') setActiveTab('marketing');
+                    else if (role === 'support') setActiveTab('support');
+                }
             }
 
             const { data: inviteData } = await supabase.from('system_invites').select('email, roles, job_title');
@@ -545,7 +588,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
     });
 
     // Staff Commission Metrics
-    const myClients = churches.filter(c => c.referred_by === myUserId);
+    const myClients = churches.filter(c => c.referred_by_id === myUserId);
     const myCommission = myClients.filter(c => c.plan !== 'trial').reduce((sum, c) => {
         const prices: Record<string, number> = { starter: 199.99, growth: 399.99, enterprise: 399.99 };
         return sum + ((prices[c.plan] || 0) * 0.2);
@@ -685,7 +728,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                     </motion.div>
                     
                     <div style={{ display: 'flex', background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', overflow: 'hidden', padding: '4px', flexWrap: 'wrap' }}>
-                        <button onClick={() => setActiveTab('churches')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'churches' ? '#2563eb' : 'transparent', color: activeTab === 'churches' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Churches</button>
+                        {(myRole.includes('super_admin') || myRole.includes('sales') || myRole.includes('support') || myRole === 'super_admin') && (
+                            <button onClick={() => setActiveTab('churches')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'churches' ? '#2563eb' : 'transparent', color: activeTab === 'churches' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>{myRole.includes('sales') && !myRole.includes('super_admin') ? 'My Clients' : 'Churches'}</button>
+                        )}
                         {(myRole.includes('super_admin') || myRole === 'super_admin') && (
                             <>
                                 <button onClick={() => setActiveTab('users')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'users' ? '#2563eb' : 'transparent', color: activeTab === 'users' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Users</button>
@@ -699,13 +744,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                 </div>
 
                 {/* Stats Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                    <StatCard label="Total Churches" value={churches.length} sub="All registered" icon={Building2} color="#2563eb" delay={0} />
-                    <StatCard label="Paid Subscribers" value={paidCount} sub={`${trialCount} on free trial`} icon={CheckCircle2} color="#10b981" delay={0.06} />
-                    <StatCard label="Est. Monthly Revenue" value={fmt(totalRevenue)} sub="Active paid plans" icon={DollarSign} color="#a855f7" delay={0.12} />
-                    <StatCard label="Expired / At Risk" value={expiredCount} sub="Need attention" icon={AlertTriangle} color="#ef4444" delay={0.18} />
-                    <StatCard label="Total Members" value={churches.reduce((s, c) => s + (c.memberCount || 0), 0).toLocaleString()} sub="Across all churches" icon={Users} color="#f59e0b" delay={0.24} />
-                </div>
+                {(myRole.includes('super_admin') || myRole === 'super_admin') && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                        <StatCard label="Total Churches" value={churches.length} sub="All registered" icon={Building2} color="#2563eb" delay={0} />
+                        <StatCard label="Paid Subscribers" value={paidCount} sub={`${trialCount} on free trial`} icon={CheckCircle2} color="#10b981" delay={0.06} />
+                        <StatCard label="Est. Monthly Revenue" value={fmt(totalRevenue)} sub="Active paid plans" icon={DollarSign} color="#a855f7" delay={0.12} />
+                        <StatCard label="Expired / At Risk" value={expiredCount} sub="Need attention" icon={AlertTriangle} color="#ef4444" delay={0.18} />
+                        <StatCard label="Total Members" value={churches.reduce((s, c) => s + (c.memberCount || 0), 0).toLocaleString()} sub="Across all churches" icon={Users} color="#f59e0b" delay={0.24} />
+                    </div>
+                )}
 
                 {/* Filters Row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
@@ -740,13 +787,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                 {/* Church Table */}
                 {activeTab === 'churches' && (
                 <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' }}>
-                    {/* Table Header */}
                     <div style={{
-                        display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr 120px',
+                        display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1.5fr 120px',
                         padding: '0.75rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)',
                         background: 'rgba(255,255,255,0.02)',
                     }}>
-                        {['Church', 'Plan', 'Members', 'Sub. Expires', 'PayPal Order', 'Actions'].map(h => (
+                        {['Church', 'Plan', 'Members', 'Sub. Expires', 'Referred By', 'Actions'].map(h => (
                             <div key={h} style={{ fontSize: '0.65rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</div>
                         ))}
                     </div>
@@ -780,7 +826,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                 >
                                     {/* Main Row */}
                                     <div style={{
-                                        display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr 120px',
+                                        display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1.5fr 120px',
                                         padding: '1rem 1.5rem', alignItems: 'center',
                                         background: isExpanded ? 'rgba(37,99,235,0.06)' : 'transparent',
                                         transition: 'background 0.2s',
@@ -836,9 +882,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                             )}
                                         </div>
 
-                                        {/* PayPal order ID */}
-                                        <div style={{ fontSize: '0.7rem', color: '#334155', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {church.paypal_order_id || '—'}
+                                        {/* Referred By Dropdown */}
+                                        <div style={{ fontSize: '0.75rem', color: '#334155' }}>
+                                            {(myRole.includes('super_admin') || myRole === 'super_admin') ? (
+                                                <select 
+                                                    value={church.referred_by || ''}
+                                                    onChange={async (e) => {
+                                                        const newVal = e.target.value || null;
+                                                        setChurches(churches.map(c => c.id === church.id ? { ...c, referred_by: newVal } : c));
+                                                        await supabase.from('churches').update({ referred_by: newVal }).eq('id', church.id);
+                                                    }}
+                                                    style={{ background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', padding: '0.3rem 0.5rem', borderRadius: '6px', fontSize: '0.7rem', width: '100%' }}
+                                                >
+                                                    <option value="">No Referral</option>
+                                                    {Array.from(new Set(profiles.filter(p => admins.find(a => a.user_id === p.id)).map(p => p.id))).map(profileId => {
+                                                        const p = profiles.find(x => x.id === profileId)!;
+                                                        const userRoles = admins.filter(a => a.user_id === p.id).map(a => a.role);
+                                                        return (
+                                                            <option key={p.id} value={p.id}>{p.full_name || p.email} ({userRoles.join(', ').replace(/_/g, ' ')})</option>
+                                                        )
+                                                    })}
+                                                </select>
+                                            ) : (
+                                                church.referred_by ? profiles.find(p => p.id === church.referred_by)?.full_name || 'Assigned' : '—'
+                                            )}
                                         </div>
 
                                         {/* Actions */}
@@ -1121,8 +1188,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                             <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <h2 style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Current Staff Directory</h2>
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 180px', padding: '0.75rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.2)' }}>
-                                {['User', 'Church / Dept', 'Joined', 'Actions'].map(h => (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 120px', padding: '0.75rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.2)' }}>
+                                {['User', 'Dept', 'Clients', 'Commissions', 'Joined', 'Actions'].map(h => (
                                     <div key={h} style={{ fontSize: '0.65rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</div>
                                 ))}
                             </div>
@@ -1140,8 +1207,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                 const profile = profiles.find(p => p.id === profileId)!;
                                 const userRoles = admins.filter(a => a.user_id === profile.id).map(a => a.role);
                                 
+                                const empClients = churches.filter(c => c.referred_by === profile.id);
+                                const empActiveClients = empClients.filter(c => c.plan !== 'trial');
+                                const empCommission = empActiveClients.reduce((sum, c) => {
+                                    const prices: Record<string, number> = { starter: 199.99, growth: 399.99, enterprise: 399.99 };
+                                    return sum + ((prices[c.plan] || 0) * 0.2);
+                                }, 0);
+
                                 return (
-                                    <motion.div key={profile.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 180px', padding: '1rem 1.5rem', alignItems: 'center' }}>
+                                    <motion.div key={profile.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 120px', padding: '1rem 1.5rem', alignItems: 'center' }}>
                                         <div>
                                             <div style={{ fontWeight: 800, color: 'white', fontSize: '0.88rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                                 {profile.full_name || '—'}
@@ -1159,6 +1233,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                         <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
                                             {/* We can show Job Title here if we had it in profiles, fallback to church name */}
                                             {profile.churches?.name || 'Storehouse HQ'}
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', color: 'white', fontWeight: 600 }}>
+                                            {empActiveClients.length} <span style={{ color: '#64748b', fontWeight: 400 }}>active</span>
+                                        </div>
+                                        <div style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: 700 }}>
+                                            {fmt(empCommission)}
                                         </div>
                                         <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{profile.created_at ? new Date(profile.created_at).toLocaleDateString() : '—'}</div>
                                         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -1183,30 +1263,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                 Use these proven templates to reach out to pastors, treasurers, and local church boards. Click any template to copy it to your clipboard.
                             </p>
                             
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '1.5rem' }}>
                                 {/* Template 1 */}
-                                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e2e8f0' }}>Inner Circle Approach</h3>
-                                        <button onClick={() => navigator.clipboard.writeText("Hi [Pastor/Treasurer Name],\n\nI’m part of the [Your Local Church Name] community. I’ve noticed the challenges our finance team faces tracking funds, managing the ledger, and ensuring complete transparency.\n\nI wanted to share a platform designed specifically for churches like ours: **Storehouse Finance** (storehouse-finance.com). It provides a real-time ledger, distinct fund tracking, and built-in budget safeguards to prevent overspending.\n\nIt could significantly lighten the administrative load. Let me know if you’d like to see how it works!\n\nBest,\n[Your Name]")} style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '6px', padding: '4px 10px', fontSize: '0.7rem', color: '#60a5fa', cursor: 'pointer', fontWeight: 600 }}>Copy</button>
-                                    </div>
-                                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '1rem' }}>Best for reaching out to churches where you have a personal connection.</p>
-                                    <div style={{ background: '#0f172a', padding: '1rem', borderRadius: '8px', fontSize: '0.75rem', color: '#cbd5e1', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
-                                        Hi [Pastor/Treasurer Name],<br/><br/>I’m part of the [Your Local Church Name] community... (Click copy for full text)
-                                    </div>
-                                </div>
+                                <TemplateCard 
+                                    title="Inner Circle Approach"
+                                    description="Best for reaching out to churches where you have a personal connection."
+                                    content={"Hi [Pastor/Treasurer Name],\n\nI’m part of the [Your Local Church Name] community. I’ve noticed the challenges our finance team faces tracking funds, managing the ledger, and ensuring complete transparency.\n\nI wanted to share a platform designed specifically for churches like ours: Storehouse Finance (storehouse-finance.com). It provides a real-time ledger, distinct fund tracking, and built-in budget safeguards to prevent overspending.\n\nIt could significantly lighten the administrative load. Let me know if you’d like to see how it works!\n\nBest,\n[Your Name]"}
+                                />
 
                                 {/* Template 2 */}
-                                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e2e8f0' }}>Direct Email Campaign</h3>
-                                        <button onClick={() => navigator.clipboard.writeText("Subject: Modernizing [Church Name]'s Finances\n\nDear [Pastor/Leader Name],\n\nManaging church finances shouldn't require a degree in accounting or wrestling with complex spreadsheets.\n\n**Storehouse Finance** is a new, secure platform built exclusively for ministries. It replaces outdated spreadsheets with a real-time, double-entry ledger, clear fund separation, and automated compliance checks.\n\nWe offer a 30-day free trial, allowing your team to experience the platform with no risk. You can learn more and sign up at storehouse-finance.com.\n\nIn His Service,\n[Your Name/Storehouse Team]")} style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '6px', padding: '4px 10px', fontSize: '0.7rem', color: '#60a5fa', cursor: 'pointer', fontWeight: 600 }}>Copy</button>
-                                    </div>
-                                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '1rem' }}>Cold outreach to local ministries in your area.</p>
-                                    <div style={{ background: '#0f172a', padding: '1rem', borderRadius: '8px', fontSize: '0.75rem', color: '#cbd5e1', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
-                                        Subject: Modernizing [Church Name]'s Finances<br/><br/>Dear [Pastor/Leader Name]... (Click copy for full text)
-                                    </div>
-                                </div>
+                                <TemplateCard 
+                                    title="Direct Email Campaign"
+                                    description="Cold outreach to local ministries in your area."
+                                    emailSubject="Modernizing [Church Name]'s Finances"
+                                    content={"Dear [Pastor/Leader Name],\n\nManaging church finances shouldn't require a degree in accounting or wrestling with complex spreadsheets.\n\nStorehouse Finance is a new, secure platform built exclusively for ministries. It replaces outdated spreadsheets with a real-time, double-entry ledger, clear fund separation, and automated compliance checks.\n\nWe offer a 30-day free trial, allowing your team to experience the platform with no risk. You can learn more and sign up at storehouse-finance.com.\n\nIn His Service,\n[Your Name/Storehouse Team]"}
+                                />
                             </div>
                         </div>
                         <LeadsCRM />

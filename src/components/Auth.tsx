@@ -201,13 +201,23 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         let invitedEmail = params.get('email');
+        let refParam = params.get('ref');
         
         if (!invitedEmail && window.location.hash.includes('?')) {
             const hashParts = window.location.hash.split('?');
             if (hashParts[1]) {
                 const hashParams = new URLSearchParams(hashParts[1]);
-                invitedEmail = hashParams.get('email');
+                invitedEmail = hashParams.get('email') || invitedEmail;
+                refParam = hashParams.get('ref') || refParam;
             }
+        }
+
+        if (refParam) {
+            setReferralSource(refParam);
+            localStorage.setItem('referral_source', refParam);
+        } else {
+            const storedRef = localStorage.getItem('referral_source');
+            if (storedRef) setReferralSource(storedRef);
         }
 
         if (invitedEmail) {

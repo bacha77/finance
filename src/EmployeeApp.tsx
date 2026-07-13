@@ -44,7 +44,7 @@ export default function EmployeeApp() {
     const fetchProfile = async (userId: string) => {
         setProfileLoading(true);
         try {
-            const { data: adminRow } = await supabase.from('admins').select('user_id').eq('user_id', userId).maybeSingle();
+            const { data: adminRow } = await supabase.from('admins').select('user_id, role').eq('user_id', userId).maybeSingle();
             if (adminRow) {
                 setIsAdmin(true);
             } else {
