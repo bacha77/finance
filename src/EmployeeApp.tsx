@@ -11,6 +11,11 @@ export default function EmployeeApp() {
     const [profile, setProfile] = useState<any>(null);
     const [profileLoading, setProfileLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
+    
+    // Login form state
+    const [email, setEmail] = useState('');
+    const [loginLoading, setLoginLoading] = useState(false);
+    const [loginMessage, setLoginMessage] = useState('');
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -63,10 +68,6 @@ export default function EmployeeApp() {
             </div>
         );
     }
-
-    const [email, setEmail] = useState('');
-    const [loginLoading, setLoginLoading] = useState(false);
-    const [loginMessage, setLoginMessage] = useState('');
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
