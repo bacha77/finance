@@ -14,6 +14,8 @@ export default function LeadsCRM() {
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [source, setSource] = useState('Cold Outreach');
+    const [estimatedValue, setEstimatedValue] = useState('');
+    const [followUpDate, setFollowUpDate] = useState('');
     
     const fetchLeads = async () => {
         setLoading(true);
@@ -36,6 +38,8 @@ export default function LeadsCRM() {
             email,
             phone,
             source,
+            estimated_value: estimatedValue ? parseFloat(estimatedValue) : 0,
+            follow_up_date: followUpDate || null,
             assigned_to: user?.id
         });
         
@@ -46,6 +50,8 @@ export default function LeadsCRM() {
             setContactName('');
             setEmail('');
             setPhone('');
+            setEstimatedValue('');
+            setFollowUpDate('');
             setIsAdding(false);
             fetchLeads();
         }
@@ -68,16 +74,50 @@ export default function LeadsCRM() {
         }
     };
 
+    // Compute Sales Targets
+    const quota = 5;
+    const closedWon = leads.filter(l => l.status === 'Converted').length;
+    const activePipeline = leads.filter(l => l.status === 'Contacted' || l.status === 'Meeting Scheduled');
+    const pipelineValue = activePipeline.reduce((sum, l) => sum + (Number(l.estimated_value) || 0), 0);
+    const potentialCommission = pipelineValue * 0.20; // 20% commission
+
     return (
-        <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden', marginTop: '1.5rem' }}>
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Building size={20} color="#60a5fa" /> Lead Tracking
-                </h2>
-                <button onClick={() => setIsAdding(!isAdding)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#2563eb', color: 'white', border: 'none', padding: '0.6rem 1rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}>
-                    <Plus size={16} /> New Lead
-                </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
+            {/* Sales Target Tracker */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '1.5rem' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem', fontWeight: 600, textTransform: 'uppercase' }}>Monthly Quota</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{closedWon}</span>
+                        <span style={{ fontSize: '0.9rem', color: '#64748b' }}>/ {quota} Closed</span>
+                    </div>
+                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', marginTop: '1rem', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min((closedWon / quota) * 100, 100)}%`, background: closedWon >= quota ? '#10b981' : '#3b82f6', transition: 'width 0.5s ease-out' }} />
+                    </div>
+                </div>
+                
+                <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '1.5rem' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem', fontWeight: 600, textTransform: 'uppercase' }}>Pipeline Value (MRR)</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f59e0b' }}>${pipelineValue.toFixed(2)}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>{activePipeline.length} active leads</div>
+                </div>
+
+                <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '1.5rem' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem', fontWeight: 600, textTransform: 'uppercase' }}>Est. Commission</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981' }}>${potentialCommission.toFixed(2)}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>If pipeline closes at 20%</div>
+                </div>
             </div>
+
+            <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' }}>
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Building size={20} color="#60a5fa" /> Lead Tracking
+                    </h2>
+                    <button onClick={() => setIsAdding(!isAdding)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#2563eb', color: 'white', border: 'none', padding: '0.6rem 1rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}>
+                        <Plus size={16} /> New Lead
+                    </button>
+                </div>
 
             {isAdding && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -94,6 +134,13 @@ export default function LeadsCRM() {
                         <input type="text" placeholder="Contact Name" value={contactName} onChange={e => setContactName(e.target.value)} style={{ flex: 1, minWidth: '150px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', color: 'white' }} />
                         <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={{ flex: 1, minWidth: '150px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', color: 'white' }} />
                         <input type="tel" placeholder="Phone" value={phone} onChange={e => setPhone(e.target.value)} style={{ flex: 1, minWidth: '150px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', color: 'white' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                        <input type="number" placeholder="Estimated MRR Value ($)" value={estimatedValue} onChange={e => setEstimatedValue(e.target.value)} style={{ flex: 1, minWidth: '150px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', color: 'white' }} />
+                        <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column' }}>
+                            <label style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '0.2rem' }}>Next Follow-up Date</label>
+                            <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', color: 'white' }} />
+                        </div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                         <button onClick={() => setIsAdding(false)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '0.6rem 1.2rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
@@ -112,16 +159,18 @@ export default function LeadsCRM() {
                 </div>
             ) : (
                 <div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 180px', padding: '0.75rem 1.5rem', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.65rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 120px 180px', padding: '0.75rem 1.5rem', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.65rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                         <div>Target</div>
                         <div>Source</div>
+                        <div>Pipeline Value</div>
+                        <div>Follow Up</div>
                         <div>Status</div>
                         <div>Actions</div>
                     </div>
                     {leads.map((lead) => {
                         const style = getStatusColor(lead.status);
                         return (
-                            <div key={lead.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 180px', padding: '1.2rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', alignItems: 'center' }}>
+                            <div key={lead.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 120px 180px', padding: '1.2rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', alignItems: 'center' }}>
                                 <div>
                                     <div style={{ fontWeight: 800, color: 'white', fontSize: '0.9rem' }}>{lead.church_name}</div>
                                     <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -131,6 +180,12 @@ export default function LeadsCRM() {
                                     </div>
                                 </div>
                                 <div style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>{lead.source}</div>
+                                <div style={{ fontSize: '0.9rem', color: '#f59e0b', fontWeight: 700 }}>
+                                    {lead.estimated_value ? `$${Number(lead.estimated_value).toFixed(2)}/mo` : '--'}
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: lead.follow_up_date && new Date(lead.follow_up_date) < new Date() ? '#ef4444' : '#cbd5e1' }}>
+                                    {lead.follow_up_date ? new Date(lead.follow_up_date).toLocaleDateString() : 'No date'}
+                                </div>
                                 <div>
                                     <select 
                                         value={lead.status}
@@ -162,6 +217,7 @@ export default function LeadsCRM() {
                     })}
                 </div>
             )}
+        </div>
         </div>
     );
 }

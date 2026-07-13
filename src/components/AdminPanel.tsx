@@ -1288,9 +1288,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                 {activeTab === 'sales' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         {staffMetricsView}
-                        <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '3rem', textAlign: 'center' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>Sales Dashboard</h2>
-                            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Use the Leads CRM below to track sales targets and conversions.</p>
+                        <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '2rem' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>Sales Playbook</h2>
+                            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '2rem', lineHeight: '1.6' }}>
+                                Use these proven scripts and templates to overcome objections and close more deals.
+                            </p>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '1.5rem' }}>
+                                {/* Template 1 */}
+                                <TemplateCard 
+                                    title="Discovery Call Script"
+                                    description="Key questions to ask during the first demo with a pastor."
+                                    content={"Hi Pastor [Name],\n\n- How are you currently tracking distinct funds (building fund, missions, etc.)?\n- How much time does your team spend reconciling the books each month?\n- Have you ever experienced a situation where a fund was accidentally overdrawn?\n\nStorehouse Finance solves these exact issues by offering a real-time, double-entry ledger built specifically for churches..."}
+                                />
+
+                                {/* Template 2 */}
+                                <TemplateCard 
+                                    title="Overcoming Objections"
+                                    description="Quick rebuttals for common objections."
+                                    content={"OBJECTION: 'We already use QuickBooks'\nREBUTTAL: QuickBooks is great for businesses, but it doesn't natively handle distinct church funds. You have to use messy sub-accounts. Storehouse is built for fund accounting from day one.\n\nOBJECTION: 'It's too expensive'\nREBUTTAL: Think of the time your treasurer spends reconciling. Storehouse automates that. Plus, preventing one overdraft or accounting error pays for the software itself."}
+                                />
+                                
+                                {/* Template 3 */}
+                                <TemplateCard 
+                                    title="Closing Email"
+                                    description="Send this after a successful demo to close the deal."
+                                    emailSubject="Storehouse Finance Proposal - [Church Name]"
+                                    content={"Hi [Pastor/Treasurer Name],\n\nThank you for taking the time to see Storehouse Finance in action today. Based on our conversation, I'm confident our platform will save your team hours of administrative work and provide the financial clarity your church needs.\n\nHere is the link to start your 30-day free trial: [Insert Link]\n\nPlease let me know if you have any final questions before we get your account set up!\n\nBest,\n[Your Name]"}
+                                />
+                            </div>
                         </div>
                         <LeadsCRM />
                     </div>
