@@ -298,7 +298,7 @@ export default function EmployeeApp() {
     return (
         <AdminPanel 
             adminEmail={session.user.email}
-            onLogout={() => { supabase.auth.signOut(); window.location.href = '/employee/'; }} 
+            onLogout={async () => { await supabase.auth.signOut(); window.location.href = '/employee/'; }} 
             onSwitchToUser={() => { window.location.href = '/'; }}
             onImpersonate={() => { window.location.href = '/'; }}
         />
