@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 import LeadsCRM from './LeadsCRM';
 import SupportCRM from './SupportCRM';
 import MarketingCampaigns from './MarketingCampaigns';
+import StaffDirectory from './StaffDirectory';
 
 interface AdminPanelProps {
     adminEmail: string;
@@ -477,15 +478,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
         await fetchAll();
     };
 
-    const handleToggleAdmin = async (userId: string, isCurrentlyAdmin: boolean, role: string = 'super_admin') => {
-        if (!confirm(`Are you sure you want to ${isCurrentlyAdmin ? 'revoke' : 'grant ' + role + ' '}Admin access for this user?`)) return;
-        if (isCurrentlyAdmin) {
-            await supabase.from('admins').delete().eq('user_id', userId);
-        } else {
-            await supabase.from('admins').insert({ user_id: userId, role });
-        }
-        await fetchAll();
-    };
 
     const handleSendInvite = async () => {
         if (!inviteEmail || inviteRoles.length === 0) {
@@ -738,7 +730,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                         {(myRole.includes('super_admin') || myRole === 'super_admin') && (
                             <>
                                 <button onClick={() => setActiveTab('users')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'users' ? '#2563eb' : 'transparent', color: activeTab === 'users' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Users</button>
-                                <button onClick={() => setActiveTab('admins')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'admins' ? '#2563eb' : 'transparent', color: activeTab === 'admins' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Staff Directory</button>
+                                <button onClick={() => setActiveTab('admins')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'admins' ? '#2563eb' : 'transparent', color: activeTab === 'admins' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Team & Staff</button>
                             </>
                         )}
                         {(myRole.includes('super_admin') || myRole.includes('marketing') || myRole === 'super_admin') && <button onClick={() => setActiveTab('marketing')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'marketing' ? '#2563eb' : 'transparent', color: activeTab === 'marketing' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Marketing</button>}
@@ -1188,72 +1180,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                         </div>
 
                         {/* Current Staff */}
-                        <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' }}>
-                            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h2 style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Current Staff Directory</h2>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 120px', padding: '0.75rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.2)' }}>
-                                {['User', 'Dept', 'Clients', 'Commissions', 'Joined', 'Actions'].map(h => (
-                                    <div key={h} style={{ fontSize: '0.65rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</div>
-                                ))}
-                            </div>
-                            {loading ? (
-                                <div style={{ padding: '4rem', textAlign: 'center', color: '#334155' }}>
-                                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ display: 'inline-block' }}>
-                                        <Loader2 size={20} />
-                                    </motion.div>
-                                </div>
-                            ) : profiles.filter(p => admins.find(a => a.user_id === p.id)).length === 0 ? (
-                                <div style={{ padding: '4rem', textAlign: 'center', color: '#334155', fontSize: '0.85rem' }}>
-                                    No staff members found.
-                                </div>
-                            ) : Array.from(new Set(profiles.filter(p => admins.find(a => a.user_id === p.id)).map(p => p.id))).map((profileId, i) => {
-                                const profile = profiles.find(p => p.id === profileId)!;
-                                const userRoles = admins.filter(a => a.user_id === profile.id).map(a => a.role);
-                                
-                                const empClients = churches.filter(c => c.referred_by === profile.id);
-                                const empActiveClients = empClients.filter(c => c.plan !== 'trial');
-                                const empCommission = empActiveClients.reduce((sum, c) => {
-                                    const prices: Record<string, number> = { starter: 199.99, growth: 399.99, enterprise: 399.99 };
-                                    return sum + ((prices[c.plan] || 0) * 0.2);
-                                }, 0);
-
-                                return (
-                                    <motion.div key={profile.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 120px', padding: '1rem 1.5rem', alignItems: 'center' }}>
-                                        <div>
-                                            <div style={{ fontWeight: 800, color: 'white', fontSize: '0.88rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                                {profile.full_name || '—'}
-                                                <div style={{ display: 'flex', gap: '4px' }}>
-                                                    {userRoles.map(r => (
-                                                        <span key={r} style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(255,255,255,0.05)', color: '#94a3b8', borderRadius: '4px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                            {r === 'super_admin' && <Crown size={10} color="#60a5fa" />} 
-                                                            {r.replace('_', ' ')}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <div style={{ fontSize: '0.75rem', color: '#60a5fa', marginTop: '2px' }}>{profile.email} {profile.phone && `• ${profile.phone}`}</div>
-                                        </div>
-                                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                                            {/* We can show Job Title here if we had it in profiles, fallback to church name */}
-                                            {profile.churches?.name || 'Storehouse HQ'}
-                                        </div>
-                                        <div style={{ fontSize: '0.8rem', color: 'white', fontWeight: 600 }}>
-                                            {empActiveClients.length} <span style={{ color: '#64748b', fontWeight: 400 }}>active</span>
-                                        </div>
-                                        <div style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: 700 }}>
-                                            {fmt(empCommission)}
-                                        </div>
-                                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{profile.created_at ? new Date(profile.created_at).toLocaleDateString() : '—'}</div>
-                                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                            <button onClick={() => handleToggleAdmin(profile.id, true)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '7px', padding: '5px 10px', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', fontWeight: 700 }} title="Revoke Admin Access">
-                                                <Crown size={13} /> Revoke Access
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })}
-                        </div>
+                        <StaffDirectory 
+                            profiles={profiles}
+                            admins={admins}
+                            churches={churches}
+                            loading={loading}
+                            onRefresh={fetchAll}
+                        />
                     </div>
                 )}
 
