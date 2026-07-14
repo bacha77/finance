@@ -11,6 +11,7 @@ import LeadsCRM from './LeadsCRM';
 import SupportCRM from './SupportCRM';
 import MarketingCampaigns from './MarketingCampaigns';
 import StaffDirectory from './StaffDirectory';
+import PayoutsAndClaims from './PayoutsAndClaims';
 
 interface AdminPanelProps {
     adminEmail: string;
@@ -344,7 +345,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
     const [supportSearch, setSupportSearch] = useState('');
     const [refName, setRefName] = useState('');
     const [filterPlan, setFilterPlan] = useState<string>('all');
-    const [activeTab, setActiveTab] = useState<'churches' | 'users' | 'admins' | 'marketing' | 'sales' | 'support'>('churches');
+    const [activeTab, setActiveTab] = useState<'churches' | 'users' | 'admins' | 'marketing' | 'sales' | 'support' | 'payouts'>('churches');
     const [admins, setAdmins] = useState<{user_id: string, role: string}[]>([]);
     const [myRole, setMyRole] = useState<'super_admin' | 'marketing' | 'sales' | 'support'>('super_admin');
     const [myUserId, setMyUserId] = useState<string | null>(null);
@@ -736,6 +737,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                         {(myRole.includes('super_admin') || myRole.includes('marketing') || myRole === 'super_admin') && <button onClick={() => setActiveTab('marketing')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'marketing' ? '#2563eb' : 'transparent', color: activeTab === 'marketing' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Marketing</button>}
                         {(myRole.includes('super_admin') || myRole.includes('sales') || myRole === 'super_admin') && <button onClick={() => setActiveTab('sales')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'sales' ? '#2563eb' : 'transparent', color: activeTab === 'sales' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Sales</button>}
                         {(myRole.includes('super_admin') || myRole.includes('support') || myRole === 'super_admin') && <button onClick={() => setActiveTab('support')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'support' ? '#2563eb' : 'transparent', color: activeTab === 'support' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Support</button>}
+                        <button onClick={() => setActiveTab('payouts')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'payouts' ? '#2563eb' : 'transparent', color: activeTab === 'payouts' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Payouts & Claims</button>
                     </div>
                 </div>
 
@@ -1425,6 +1427,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                         {/* Ticketing System */}
                         <SupportCRM />
                     </div>
+                )}
+
+                {/* Payouts & Claims Tab */}
+                {activeTab === 'payouts' && (
+                    <PayoutsAndClaims 
+                        profiles={profiles}
+                        admins={admins}
+                        churches={churches}
+                        myRole={myRole}
+                        myUserId={myUserId || ''}
+                        onRefresh={fetchAll}
+                    />
                 )}
 
                 {/* Footer */}
