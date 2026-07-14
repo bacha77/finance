@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, DollarSign, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { Loader2, DollarSign, CheckCircle2, XCircle, Clock, AlertCircle, Download } from 'lucide-react';
+import { downloadCSV } from '../utils/exportCsv';
 
 interface PayoutsAndClaimsProps {
     profiles: any[];
@@ -114,6 +115,21 @@ export default function PayoutsAndClaims({ profiles, admins, churches, myRole, m
     // Calculate my own payout
     const myPayoutInfo = employeePayouts.find(p => p.profile.id === myUserId) || { totalCommission: 0, activeClientCount: 0 };
 
+    const handleExportPayouts = () => {
+        const rows = [
+            ['Employee Name', 'Email', 'Active Clients', 'Total Commission']
+        ];
+        employeePayouts.filter(p => p.totalCommission > 0).forEach(p => {
+            rows.push([
+                p.profile.full_name || '',
+                p.profile.email || '',
+                p.activeClientCount,
+                fmt(p.totalCommission)
+            ]);
+        });
+        downloadCSV('monthly_payouts_export.csv', rows);
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', marginTop: '1.5rem' }}>
             
@@ -141,7 +157,12 @@ export default function PayoutsAndClaims({ profiles, admins, churches, myRole, m
                 {/* Company Payouts Card (Admin Only) */}
                 {isSuperAdmin && (
                     <div style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', marginBottom: '1rem' }}>Company Payouts (Monthly)</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white' }}>Company Payouts (Monthly)</div>
+                            <button onClick={handleExportPayouts} style={{ padding: '0.4rem 0.8rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', background: 'transparent', color: '#64748b', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s' }}>
+                                <Download size={14} /> Export CSV
+                            </button>
+                        </div>
                         <div style={{ flex: 1, overflowY: 'auto', maxHeight: '200px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {employeePayouts.filter(p => p.totalCommission > 0).length === 0 ? (
                                 <div style={{ color: '#64748b', fontSize: '0.85rem', fontStyle: 'italic' }}>No active commissions this month.</div>

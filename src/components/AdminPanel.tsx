@@ -12,6 +12,8 @@ import SupportCRM from './SupportCRM';
 import MarketingCampaigns from './MarketingCampaigns';
 import StaffDirectory from './StaffDirectory';
 import PayoutsAndClaims from './PayoutsAndClaims';
+import SystemLogs from './SystemLogs';
+import { downloadCSV } from '../utils/exportCsv';
 
 interface AdminPanelProps {
     adminEmail: string;
@@ -345,7 +347,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
     const [supportSearch, setSupportSearch] = useState('');
     const [refName, setRefName] = useState('');
     const [filterPlan, setFilterPlan] = useState<string>('all');
-    const [activeTab, setActiveTab] = useState<'churches' | 'users' | 'admins' | 'marketing' | 'sales' | 'support' | 'payouts'>('churches');
+    const [activeTab, setActiveTab] = useState<'churches' | 'users' | 'admins' | 'marketing' | 'sales' | 'support' | 'payouts' | 'logs'>('churches');
     const [admins, setAdmins] = useState<{user_id: string, role: string}[]>([]);
     const [myRole, setMyRole] = useState<'super_admin' | 'marketing' | 'sales' | 'support'>('super_admin');
     const [myUserId, setMyUserId] = useState<string | null>(null);
@@ -471,6 +473,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
         if (!confirm(`Are you sure you want to ${currentStatus ? 'disable' : 'reactivate'} this account?`)) return;
         await supabase.from('churches').update({ is_active: !currentStatus }).eq('id', churchId);
         await fetchAll();
+    };
+
+    const handleExportChurches = () => {
+        const rows = [
+            ['Name', 'Domain', 'Plan', 'Status', 'Members', 'Subscription Expires', 'Referred By']
+        ];
+        filtered.forEach(c => {
+            rows.push([
+                c.name,
+                c.custom_domain,
+                c.subscription_plan,
+                c.subscription_status,
+                c.memberCount,
+                c.subscription_end_date ? new Date(c.subscription_end_date).toLocaleDateString() : '',
+                profiles.find(p => p.id === c.referred_by_id)?.name || 'None'
+            ]);
+        });
+        downloadCSV('churches_export.csv', rows);
     };
 
     const handleToggleUserActive = async (userId: string, currentStatus: boolean) => {
@@ -738,6 +758,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                         {(myRole.includes('super_admin') || myRole.includes('sales') || myRole === 'super_admin') && <button onClick={() => setActiveTab('sales')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'sales' ? '#2563eb' : 'transparent', color: activeTab === 'sales' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Sales</button>}
                         {(myRole.includes('super_admin') || myRole.includes('support') || myRole === 'super_admin') && <button onClick={() => setActiveTab('support')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'support' ? '#2563eb' : 'transparent', color: activeTab === 'support' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Support</button>}
                         <button onClick={() => setActiveTab('payouts')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'payouts' ? '#2563eb' : 'transparent', color: activeTab === 'payouts' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>Payouts & Claims</button>
+                        {(myRole.includes('super_admin') || myRole === 'super_admin') && <button onClick={() => setActiveTab('logs')} style={{ padding: '0.6rem 1.5rem', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', background: activeTab === 'logs' ? '#2563eb' : 'transparent', color: activeTab === 'logs' ? 'white' : '#64748b', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s' }}>System Logs</button>}
                     </div>
                 </div>
 
@@ -777,7 +798,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                             }}>{p}</button>
                         ))}
                     </div>
-                    <div style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#334155' }}>
+                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.75rem', color: '#334155' }}>
+                        {activeTab === 'churches' && (
+                            <button onClick={handleExportChurches} style={{ padding: '0.4rem 0.8rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', background: 'transparent', color: '#64748b', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem', transition: 'all 0.2s' }}>
+                                Export CSV
+                            </button>
+                        )}
                         {activeTab === 'churches' ? `${filtered.length} of ${churches.length} churches` : `${profiles.filter(p => p.full_name?.toLowerCase().includes(search.toLowerCase()) || p.email?.toLowerCase().includes(search.toLowerCase())).length} of ${profiles.length} users`}
                     </div>
                 </div>
@@ -1439,6 +1465,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                         myUserId={myUserId || ''}
                         onRefresh={fetchAll}
                     />
+                )}
+
+                {/* System Logs Tab */}
+                {activeTab === 'logs' && (
+                    <SystemLogs />
                 )}
 
                 {/* Footer */}
