@@ -8,6 +8,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import LeadsCRM from './LeadsCRM';
+import SupportCRM from './SupportCRM';
 
 interface AdminPanelProps {
     adminEmail: string;
@@ -338,6 +339,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
     const [search, setSearch] = useState('');
     const [editingChurch, setEditingChurch] = useState<any | null>(null);
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [supportSearch, setSupportSearch] = useState('');
     const [filterPlan, setFilterPlan] = useState<string>('all');
     const [activeTab, setActiveTab] = useState<'churches' | 'users' | 'admins' | 'marketing' | 'sales' | 'support'>('churches');
     const [admins, setAdmins] = useState<{user_id: string, role: string}[]>([]);
@@ -1324,9 +1326,75 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
 
                 {/* Support Tab */}
                 {activeTab === 'support' && (
-                    <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '3rem', textAlign: 'center' }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>Technical Support</h2>
-                        <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Support tickets and diagnostic tools will be integrated here.</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
+                        {/* Diagnostic Search */}
+                        <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' }}>
+                            <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                                    <Search size={20} color="#60a5fa" /> Diagnostic Quick Search
+                                </h2>
+                                <div style={{ position: 'relative' }}>
+                                    <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Search by church name to impersonate and troubleshoot..." 
+                                        value={supportSearch} 
+                                        onChange={e => setSupportSearch(e.target.value)}
+                                        style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.8rem 1rem 0.8rem 2.5rem', borderRadius: '8px', color: 'white' }}
+                                    />
+                                </div>
+                                
+                                {supportSearch && (
+                                    <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {churches.filter(c => c.name.toLowerCase().includes(supportSearch.toLowerCase())).slice(0, 5).map(church => (
+                                            <div key={church.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 700, color: 'white', fontSize: '0.9rem' }}>{church.name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Plan: {church.plan_tier || 'N/A'} • Users: {profiles.filter(p => p.church_id === church.id).length}</div>
+                                                </div>
+                                                {onImpersonate && (
+                                                    <button onClick={() => onImpersonate(church.id)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#3b82f6', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
+                                                        <Eye size={14} /> Troubleshoot (Impersonate)
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {churches.filter(c => c.name.toLowerCase().includes(supportSearch.toLowerCase())).length === 0 && (
+                                            <div style={{ padding: '1rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>No churches found matching "{supportSearch}"</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Support Playbook */}
+                        <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' }}>
+                            <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Send size={20} color="#60a5fa" /> Support Playbook (Macros)
+                                </h2>
+                            </div>
+                            <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                                <TemplateCard 
+                                    title="Password Reset"
+                                    description="Instructions for resetting a user's password."
+                                    content={"Hi [Name],\n\nTo reset your password, please go to the login page and click on 'Forgot Password'. You will receive an email with a secure link to create a new password.\n\nIf you don't see the email within a few minutes, please check your spam folder.\n\nBest,\nStorehouse Support"}
+                                />
+                                <TemplateCard 
+                                    title="Bank Reconciliation"
+                                    description="Steps for reconciling a bank account."
+                                    content={"Hi [Name],\n\nTo reconcile your bank account in Storehouse:\n1. Go to the 'Ledger' tab.\n2. Click the 'Reconcile' button in the top right.\n3. Enter your ending statement balance and date.\n4. Check off the transactions that appear on your statement.\n5. Once the difference is $0.00, click 'Finish Reconciliation'.\n\nLet me know if you get stuck on any of these steps!\n\nBest,\nStorehouse Support"}
+                                />
+                                <TemplateCard 
+                                    title="Adding New Users"
+                                    description="How to invite staff or treasurers."
+                                    content={"Hi [Name],\n\nTo invite a new user to your church's Storehouse account:\n1. Go to the 'Settings' tab (gear icon).\n2. Click on 'Team' or 'Users'.\n3. Click 'Invite User' and enter their email address and role.\n4. They will receive an email to set up their account.\n\nBest,\nStorehouse Support"}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Ticketing System */}
+                        <SupportCRM />
                     </div>
                 )}
 
