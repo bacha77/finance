@@ -3,12 +3,13 @@ import {
     Building2, Users, DollarSign, LogOut, RefreshCw,
     Crown, AlertTriangle, CheckCircle2,
     Search, Edit3, Save, X,
-    Eye, Loader2, Ban, Key, Send
+    Eye, Loader2, Ban, Key, Send, TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import LeadsCRM from './LeadsCRM';
 import SupportCRM from './SupportCRM';
+import MarketingCampaigns from './MarketingCampaigns';
 
 interface AdminPanelProps {
     adminEmail: string;
@@ -340,6 +341,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
     const [editingChurch, setEditingChurch] = useState<any | null>(null);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [supportSearch, setSupportSearch] = useState('');
+    const [refName, setRefName] = useState('');
     const [filterPlan, setFilterPlan] = useState<string>('all');
     const [activeTab, setActiveTab] = useState<'churches' | 'users' | 'admins' | 'marketing' | 'sales' | 'support'>('churches');
     const [admins, setAdmins] = useState<{user_id: string, role: string}[]>([]);
@@ -1257,7 +1259,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
 
                 {/* Marketing Playbook Tab */}
                 {activeTab === 'marketing' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
+                        
+                        <MarketingCampaigns />
+                        
+                        {/* Referral Link Generator */}
+                        <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' }}>
+                            <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                                    <TrendingUp size={20} color="#60a5fa" /> Referral Link Generator
+                                </h2>
+                                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1rem' }}>Generate a unique tracking link to share on social media or with partners.</p>
+                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Enter your name or partner name (e.g., john-smith)" 
+                                        value={refName} 
+                                        onChange={e => setRefName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                                        style={{ flex: 1, minWidth: '200px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.8rem 1rem', borderRadius: '8px', color: 'white' }}
+                                    />
+                                    <button 
+                                        onClick={() => {
+                                            if (!refName) return alert('Enter a name first!');
+                                            navigator.clipboard.writeText(`https://storehousefinance.com/signup?ref=${refName}`);
+                                            alert('Link copied to clipboard!');
+                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#3b82f6', color: 'white', border: 'none', padding: '0.8rem 1.2rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+                                    >
+                                        Copy Link
+                                    </button>
+                                </div>
+                                {refName && (
+                                    <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', color: '#60a5fa', fontSize: '0.85rem', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                        https://storehousefinance.com/signup?ref={refName}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
                         {staffMetricsView}
                         <div style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '2rem' }}>
                             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>Marketing & Outreach Playbook</h2>
@@ -1317,6 +1356,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                     description="Send this after a successful demo to close the deal."
                                     emailSubject="Storehouse Finance Proposal - [Church Name]"
                                     content={"Hi [Pastor/Treasurer Name],\n\nThank you for taking the time to see Storehouse Finance in action today. Based on our conversation, I'm confident our platform will save your team hours of administrative work and provide the financial clarity your church needs.\n\nHere is the link to start your 30-day free trial: [Insert Link]\n\nPlease let me know if you have any final questions before we get your account set up!\n\nBest,\n[Your Name]"}
+                                />
+
+                                {/* Social Media Copy */}
+                                <TemplateCard 
+                                    title="Facebook/LinkedIn Post"
+                                    description="Post this to your personal network."
+                                    content={"Does your church treasurer spend hours every month just trying to reconcile bank statements?\n\nStop using generic software like QuickBooks that wasn't built for fund accounting! \n\nI just joined Storehouse Finance - a new platform built specifically to help churches track distinct funds in real-time without the headache. \n\nSign up for a 30-day free trial here: [Insert Referral Link]"}
+                                />
+
+                                {/* Ad Copy */}
+                                <TemplateCard 
+                                    title="Facebook Ad Template"
+                                    description="Use this copy when running FB Ads."
+                                    content={"Headline: Built For Churches. Not Businesses.\n\nPrimary Text: Stop fighting your accounting software. Storehouse Finance is the first real-time, double-entry ledger built specifically for church fund accounting. No more messy sub-accounts. No more spreadsheet headaches. \n\nClick here to start your 30-day free trial and give your treasurer their weekend back! \n[Insert Link]"}
+                                />
+
+                                {/* Drip Email Sequence */}
+                                <TemplateCard 
+                                    title="Drip Email 1: The Problem"
+                                    description="Send to a new lead (Day 1)."
+                                    emailSubject="Is your church using the wrong accounting software?"
+                                    content={"Hi [Name],\n\nMost churches are forced to use QuickBooks, but since it wasn't built for non-profits, you end up creating dozens of messy sub-accounts just to track your building fund vs. your general fund.\n\nWhat if your software actually understood fund accounting out of the box?\n\nReply to this email if you'd like a quick 5-minute demo of Storehouse Finance."}
                                 />
                             </div>
                         </div>
@@ -1389,6 +1450,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                                     title="Adding New Users"
                                     description="How to invite staff or treasurers."
                                     content={"Hi [Name],\n\nTo invite a new user to your church's Storehouse account:\n1. Go to the 'Settings' tab (gear icon).\n2. Click on 'Team' or 'Users'.\n3. Click 'Invite User' and enter their email address and role.\n4. They will receive an email to set up their account.\n\nBest,\nStorehouse Support"}
+                                />
+                                <TemplateCard 
+                                    title="Generating Reports"
+                                    description="How to pull an income statement or balance sheet."
+                                    content={"Hi [Name],\n\nTo generate a financial report:\n1. Navigate to the 'Reports' tab on the left menu.\n2. Select the type of report you need (e.g., Income Statement, Balance Sheet).\n3. Choose your date range and any specific funds you want to filter by.\n4. Click 'Generate' and then 'Export to PDF' or 'Export to CSV' to download.\n\nLet me know if you need help reading the report!\n\nBest,\nStorehouse Support"}
+                                />
+                                <TemplateCard 
+                                    title="Editing Chart of Accounts"
+                                    description="How to add a new fund or account."
+                                    content={"Hi [Name],\n\nIf you need to add a new fund (like a Building Fund or Missions Fund):\n1. Go to 'Settings' and select 'Chart of Accounts'.\n2. Click the 'New Account' button.\n3. Enter the account name, type (Asset, Liability, Equity, Revenue, or Expense), and select if it is a sub-account of an existing fund.\n4. Save your changes.\n\nBest,\nStorehouse Support"}
+                                />
+                                <TemplateCard 
+                                    title="Updating Billing Info"
+                                    description="How to update a credit card on file."
+                                    content={"Hi [Name],\n\nTo update your church's billing information:\n1. Click on your profile icon in the bottom left.\n2. Go to 'Billing & Subscription'.\n3. Click 'Update Payment Method'.\n4. Enter your new credit card details and save.\n\nYour next invoice will automatically be charged to the new card.\n\nBest,\nStorehouse Support"}
+                                />
+                                <TemplateCard 
+                                    title="Recording Sunday Tithes"
+                                    description="How to record a batch of Sunday donations."
+                                    content={"Hi [Name],\n\nTo record your Sunday offering:\n1. Go to the 'Ledger' tab and click 'New Transaction'.\n2. Set the Date to Sunday's date.\n3. Enter 'Sunday Tithes & Offerings' as the description.\n4. Select your 'Tithes' or 'General Fund' revenue account.\n5. Enter the total deposit amount and save.\n\nBest,\nStorehouse Support"}
+                                />
+                                <TemplateCard 
+                                    title="Handling Bounced Checks"
+                                    description="How to reverse a bounced donation."
+                                    content={"Hi [Name],\n\nIf a donation check bounced:\n1. Find the original deposit in your Ledger.\n2. Create a new transaction on the date the check bounced.\n3. Enter the transaction as an Expense or negative amount against the same fund the original deposit went into.\n4. If your bank charged a fee, log a separate expense transaction for the 'Bank Fees' account.\n\nBest,\nStorehouse Support"}
+                                />
+                                <TemplateCard 
+                                    title="Year-End Giving Statements"
+                                    description="How to generate tax statements for donors."
+                                    content={"Hi [Name],\n\nStorehouse Finance currently tracks your internal fund accounting. For generating individual donor tax statements, we recommend exporting your donation records to CSV (via the Reports tab) and importing them into your Church Management Software (ChMS) to mail out to your congregation.\n\nLet me know if you need help exporting that data!\n\nBest,\nStorehouse Support"}
+                                />
+                                <TemplateCard 
+                                    title="Logging Payroll Expenses"
+                                    description="How to record payroll run from an external provider."
+                                    content={"Hi [Name],\n\nStorehouse Finance does not run payroll directly. To log your payroll run (from Gusto, ADP, etc.):\n1. Go to the 'Ledger' and create a 'New Transaction'.\n2. Select your 'Payroll Expenses' account.\n3. Enter the total amount withdrawn from your bank account for that payroll run.\n4. Attach the payroll summary report PDF from your provider as a receipt.\n\nBest,\nStorehouse Support"}
                                 />
                             </div>
                         </div>
