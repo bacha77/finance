@@ -26,6 +26,26 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const query = process.argv[2] || 'Churches in Columbus OH';
 
+async function extractEmail(url) {
+    if (!url) return '';
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        const res = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } });
+        clearTimeout(timeoutId);
+        if (!res.ok) return '';
+        const text = await res.text();
+        const match = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+        if (match && !match[0].match(/\.(png|jpg|jpeg|gif|css|js|webp|svg)$/i)) {
+            return match[0];
+        }
+        return '';
+    } catch (e) {
+        return '';
+    }
+}
+
+
 async function fetchLeads(searchQuery) {
     console.log(`\n🔍 Searching for: "${searchQuery}"...`);
     
@@ -56,12 +76,16 @@ async function fetchLeads(searchQuery) {
                 
                 const churchName = details.name;
                 const phone = details.formatted_phone_number || '';
-                const email = ''; // Google Places API does not provide emails directly
                 const website = details.website || '';
+                let email = ''; 
+                if (website) {
+                    email = await extractEmail(website);
+                }
                 
                 console.log(`➡️  ${churchName}`);
                 if (phone) console.log(`   Phone: ${phone}`);
                 if (website) console.log(`   Website: ${website}`);
+                if (email) console.log(`   Email: ${email}`);
                 
                 // Insert into Supabase CRM
                 const { error } = await supabase.from('marketing_leads').insert({
