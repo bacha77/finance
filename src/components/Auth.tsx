@@ -164,7 +164,7 @@ interface AuthProps {
 const Auth: React.FC<AuthProps> = ({ onBypass }) => {
     const { language, setLanguage, t } = useLanguage();
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const [mode, setMode] = useState<'login' | 'signup' | 'verified' | 'reset'>('login');
+    const [mode, setMode] = useState<'login' | 'signup' | 'verified' | 'reset' | 'contact'>('login');
     const [step, setStep] = useState(0);
 
     const [email, setEmail] = useState('');
@@ -189,6 +189,31 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
     const [googleLoading, setGoogleLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [signedUpEmail, setSignedUpEmail] = useState('');
+
+    const handleContactSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        try {
+            const { error } = await supabase.from('marketing_leads').insert({
+                church_name: churchName,
+                contact_name: pastorName,
+                email: email,
+                phone: phone,
+                status: 'New',
+                source: 'Website',
+                estimated_value: 199.00
+            });
+            if (error) throw error;
+            setMode('login');
+            alert('Thanks for your interest! Our sales team will reach out shortly.');
+            setChurchName(''); setPastorName(''); setEmail(''); setPhone('');
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const pwStrengthLabel = getStrength(password);
     const pwStrengthBg = getStrengthBg(password);
@@ -431,7 +456,8 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                         {mode === 'login' ? t('welcomeBack') :
                             mode === 'verified' ? (t('almostThere') || 'Almost there!') :
                                 mode === 'reset' ? (t('resetPassword') || 'Reset Password') :
-                                    step === 0 ? t('createAccount') : t('tellUsAboutChurch')}
+                                    mode === 'contact' ? 'Request a Demo' :
+                                        step === 0 ? t('createAccount') : t('tellUsAboutChurch')}
                     </p>
                 </div>
 
@@ -444,6 +470,42 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                             <button onClick={() => { setMode('login'); reset(); }}
                                 className="mt-6 w-full p-3 rounded-xl border border-white/10 bg-white/5 text-slate-400 text-sm font-semibold hover:bg-white/10 transition-colors"
                             >
+                                ← {t('backToSignIn') || 'Back to Sign In'}
+                            </button>
+                        </motion.div>
+                    )}
+
+                    {/* CONTACT SALES */}
+                    {mode === 'contact' && (
+                        <motion.div key="contact" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }}>
+                            <form onSubmit={handleContactSubmit} className="flex flex-col gap-4">
+                                <Field label="Church Name" placeholder="Grace Community Church" type="text"
+                                    value={churchName} onChange={setChurchName} icon={Church} required />
+                                <Field label="Your Name" placeholder="John Doe" type="text"
+                                    value={pastorName} onChange={setPastorName} icon={User} required />
+                                <Field label={t('emailAddress')} placeholder="pastor@mychurch.org" type="email"
+                                    value={email} onChange={setEmail} icon={Mail} required />
+                                <Field label="Phone Number" placeholder="(555) 000-0000" type="tel"
+                                    value={phone} onChange={(v) => setPhone(formatPhoneNumber(v))} icon={Phone} required />
+
+                                {error && (
+                                    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                                        className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                                        <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
+                                        <span className="text-red-500 text-sm font-semibold">{error}</span>
+                                    </motion.div>
+                                )}
+
+                                <button type="submit" disabled={loading}
+                                    className="w-full py-3.5 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white font-black text-sm shadow-lg shadow-blue-900/20 hover:from-blue-500 hover:to-blue-600 transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-70"
+                                >
+                                    <Mail size={16} />
+                                    {loading ? 'Submitting...' : 'Request Demo'}
+                                </button>
+                            </form>
+
+                            <button type="button" onClick={() => { setMode('login'); reset(); setError(null); }}
+                                className="w-full text-center mt-6 text-slate-400 text-sm font-semibold hover:text-slate-300 transition-colors">
                                 ← {t('backToSignIn') || 'Back to Sign In'}
                             </button>
                         </motion.div>
@@ -514,6 +576,11 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                             <button type="button" onClick={() => { setMode('signup'); reset(); setError(null); }}
                                 className="w-full text-center mt-6 text-slate-400 text-sm font-semibold hover:text-slate-300 transition-colors">
                                 {t('dontHaveAccount')} <span className="text-blue-400">{t('createOneFree')}</span>
+                            </button>
+
+                            <button type="button" onClick={() => { setMode('contact'); reset(); setError(null); }}
+                                className="w-full text-center mt-3 text-slate-400 text-sm font-semibold hover:text-slate-300 transition-colors">
+                                Interested in a demo? <span className="text-blue-400">Contact Sales</span>
                             </button>
 
                             <div className="mt-8 pt-5 border-t border-white/5 flex justify-center gap-6">
