@@ -118,6 +118,7 @@ async function fetchLeads(searchQuery) {
                 }
 
                 // Insert into Supabase CRM
+                const todayStr = new Date().toISOString().split('T')[0];
                 const { error } = await supabase.from('marketing_leads').insert({
                     church_name: churchName,
                     phone: phone,
@@ -125,7 +126,7 @@ async function fetchLeads(searchQuery) {
                     address: address,
                     contact_name: 'Lead from ' + churchName,
                     status: 'New',
-                    source: 'Google Maps Scraper',
+                    source: `Google Maps Scraper (${todayStr})`,
                     estimated_value: 0.00 
                 });
 

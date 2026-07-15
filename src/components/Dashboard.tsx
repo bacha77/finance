@@ -148,6 +148,98 @@ const StatCard: React.FC<StatCardProps> = ({
     </motion.div>
 );
 
+// ── Advanced Financial Widgets ───────────────────────────────────────────
+const BudgetBurnDownWidget: React.FC = () => {
+    // Mock data for top 3 departments
+    const departments = [
+        { name: 'Youth Ministry', budget: 5000, spent: 4200 },
+        { name: 'Missions', budget: 12000, spent: 5000 },
+        { name: 'Operations', budget: 8000, spent: 7800 }
+    ];
+    return (
+        <div className="glass-card" style={{ padding: '1.5rem', flex: 1, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Activity size={18} color="#f59e0b" /> Budget Burn-Down
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {departments.map((d, i) => {
+                    const pct = Math.min(100, (d.spent / d.budget) * 100);
+                    const isDanger = pct > 90;
+                    return (
+                        <div key={i}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.3rem', color: '#94a3b8', fontWeight: 600 }}>
+                                <span>{d.name}</span>
+                                <span>{fmtShort(d.spent)} / {fmtShort(d.budget)}</span>
+                            </div>
+                            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                                <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${pct}%` }}
+                                    transition={{ duration: 1, ease: 'easeOut' }}
+                                    style={{ height: '100%', background: isDanger ? '#ef4444' : '#10b981', borderRadius: '10px' }} 
+                                />
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+const GivingAnalyticsWidget: React.FC = () => {
+    return (
+        <div className="glass-card" style={{ padding: '1.5rem', flex: 1, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <PieIcon size={18} color="#a855f7" /> Giving Analytics
+            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', margin: '1rem 0' }}>
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>78%</div>
+                    <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Recurring</div>
+                </div>
+                <div style={{ width: '1px', height: '40px', background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>22%</div>
+                    <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>One-Time</div>
+                </div>
+            </div>
+            <div style={{ padding: '0.75rem', background: 'rgba(168, 85, 247, 0.05)', borderRadius: '8px', border: '1px solid rgba(168, 85, 247, 0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <BrainCircuit size={16} color="#a855f7" />
+                <span style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 600 }}>Projecting <strong style={{ color: 'white' }}>+12%</strong> growth this month</span>
+            </div>
+        </div>
+    );
+};
+
+const CampaignProgressWidget: React.FC = () => {
+    const goal = 5000;
+    const raised = 3250;
+    const pct = Math.min(100, (raised / goal) * 100);
+    return (
+        <div className="glass-card" style={{ padding: '1.5rem', flex: 1, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', right: -20, top: -20, opacity: 0.05 }}><Target size={120} /></div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative', zIndex: 1 }}>
+                <Target size={18} color="#ec4899" /> Capital Campaign
+            </h3>
+            <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white', lineHeight: 1, marginBottom: '0.5rem' }}>{fmtShort(raised)}</div>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, marginBottom: '1rem' }}>Raised of {fmtShort(goal)} goal</div>
+                
+                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden', marginBottom: '0.5rem' }}>
+                    <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 1.5, ease: 'easeOut' }}
+                        style={{ height: '100%', background: 'linear-gradient(90deg, #ec4899, #f43f5e)', borderRadius: '10px' }} 
+                    />
+                </div>
+                <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#ec4899', fontWeight: 800 }}>{pct.toFixed(0)}%</div>
+            </div>
+        </div>
+    );
+};
+
 // ── Feature Card ──────────────────────────────────────────────────────────
 const FeatureCard: React.FC<{
     icon: React.ElementType; title: string; desc: string;
@@ -530,6 +622,13 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Advanced Analytics Widgets */}
+            <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
+                <BudgetBurnDownWidget />
+                <GivingAnalyticsWidget />
+                <CampaignProgressWidget />
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.75rem', marginBottom: '2.5rem' }}>
                 <motion.div
