@@ -49,6 +49,21 @@ async function extractEmail(url) {
 async function fetchLeads(searchQuery) {
     console.log(`\n🔍 Searching for: "${searchQuery}"...`);
     
+    // Step 0: Cleanup old uncontacted leads (older than 15 days)
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+    const { error: cleanupError, count } = await supabase
+        .from('marketing_leads')
+        .delete({ count: 'exact' })
+        .eq('status', 'New')
+        .lt('created_at', fifteenDaysAgo.toISOString());
+    
+    if (cleanupError) {
+        console.error(`   ❌ Failed to clean up old leads: ${cleanupError.message}`);
+    } else if (count > 0) {
+        console.log(`   🧹 Cleaned up ${count} uncontacted leads older than 15 days.`);
+    }
+
     try {
         // Step 1: Text Search to find places
         const textSearchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&key=${GOOGLE_MAPS_API_KEY}`;
@@ -89,6 +104,19 @@ async function fetchLeads(searchQuery) {
                 if (website) console.log(`   Website: ${website}`);
                 if (email) console.log(`   Email: ${email}`);
                 
+                // Check for duplicates
+                const { data: existing } = await supabase
+                    .from('marketing_leads')
+                    .select('id')
+                    .eq('church_name', churchName)
+                    .maybeSingle();
+                
+                if (existing) {
+                    console.log(`   ⏭️  Skipped (Already in CRM)`);
+                    console.log('---');
+                    continue;
+                }
+
                 // Insert into Supabase CRM
                 const { error } = await supabase.from('marketing_leads').insert({
                     church_name: churchName,
