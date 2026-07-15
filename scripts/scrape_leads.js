@@ -77,12 +77,14 @@ async function fetchLeads(searchQuery) {
                 const churchName = details.name;
                 const phone = details.formatted_phone_number || '';
                 const website = details.website || '';
+                const address = details.formatted_address || '';
                 let email = ''; 
                 if (website) {
                     email = await extractEmail(website);
                 }
                 
                 console.log(`➡️  ${churchName}`);
+                if (address) console.log(`   Address: ${address}`);
                 if (phone) console.log(`   Phone: ${phone}`);
                 if (website) console.log(`   Website: ${website}`);
                 if (email) console.log(`   Email: ${email}`);
@@ -92,6 +94,7 @@ async function fetchLeads(searchQuery) {
                     church_name: churchName,
                     phone: phone,
                     email: email, 
+                    address: address,
                     contact_name: 'Lead from ' + churchName,
                     status: 'New',
                     source: 'Google Maps Scraper',
