@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion } from 'framer-motion';
-import { Loader2, Plus, Phone, Mail, Building, Clock } from 'lucide-react';
+import { Loader2, Plus, Phone, Mail, Building, Clock, Trash2 } from 'lucide-react';
 
 export default function LeadsCRM() {
     const [leads, setLeads] = useState<any[]>([]);
@@ -60,6 +60,13 @@ export default function LeadsCRM() {
     const updateStatus = async (id: string, newStatus: string) => {
         const { error } = await supabase.from('marketing_leads').update({ status: newStatus }).eq('id', id);
         if (error) alert(`Error updating status: ${error.message}`);
+        else fetchLeads();
+    };
+
+    const deleteLead = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this lead?')) return;
+        const { error } = await supabase.from('marketing_leads').delete().eq('id', id);
+        if (error) alert(`Error deleting lead: ${error.message}`);
         else fetchLeads();
     };
 
@@ -209,8 +216,13 @@ export default function LeadsCRM() {
                                         <option value="Not Interested" style={{ background: '#0f172a' }}>Not Interested</option>
                                     </select>
                                 </div>
-                                <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <Clock size={12} /> {new Date(lead.created_at).toLocaleDateString()}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <Clock size={12} /> {new Date(lead.created_at).toLocaleDateString()}
+                                    </div>
+                                    <button onClick={() => deleteLead(lead.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }} title="Delete Lead">
+                                        <Trash2 size={14} />
+                                    </button>
                                 </div>
                             </div>
                         );
