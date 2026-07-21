@@ -81,14 +81,15 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
             supabase.from('funds').select('id, name, balance, type').eq('church_id', profile.church_id)
         ]);
 
-        const totalIncome = (ledger || []).filter(l => l.type === 'Income').reduce((sum, l) => sum + Number(l.amount), 0);
-        const totalExpense = (ledger || []).filter(l => l.type === 'Expense').reduce((sum, l) => sum + Number(l.amount), 0);
+        const totalIncome = (ledger || []).filter(l => l.type === 'in' || l.type === 'revenue').reduce((sum, l) => sum + Math.abs(Number(l.amount) || 0), 0);
+        const totalExpense = (ledger || []).filter(l => l.type === 'out' || l.type === 'expense').reduce((sum, l) => sum + Math.abs(Number(l.amount) || 0), 0);
+        const totalBalance = (ledger || []).reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
 
         return {
             summary: {
                 totalIncome,
                 totalExpense,
-                netBalance: totalIncome - totalExpense,
+                netBalance: totalBalance,
                 totalMembers: (members || []).length
             },
             members: (members || []).map(m => ({ name: m.name, status: m.status })),
