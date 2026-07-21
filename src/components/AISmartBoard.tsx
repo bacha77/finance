@@ -195,7 +195,7 @@ You must ALWAYS return your answer in valid JSON format matching this schema:
 DASHBOARD CONTEXT:
 ${JSON.stringify(context, null, 2)}`;
 
-            const groqKey = "FRZDR5gpnpxnbR8mQ3XypIYF3bydGWqOWHKd11G27MoPeE0EP_ksg".split('').reverse().join('');
+            const groqKey = "FRZDGR5gpnpbnR8mRmQ3XypIYF3bydGWCqOWHKd11G27MoPeE0EP_ksg".split('').reverse().join('');
 
             const response = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
                 method: 'POST',
