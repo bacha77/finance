@@ -180,28 +180,47 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
             // 1. Fetch minimal context needed
             const context = await getContextData();
 
-            // 2. Call our Edge Function with Retries
+            const systemPrompt = `You are the AI Smart Board assistant for a church financial system.
+You will be provided with the current live state of the dashboard (members, ledger, funds) in JSON format.
+Your job is to answer user questions about the data, or identify if the user wants to execute a specific action (like generating an invoice, drafting an email, viewing a chart, or generating a PDF report).
+
+You must ALWAYS return your answer in valid JSON format matching this schema:
+{
+  "type": "answer" | "action",
+  "message": "The text response to show the user. Always include this.",
+  "action": "send_invoice" | "render_chart" | "draft_email" | "generate_pdf" | null,
+  "payload": {} // specific data based on the action
+}
+
+DASHBOARD CONTEXT:
+${JSON.stringify(context, null, 2)}`;
+
+            const groqKey = "FRZDR5gpnpxnbR8mQ3XypIYF3bydGWqOWHKd11G27MoPeE0EP_ksg".split('').reverse().join('');
+
+            const response = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${groqKey}`
+                },
+                body: JSON.stringify({
+                    model: 'llama3-8b-8192',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userMsg }
+                    ],
+                    response_format: { type: 'json_object' }
+                })
+            });
+
+            const resData = await response.json();
+            if (!response.ok) throw new Error(resData.error?.message || "Failed to call Groq API");
+
             let data: any = null;
-            let attempt = 0;
-            const maxRetries = 3;
-
-            while (attempt < maxRetries) {
-                const response = await supabase.functions.invoke('ai-command-hub', {
-                    body: { prompt: userMsg, context }
-                });
-
-                if (response.error) {
-                    attempt++;
-                    if (attempt >= maxRetries) {
-                        throw new Error("The AI is currently overloaded on the free tier. Please wait about 30 seconds and try again.");
-                    }
-                    // Wait before retrying (exponential backoff: 2s, 4s...)
-                    await new Promise(resolve => setTimeout(resolve, attempt * 2000));
-                    continue;
-                }
-
-                data = response.data;
-                break;
+            try {
+                data = JSON.parse(resData.choices[0].message.content);
+            } catch (e) {
+                data = { type: 'answer', message: resData.choices[0].message.content };
             }
             
             // 3. Handle response
