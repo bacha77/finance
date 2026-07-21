@@ -86,7 +86,7 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
             // 1. Fetch minimal context needed
             const [{ data: members }, { data: ledger }, { data: funds }] = await Promise.all([
                 supabase.from('members').select('id, name, email, phone, status').eq('church_id', profile.church_id),
-                supabase.from('ledger').select('id, type, date, amount, category, member, description, fund').eq('church_id', profile.church_id).order('date', { ascending: false }).limit(500),
+                supabase.from('ledger').select('id, type, date, amount, category, member, description, fund').eq('church_id', profile.church_id).order('date', { ascending: false }).limit(30),
                 supabase.from('funds').select('id, name, balance, type').eq('church_id', profile.church_id)
             ]);
 
@@ -96,12 +96,34 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                 funds: funds || []
             };
 
-            // 2. Call our Edge Function
-            const { data, error } = await supabase.functions.invoke('ai-command-hub', {
-                body: { prompt: userMsg, context }
-            });
+            // 2. Call our Edge Function with Retries
+            let data: any = null;
+            let attempt = 0;
+            const maxRetries = 3;
 
-            if (error) throw new Error(error.message || 'Failed to communicate with AI');
+            while (attempt < maxRetries) {
+                const response = await supabase.functions.invoke('ai-command-hub', {
+                    body: { prompt: userMsg, context }
+                });
+
+                if (response.error) {
+                    const errorStr = response.error.context ? JSON.stringify(response.error.context) : response.error.message;
+                    if (errorStr.includes('429') || errorStr.includes('quota') || errorStr.toLowerCase().includes('rate') || errorStr.includes('non-2xx')) {
+                        attempt++;
+                        if (attempt >= maxRetries) {
+                            throw new Error("The AI is currently overloaded on the free tier. Please wait about 20 seconds and try again.");
+                        }
+                        // Wait before retrying (exponential backoff: 2s, 4s...)
+                        await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+                        continue;
+                    } else {
+                        throw new Error(errorStr || 'Failed to communicate with AI');
+                    }
+                }
+
+                data = response.data;
+                break;
+            }
             
             // 3. Handle response
             if (data.type === 'action') {
@@ -121,10 +143,9 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
 
         } catch (err: any) {
             console.error("Error communicating with AI:", err);
-            const fullErr = err.context ? JSON.stringify(err.context) : err.message;
             setMessages(prev => [...prev, { 
                 role: 'assistant', 
-                text: `Sorry, I encountered an error: ${fullErr}` 
+                text: `Sorry, I encountered an error: ${err.message}` 
             }]);
         } finally {
             setIsLoading(false);
