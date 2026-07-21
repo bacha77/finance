@@ -807,6 +807,8 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                                     <input
                                         type="email"
                                         required
+                                        pattern="[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$"
+                                        title="Please enter a valid email address with a domain (e.g. user@example.com)"
                                         placeholder="required for report delivery"
                                         value={newMemberEmail}
                                         onChange={(e) => setNewMemberEmail(e.target.value.toLowerCase())}
@@ -820,6 +822,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                                         <Phone size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                                         <input
                                             type="tel"
+                                            maxLength={14}
                                             value={newMemberPhone}
                                             onChange={(e) => setNewMemberPhone(formatPhoneNumber(e.target.value))}
                                             placeholder="+1 (555) 000-0000"
@@ -943,13 +946,13 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                                     <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'white', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                         {t('email')} <span style={{ color: '#ef4444' }}>*</span>
                                     </label>
-                                    <input type="email" required value={editEmail} onChange={e => setEditEmail(e.target.value.toLowerCase())}
+                                    <input type="email" required pattern="[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$" title="Please enter a valid email address with a domain (e.g. user@example.com)" value={editEmail} onChange={e => setEditEmail(e.target.value.toLowerCase())}
                                         style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
                                 </div>
                                 {/* Phone */}
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}><Phone size={10} style={{ display: 'inline', marginRight: '4px' }} />{t('phoneNumber')}</label>
-                                    <input type="tel" value={editPhone} onChange={e => setEditPhone(formatPhoneNumber(e.target.value))}
+                                    <input type="tel" maxLength={14} value={editPhone} onChange={e => setEditPhone(formatPhoneNumber(e.target.value))}
                                         placeholder="+1 (555) 000-0000"
                                         style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
                                 </div>

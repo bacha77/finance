@@ -17,6 +17,15 @@ export default defineConfig({
         finance: resolve(__dirname, 'finance/index.html'),
         employee: resolve(__dirname, 'employee/index.html'),
       },
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-animations': ['framer-motion'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-charts': ['recharts'],
+          'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],
+        },
+      },
     },
   },
   server: {
