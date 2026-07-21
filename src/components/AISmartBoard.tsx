@@ -36,14 +36,16 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
 
         try {
             // 1. Fetch minimal context needed
-            const [{ data: members }, { data: ledger }] = await Promise.all([
+            const [{ data: members }, { data: ledger }, { data: funds }] = await Promise.all([
                 supabase.from('members').select('id, name, email, phone, status').eq('church_id', profile.church_id),
-                supabase.from('ledger').select('id, type, date, amount, category, member_name').eq('church_id', profile.church_id).order('date', { ascending: false }).limit(500)
+                supabase.from('ledger').select('id, type, date, amount, category, member_name').eq('church_id', profile.church_id).order('date', { ascending: false }).limit(500),
+                supabase.from('funds').select('id, name, balance, type').eq('church_id', profile.church_id)
             ]);
 
             const context = {
                 members: members || [],
-                ledger: ledger || []
+                ledger: ledger || [],
+                funds: funds || []
             };
 
             // 2. Call our Edge Function
