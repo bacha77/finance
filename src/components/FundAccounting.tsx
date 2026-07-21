@@ -968,13 +968,6 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                                             {availableDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                                         </select>
                                                     </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>{t('fund')}</label>}
-                                                        <select value={alloc.fundId} onChange={e => handleAllocationChange(idx, 'fundId', e.target.value)} className="glass-input" style={{ width: '100%', fontSize: '0.8rem' }}>
-                                                            <option value="" disabled hidden>Select Fund...</option>
-                                                            {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                                                        </select>
-                                                    </div>
                                                     <div style={{ width: '90px' }}>
                                                         {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Amount</label>}
                                                         <input type="number" placeholder="0.00" value={alloc.amount} onChange={e => handleAllocationChange(idx, 'amount', e.target.value)} className="glass-input" style={{ width: '100%', textAlign: 'right' }} />
