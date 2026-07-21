@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { X, Send, Bot, User, Loader2, Sparkles, Trash2, Mail } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { supabase } from '../lib/supabase';
 
 interface AISmartBoardProps {
@@ -10,10 +11,15 @@ interface AISmartBoardProps {
 }
 
 export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardProps) {
+    type AIMessage = { role: 'user' | 'assistant', text: string, type?: string, action?: string, payload?: any };
     const [input, setInput] = useState('');
-    const [messages, setMessages] = useState<{ role: 'user' | 'assistant', text: string }[]>([
-        { role: 'assistant', text: "Hello! I am your AI Smart Board. I have access to your live dashboard data. You can ask me questions about funds or tell me to perform actions like sending invoices." }
-    ]);
+    const [messages, setMessages] = useState<AIMessage[]>(() => {
+        const saved = localStorage.getItem('ai_smart_board_history');
+        if (saved) {
+            try { return JSON.parse(saved); } catch (e) {}
+        }
+        return [{ role: 'assistant', text: "Hello! I am your AI Smart Board. I have access to your live dashboard data. You can ask me questions, generate charts, or draft emails." }];
+    });
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -24,6 +30,16 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
     useEffect(() => {
         scrollToBottom();
     }, [messages, isLoading]);
+
+    useEffect(() => {
+        localStorage.setItem('ai_smart_board_history', JSON.stringify(messages));
+    }, [messages]);
+
+    const clearChat = () => {
+        if (window.confirm("Are you sure you want to clear the chat history?")) {
+            setMessages([{ role: 'assistant', text: "Hello! I am your AI Smart Board. I have access to your live dashboard data. You can ask me questions, generate charts, or draft emails." }]);
+        }
+    };
 
     const handleSend = async (e?: React.FormEvent) => {
         e?.preventDefault();
@@ -58,13 +74,18 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
             // 3. Handle response
             if (data.type === 'action') {
                 if (data.action === 'send_invoice') {
-                    // We can emit a custom event to the rest of the app to handle this
                     const event = new CustomEvent('open-invoice-modal', { detail: data.payload });
                     window.dispatchEvent(event);
                 }
             }
 
-            setMessages(prev => [...prev, { role: 'assistant', text: data.message || "Done!" }]);
+            setMessages(prev => [...prev, { 
+                role: 'assistant', 
+                text: data.message || "Done!",
+                type: data.type,
+                action: data.action,
+                payload: data.payload
+            }]);
 
         } catch (err: any) {
             console.error('AI Error:', err);
@@ -107,9 +128,14 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                                     <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Powered by Gemini API</p>
                                 </div>
                             </div>
-                            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
-                                <X size={20} />
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button onClick={clearChat} title="Clear Chat History" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
+                                    <Trash2 size={18} />
+                                </button>
+                                <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
+                                    <X size={20} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Chat Area */}
@@ -129,9 +155,50 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                                         border: m.role === 'user' ? '1px solid var(--border)' : '1px solid rgba(99,102,241,0.2)',
                                         borderTopRightRadius: m.role === 'user' ? '4px' : '12px',
                                         borderTopLeftRadius: m.role === 'user' ? '12px' : '4px',
-                                        maxWidth: '85%'
+                                        maxWidth: '85%',
+                                        width: m.action === 'render_chart' || m.action === 'draft_email' ? '100%' : 'auto'
                                     }}>
                                         {m.text}
+                                        
+                                        {/* Chart Rendering */}
+                                        {m.action === 'render_chart' && m.payload?.data && (
+                                            <div style={{ marginTop: '1rem', height: '200px', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px' }}>
+                                                {m.payload.title && <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', textAlign: 'center', color: 'var(--text-muted)' }}>{m.payload.title}</h4>}
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={m.payload.data}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                                                        <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                                                        <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => "$" + val} />
+                                                        <Tooltip 
+                                                            contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                                            itemStyle={{ color: '#818cf8' }}
+                                                        />
+                                                        <Bar dataKey="value" fill="#818cf8" radius={[4, 4, 0, 0]} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        )}
+
+                                        {/* Draft Email Rendering */}
+                                        {m.action === 'draft_email' && m.payload && (
+                                            <div style={{ marginTop: '1rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                                                <div style={{ padding: '0.75rem', borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>To: {m.payload.to || 'Anyone'}</div>
+                                                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Subject: {m.payload.subject}</div>
+                                                </div>
+                                                <div style={{ padding: '0.75rem', fontSize: '0.85rem', whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}>
+                                                    {m.payload.body}
+                                                </div>
+                                                <div style={{ padding: '0.75rem', borderTop: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                                                    <a 
+                                                        href={"mailto:" + (m.payload.to || "") + "?subject=" + encodeURIComponent(m.payload.subject || "") + "&body=" + encodeURIComponent(m.payload.body || "")}
+                                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#6366f1', color: 'white', padding: '6px 12px', borderRadius: '6px', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 500 }}
+                                                    >
+                                                        <Mail size={14} /> Send Email
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
