@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Bot, User, Loader2, Sparkles, Trash2, Mail, FileText, Download } from 'lucide-react';
+import { X, Send, Bot, User, Loader2, Sparkles, Trash2, Mail, FileText, Download, BarChart as BarChartIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -71,6 +71,78 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
         }
         
         doc.save((payload.title || 'report').replace(/\s+/g, '_').toLowerCase() + ".pdf");
+        doc.save((payload.title || 'report').replace(/\s+/g, '_').toLowerCase() + ".pdf");
+    };
+
+    const getContextData = async () => {
+        const [{ data: members }, { data: ledger }, { data: funds }] = await Promise.all([
+            supabase.from('members').select('id, name, email, phone, status').eq('church_id', profile.church_id),
+            supabase.from('ledger').select('id, type, date, amount, category, member, description, fund').eq('church_id', profile.church_id).order('date', { ascending: false }).limit(30),
+            supabase.from('funds').select('id, name, balance, type').eq('church_id', profile.church_id)
+        ]);
+
+        const totalIncome = (ledger || []).filter(l => l.type === 'Income').reduce((sum, l) => sum + Number(l.amount), 0);
+        const totalExpense = (ledger || []).filter(l => l.type === 'Expense').reduce((sum, l) => sum + Number(l.amount), 0);
+
+        return {
+            summary: {
+                totalIncome,
+                totalExpense,
+                netBalance: totalIncome - totalExpense,
+                totalMembers: (members || []).length
+            },
+            members: (members || []).map(m => ({ name: m.name, status: m.status })),
+            recentTransactions: (ledger || []).map(l => ({ date: l.date, type: l.type, amount: l.amount, category: l.category })),
+            funds: (funds || []).map(f => ({ name: f.name, balance: f.balance }))
+        };
+    };
+
+    const handleQuickChart = async () => {
+        setIsLoading(true);
+        setMessages(prev => [...prev, { role: 'user', text: "Quick Chart: Income vs Expenses" }]);
+        try {
+            const context = await getContextData();
+            setMessages(prev => [...prev, { 
+                role: 'assistant', 
+                text: "Here is your instant chart. It was generated completely locally, bypassing the internet!",
+                type: 'chart',
+                payload: { 
+                    title: "Income vs Expenses", 
+                    data: [
+                        { name: "Income", value: context.summary.totalIncome }, 
+                        { name: "Expenses", value: context.summary.totalExpense }
+                    ] 
+                }
+            }]);
+        } catch(e) {
+            console.error(e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleQuickPDF = async () => {
+        setIsLoading(true);
+        setMessages(prev => [...prev, { role: 'user', text: "Generate PDF Report" }]);
+        try {
+            const context = await getContextData();
+            setMessages(prev => [...prev, { 
+                role: 'assistant', 
+                text: "Your PDF report has been generated instantly. You can download it below.",
+                type: 'answer',
+                action: 'generate_pdf',
+                payload: { 
+                    title: "Financial Summary Report", 
+                    summary: `This is a quick summary of the recent finances. Total Income: $${context.summary.totalIncome.toFixed(2)}, Total Expenses: $${context.summary.totalExpense.toFixed(2)}, Net Balance: $${context.summary.netBalance.toFixed(2)}.`, 
+                    columns: ["Date", "Type", "Category", "Amount"], 
+                    rows: context.recentTransactions.slice(0, 15).map(t => [t.date, t.type, t.category, `$${Number(t.amount).toFixed(2)}`])
+                }
+            }]);
+        } catch(e) {
+            console.error(e);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleSend = async (e?: React.FormEvent) => {
@@ -84,28 +156,7 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
 
         try {
             // 1. Fetch minimal context needed
-            const [{ data: members }, { data: ledger }, { data: funds }] = await Promise.all([
-                supabase.from('members').select('id, name, email, phone, status').eq('church_id', profile.church_id),
-                supabase.from('ledger').select('id, type, date, amount, category, member, description, fund').eq('church_id', profile.church_id).order('date', { ascending: false }).limit(30),
-                supabase.from('funds').select('id, name, balance, type').eq('church_id', profile.church_id)
-            ]);
-
-            // EXTREME PAYLOAD OPTIMIZATION
-            // We strip out unneeded fields to prevent hitting the AI token limits
-            const totalIncome = (ledger || []).filter(l => l.type === 'Income').reduce((sum, l) => sum + Number(l.amount), 0);
-            const totalExpense = (ledger || []).filter(l => l.type === 'Expense').reduce((sum, l) => sum + Number(l.amount), 0);
-
-            const context = {
-                summary: {
-                    totalIncome,
-                    totalExpense,
-                    netBalance: totalIncome - totalExpense,
-                    totalMembers: (members || []).length
-                },
-                members: (members || []).map(m => ({ name: m.name, status: m.status })),
-                recentTransactions: (ledger || []).map(l => ({ date: l.date, type: l.type, amount: l.amount, category: l.category })),
-                funds: (funds || []).map(f => ({ name: f.name, balance: f.balance }))
-            };
+            const context = await getContextData();
 
             // 2. Call our Edge Function with Retries
             let data: any = null;
@@ -300,8 +351,36 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                             <div ref={messagesEndRef} />
                         </div>
 
+                        {/* Quick Actions */}
+                        <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: '0.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                            <button 
+                                onClick={handleQuickChart} 
+                                disabled={isLoading}
+                                style={{ 
+                                    padding: '6px 12px', borderRadius: '16px', border: '1px solid var(--border)', 
+                                    background: 'rgba(255,255,255,0.03)', color: 'var(--text-secondary)', fontSize: '0.8rem', 
+                                    display: 'flex', alignItems: 'center', gap: '6px', cursor: isLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <BarChartIcon size={14} color="#a855f7" /> Quick Chart
+                            </button>
+                            <button 
+                                onClick={handleQuickPDF} 
+                                disabled={isLoading}
+                                style={{ 
+                                    padding: '6px 12px', borderRadius: '16px', border: '1px solid var(--border)', 
+                                    background: 'rgba(255,255,255,0.03)', color: 'var(--text-secondary)', fontSize: '0.8rem', 
+                                    display: 'flex', alignItems: 'center', gap: '6px', cursor: isLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <FileText size={14} color="#6366f1" /> Quick PDF Report
+                            </button>
+                        </div>
+
                         {/* Input Area */}
-                        <div style={{ padding: '1.25rem', borderTop: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                        <div style={{ padding: '1rem 1.25rem 1.25rem 1.25rem', background: 'var(--bg-card)' }}>
                             <form onSubmit={handleSend} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                 <input 
                                     type="text"
