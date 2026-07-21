@@ -81,14 +81,26 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
             supabase.from('funds').select('id, name, balance, type').eq('church_id', profile.church_id)
         ]);
 
-        const totalIncome = (ledger || []).filter(l => l.type === 'in' || l.type === 'revenue').reduce((sum, l) => sum + Math.abs(Number(l.amount) || 0), 0);
-        const totalExpense = (ledger || []).filter(l => l.type === 'out' || l.type === 'expense').reduce((sum, l) => sum + Math.abs(Number(l.amount) || 0), 0);
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        const monthlyLedger = (ledger || []).filter(l => {
+            if (!l.date) return false;
+            const d = new Date(l.date);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+
+        const monthlyIncome = monthlyLedger.filter(l => l.type === 'in' || l.type === 'revenue').reduce((sum, l) => sum + Math.abs(Number(l.amount) || 0), 0);
+        const monthlyExpense = monthlyLedger.filter(l => l.type === 'out' || l.type === 'expense').reduce((sum, l) => sum + Math.abs(Number(l.amount) || 0), 0);
+        
         const totalBalance = (ledger || []).reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
 
         return {
             summary: {
-                totalIncome,
-                totalExpense,
+                totalBalance,
+                monthlyIncome,
+                monthlyExpense,
                 netBalance: totalBalance,
                 totalMembers: (members || []).length
             },
@@ -108,10 +120,10 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                 text: "Here is your instant chart. It was generated completely locally, bypassing the internet!",
                 type: 'chart',
                 payload: { 
-                    title: "Income vs Expenses", 
+                    title: "Income vs Expenses (MTD)", 
                     data: [
-                        { name: "Income", value: context.summary.totalIncome }, 
-                        { name: "Expenses", value: context.summary.totalExpense }
+                        { name: "Income", value: context.summary.monthlyIncome }, 
+                        { name: "Expenses", value: context.summary.monthlyExpense }
                     ] 
                 }
             }]);
@@ -134,7 +146,7 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                 action: 'generate_pdf',
                 payload: { 
                     title: "Financial Summary Report", 
-                    summary: `This is a quick summary of the recent finances. Total Income: $${context.summary.totalIncome.toFixed(2)}, Total Expenses: $${context.summary.totalExpense.toFixed(2)}, Net Balance: $${context.summary.netBalance.toFixed(2)}.`, 
+                    summary: `This is a quick summary of your recent finances. Total Balance: $${context.summary.totalBalance.toFixed(2)}. Collections (Month-to-Date): $${context.summary.monthlyIncome.toFixed(2)}. Expenses (Month-to-Date): $${context.summary.monthlyExpense.toFixed(2)}.`, 
                     columns: ["Date", "Type", "Category", "Amount"], 
                     rows: context.recentTransactions.slice(0, 15).map(t => [t.date, t.type, t.category, `$${Number(t.amount).toFixed(2)}`])
                 }
