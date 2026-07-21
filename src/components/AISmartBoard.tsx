@@ -23,6 +23,7 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
         return [{ role: 'assistant', text: "Hello! I am your AI Smart Board. I have access to your live dashboard data. You can ask me questions, generate charts, or draft emails." }];
     });
     const [isLoading, setIsLoading] = useState(false);
+    const [isMockMode, setIsMockMode] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -107,6 +108,38 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                 funds: (funds || []).map(f => ({ name: f.name, balance: f.balance }))
             };
 
+            // MOCK MODE
+            if (isMockMode) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                let mockResponse: any = { type: 'answer', message: "This is a mock response from Development Mode. The internet is bypassed.", action: null, payload: {} };
+                
+                const lowerMsg = userMsg.toLowerCase();
+                if (lowerMsg.includes('report') || lowerMsg.includes('pdf')) {
+                    mockResponse = {
+                        type: 'answer',
+                        message: "Here is your mocked financial report.",
+                        action: 'generate_pdf',
+                        payload: { title: "Mock Report", summary: "This is a mocked summary.", columns: ["Date", "Amount"], rows: [["2023-01-01", "$100"], ["2023-01-02", "$200"]] }
+                    };
+                } else if (lowerMsg.includes('chart')) {
+                    mockResponse = {
+                        type: 'chart',
+                        message: "Here is your mocked chart.",
+                        payload: { title: "Mock Chart", data: [{name: "A", value: 100}, {name: "B", value: 200}] }
+                    };
+                } else if (lowerMsg.includes('email')) {
+                    mockResponse = {
+                        type: 'email_draft',
+                        message: "Here is your mocked email.",
+                        payload: { to: "mock@example.com", subject: "Mock Subject", body: "Mock Body" }
+                    };
+                }
+
+                setMessages(prev => [...prev, { role: 'assistant', text: mockResponse.message, type: mockResponse.type, action: mockResponse.action, payload: mockResponse.payload }]);
+                setIsLoading(false);
+                return;
+            }
+
             // 2. Call our Edge Function with Retries
             let data: any = null;
             let attempt = 0;
@@ -188,10 +221,16 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                                 </div>
                                 <div>
                                     <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>AI Smart Board</h3>
-                                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Powered by Gemini API</p>
+                                    <p style={{ margin: 0, fontSize: '0.75rem', color: isMockMode ? '#f59e0b' : 'var(--text-muted)' }}>
+                                        {isMockMode ? 'Mock Mode Enabled' : 'Powered by Gemini API'}
+                                    </p>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                    <input type="checkbox" checked={isMockMode} onChange={(e) => setIsMockMode(e.target.checked)} style={{ cursor: 'pointer' }} />
+                                    Mock
+                                </label>
                                 <button onClick={clearChat} title="Clear Chat History" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
                                     <Trash2 size={18} />
                                 </button>
