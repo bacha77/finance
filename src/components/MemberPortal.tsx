@@ -790,7 +790,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
 
                             <form onSubmit={handleAddMember}>
                                  <div style={{ marginBottom: '0.75rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('fullName')}</label>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('fullName')} <span style={{ color: '#ef4444' }}>*</span></label>
                                     <input
                                         type="text"
                                         required
@@ -817,11 +817,12 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                                     />
                                 </div>
                                 <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('phoneNumber')}</label>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('phoneNumber')} <span style={{ color: '#ef4444' }}>*</span></label>
                                     <div style={{ position: 'relative' }}>
                                         <Phone size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                                         <input
                                             type="tel"
+                                            required
                                             maxLength={14}
                                             value={newMemberPhone}
                                             onChange={(e) => setNewMemberPhone(formatPhoneNumber(e.target.value))}
@@ -937,7 +938,9 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                             <form onSubmit={handleEditSave} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                                 {/* Name */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('fullName')}</label>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'white', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        {t('fullName')} <span style={{ color: '#ef4444' }}>*</span>
+                                    </label>
                                     <input type="text" required value={editName} onChange={e => setEditName(e.target.value)}
                                         style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
                                 </div>
@@ -951,8 +954,8 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                                 </div>
                                 {/* Phone */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}><Phone size={10} style={{ display: 'inline', marginRight: '4px' }} />{t('phoneNumber')}</label>
-                                    <input type="tel" maxLength={14} value={editPhone} onChange={e => setEditPhone(formatPhoneNumber(e.target.value))}
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}><Phone size={10} style={{ display: 'inline', marginRight: '4px' }} />{t('phoneNumber')} <span style={{ color: '#ef4444' }}>*</span></label>
+                                    <input type="tel" required maxLength={14} value={editPhone} onChange={e => setEditPhone(formatPhoneNumber(e.target.value))}
                                         placeholder="+1 (555) 000-0000"
                                         style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
                                 </div>
