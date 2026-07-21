@@ -941,13 +941,22 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                             </div>
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Donation Type</label>
-                                                <select value={txCategory} onChange={e => setTxCategory(e.target.value)} className="glass-input" style={{ width: '100%' }}>
+                                                <input 
+                                                    list="category-options"
+                                                    value={txCategory} 
+                                                    onChange={e => setTxCategory(e.target.value)} 
+                                                    className="glass-input" 
+                                                    style={{ width: '100%' }}
+                                                    placeholder="e.g. Tithe"
+                                                    autoComplete="off"
+                                                />
+                                                <datalist id="category-options">
                                                     <option value="Tithe">Tithe</option>
                                                     <option value="Offering">Offering (Offrande)</option>
                                                     <option value="Building Fund">Building Fund</option>
                                                     <option value="Local Basket">Local Basket</option>
                                                     <option value="Other">Other</option>
-                                                </select>
+                                                </datalist>
                                             </div>
                                         </div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
