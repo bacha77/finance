@@ -941,22 +941,32 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                             </div>
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Donation Type</label>
-                                                <input 
-                                                    list="category-options"
-                                                    value={txCategory} 
-                                                    onChange={e => setTxCategory(e.target.value)} 
+                                                <select 
+                                                    value={['Tithe', 'Offering', 'Building Fund', 'Local Basket'].includes(txCategory) ? txCategory : 'Other'} 
+                                                    onChange={e => {
+                                                        if (e.target.value !== 'Other') setTxCategory(e.target.value);
+                                                        else setTxCategory('');
+                                                    }} 
                                                     className="glass-input" 
-                                                    style={{ width: '100%' }}
-                                                    placeholder="e.g. Tithe"
-                                                    autoComplete="off"
-                                                />
-                                                <datalist id="category-options">
+                                                    style={{ width: '100%', marginBottom: (!['Tithe', 'Offering', 'Building Fund', 'Local Basket'].includes(txCategory)) ? '0.5rem' : '0' }}
+                                                >
                                                     <option value="Tithe">Tithe</option>
                                                     <option value="Offering">Offering (Offrande)</option>
                                                     <option value="Building Fund">Building Fund</option>
                                                     <option value="Local Basket">Local Basket</option>
-                                                    <option value="Other">Other</option>
-                                                </datalist>
+                                                    <option value="Other">Other (Custom)...</option>
+                                                </select>
+                                                {(!['Tithe', 'Offering', 'Building Fund', 'Local Basket'].includes(txCategory)) && (
+                                                    <input 
+                                                        type="text"
+                                                        value={txCategory}
+                                                        onChange={e => setTxCategory(e.target.value)}
+                                                        className="glass-input"
+                                                        style={{ width: '100%' }}
+                                                        placeholder="Type custom donation type..."
+                                                        autoFocus
+                                                    />
+                                                )}
                                             </div>
                                         </div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
