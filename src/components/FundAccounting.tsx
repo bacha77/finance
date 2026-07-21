@@ -925,7 +925,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                     <form onSubmit={handleAddTransaction} autoComplete="off">
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                             <div>
-                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>{t('member')}</label>
+                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>{t('member')} <span style={{ color: '#ef4444' }}>*</span></label>
                                                 <input 
                                                     list="member-options"
                                                     value={txMember} 
@@ -934,13 +934,14 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                                     style={{ width: '100%' }} 
                                                     placeholder="Search member..."
                                                     autoComplete="off"
+                                                    required
                                                 />
                                                 <datalist id="member-options">
                                                     {members.map((m, i) => <option key={i} value={m.name} />)}
                                                 </datalist>
                                             </div>
                                             <div>
-                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Donation Type</label>
+                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Donation Type <span style={{ color: '#ef4444' }}>*</span></label>
                                                 <select 
                                                     value={['Tithe', 'Offering', 'Building Fund', 'Local Basket'].includes(txCategory) ? txCategory : 'Other'} 
                                                     onChange={e => {
@@ -971,8 +972,8 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                         </div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                             <div>
-                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Payment Method</label>
-                                                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="glass-input" style={{ width: '100%' }}>
+                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Payment Method <span style={{ color: '#ef4444' }}>*</span></label>
+                                                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="glass-input" style={{ width: '100%' }} required>
                                                     <option value="Cash">Cash</option>
                                                     <option value="Check">Check</option>
                                                     <option value="Zelle">Zelle</option>
@@ -981,23 +982,23 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                                 </select>
                                             </div>
                                             <div>
-                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Date</label>
-                                                <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className="glass-input" style={{ width: '100%' }} />
+                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Date <span style={{ color: '#ef4444' }}>*</span></label>
+                                                <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className="glass-input" style={{ width: '100%' }} required />
                                             </div>
                                         </div>
                                         <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '1rem', paddingRight: '4px' }}>
                                             {allocations.map((alloc, idx) => (
                                                 <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.8rem', alignItems: 'flex-end' }}>
                                                     <div style={{ flex: 1 }}>
-                                                        {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>{t('department') || 'Dept'}</label>}
-                                                        <select value={alloc.deptId} onChange={e => handleAllocationChange(idx, 'deptId', e.target.value)} className="glass-input" style={{ width: '100%', fontSize: '0.8rem' }}>
+                                                        {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>{t('department')} <span style={{ color: '#ef4444' }}>*</span></label>}
+                                                        <select value={alloc.deptId} onChange={e => handleAllocationChange(idx, 'deptId', e.target.value)} className="glass-input" style={{ width: '100%', fontSize: '0.8rem' }} required>
                                                             <option value="" disabled hidden>Select Dept...</option>
                                                             {availableDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                                         </select>
                                                     </div>
                                                     <div style={{ width: '90px' }}>
-                                                        {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Amount</label>}
-                                                        <input type="number" placeholder="0.00" value={alloc.amount} onChange={e => handleAllocationChange(idx, 'amount', e.target.value)} className="glass-input" style={{ width: '100%', textAlign: 'right' }} />
+                                                        {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Amount <span style={{ color: '#ef4444' }}>*</span></label>}
+                                                        <input type="number" step="0.01" min="0.01" required placeholder="0.00" value={alloc.amount} onChange={e => handleAllocationChange(idx, 'amount', e.target.value)} className="glass-input" style={{ width: '100%', textAlign: 'right' }} />
                                                     </div>
                                                     {allocations.length > 1 && (
                                                         <button type="button" onClick={() => removeAllocation(idx)} style={{ background: 'none', border: 'none', color: '#ef4444', padding: '12px 4px', cursor: 'pointer', marginBottom: '2px' }}><Trash2 size={16} /></button>

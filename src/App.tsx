@@ -20,6 +20,7 @@ import Settings from './components/Settings';
 import UpdatePassword from './components/UpdatePassword';
 import SupportModal from './components/SupportModal';
 import CookieConsent from './components/CookieConsent';
+import AISmartBoard from './components/AISmartBoard';
 import { supabase } from './lib/supabase';
 import { getSubscriptionStatus } from './lib/subscriptionConfig';
 import { runMigrations } from './lib/migrations';
@@ -49,6 +50,7 @@ function App() {
   const [profileLoading, setProfileLoading] = React.useState(true);
   const [showSignupSuccess, setShowSignupSuccess] = React.useState(false);
   const [showCommandCenter, setShowCommandCenter] = React.useState(false);
+  const [showAIBoard, setShowAIBoard] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [profileMenuOpen, setProfileMenuOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
@@ -820,6 +822,38 @@ function App() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── AI SMART BOARD ── */}
+        <AISmartBoard isOpen={showAIBoard} onClose={() => setShowAIBoard(false)} profile={profile} />
+
+        {/* ── AI FLOATING BUTTON ── */}
+        {!viewingAdminPanel && profile && (
+          <button
+            onClick={() => setShowAIBoard(true)}
+            style={{
+              position: 'fixed',
+              bottom: '2rem',
+              right: '2rem',
+              width: '56px',
+              height: '56px',
+              borderRadius: '28px',
+              background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+              border: 'none',
+              boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.5), 0 8px 10px -6px rgba(99, 102, 241, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              cursor: 'pointer',
+              zIndex: 9999,
+              transition: 'transform 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <CmdIcon size={24} />
+          </button>
+        )}
 
       </main>
     </div>

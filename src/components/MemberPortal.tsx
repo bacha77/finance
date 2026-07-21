@@ -93,6 +93,21 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
         localStorage.setItem('sanctuary_members', JSON.stringify(members));
     }, [members]);
 
+    useEffect(() => {
+        const handleOpenInvoiceModal = (e: any) => {
+            const payload = e.detail;
+            if (payload && payload.memberName) {
+                const member = members.find(m => m.name.toLowerCase().includes(payload.memberName.toLowerCase()));
+                if (member) {
+                    setSelectedMember(member);
+                    setShowInvoiceModal(true);
+                }
+            }
+        };
+        window.addEventListener('open-invoice-modal', handleOpenInvoiceModal);
+        return () => window.removeEventListener('open-invoice-modal', handleOpenInvoiceModal);
+    }, [members]);
+
     // Invoice / Statement Logic
     const [selectedMember, setSelectedMember] = useState<Member | null>(null);
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);

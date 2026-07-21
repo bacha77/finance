@@ -1,0 +1,185 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+
+interface AISmartBoardProps {
+    isOpen: boolean;
+    onClose: () => void;
+    profile: any;
+}
+
+export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardProps) {
+    const [input, setInput] = useState('');
+    const [messages, setMessages] = useState<{ role: 'user' | 'assistant', text: string }[]>([
+        { role: 'assistant', text: "Hello! I am your AI Smart Board. I have access to your live dashboard data. You can ask me questions about funds or tell me to perform actions like sending invoices." }
+    ]);
+    const [isLoading, setIsLoading] = useState(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, isLoading]);
+
+    const handleSend = async (e?: React.FormEvent) => {
+        e?.preventDefault();
+        if (!input.trim() || isLoading) return;
+
+        const userMsg = input.trim();
+        setInput('');
+        setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+        setIsLoading(true);
+
+        try {
+            // 1. Fetch minimal context needed
+            const [{ data: members }, { data: ledger }] = await Promise.all([
+                supabase.from('members').select('id, name, email, phone, status').eq('church_id', profile.church_id),
+                supabase.from('ledger').select('id, type, date, amount, category, member_name').eq('church_id', profile.church_id).order('date', { ascending: false }).limit(500)
+            ]);
+
+            const context = {
+                members: members || [],
+                ledger: ledger || []
+            };
+
+            // 2. Call our Edge Function
+            const { data, error } = await supabase.functions.invoke('ai-command-hub', {
+                body: { prompt: userMsg, context }
+            });
+
+            if (error) throw new Error(error.message || 'Failed to communicate with AI');
+            
+            // 3. Handle response
+            if (data.type === 'action') {
+                if (data.action === 'send_invoice') {
+                    // We can emit a custom event to the rest of the app to handle this
+                    const event = new CustomEvent('open-invoice-modal', { detail: data.payload });
+                    window.dispatchEvent(event);
+                }
+            }
+
+            setMessages(prev => [...prev, { role: 'assistant', text: data.message || "Done!" }]);
+
+        } catch (err: any) {
+            console.error('AI Error:', err);
+            setMessages(prev => [...prev, { role: 'assistant', text: `Sorry, I encountered an error: ${err.message}` }]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <>
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }} 
+                        onClick={onClose}
+                        style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 99999 }}
+                    />
+                    <motion.div 
+                        initial={{ x: '100%', opacity: 0 }} 
+                        animate={{ x: 0, opacity: 1 }} 
+                        exit={{ x: '100%', opacity: 0 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        style={{ 
+                            position: 'fixed', top: 0, right: 0, bottom: 0, width: '400px', maxWidth: '100vw',
+                            backgroundColor: 'var(--bg-card)', borderLeft: '1px solid var(--border)',
+                            zIndex: 100000, display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.2)'
+                        }}
+                    >
+                        {/* Header */}
+                        <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', padding: '8px', borderRadius: '8px' }}>
+                                    <Sparkles size={18} color="white" />
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>AI Smart Board</h3>
+                                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Powered by Gemini API</p>
+                                </div>
+                            </div>
+                            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Chat Area */}
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {messages.map((m, i) => (
+                                <div key={i} style={{ display: 'flex', gap: '0.75rem', flexDirection: m.role === 'user' ? 'row-reverse' : 'row' }}>
+                                    <div style={{ 
+                                        width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                        background: m.role === 'user' ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #6366f1, #a855f7)' 
+                                    }}>
+                                        {m.role === 'user' ? <User size={14} color="white" /> : <Bot size={14} color="white" />}
+                                    </div>
+                                    <div style={{ 
+                                        padding: '0.75rem 1rem', borderRadius: '12px', fontSize: '0.85rem', lineHeight: '1.4',
+                                        background: m.role === 'user' ? 'rgba(255,255,255,0.05)' : 'rgba(99, 102, 241, 0.1)',
+                                        color: m.role === 'user' ? 'var(--text-primary)' : 'var(--text-primary)',
+                                        border: m.role === 'user' ? '1px solid var(--border)' : '1px solid rgba(99,102,241,0.2)',
+                                        borderTopRightRadius: m.role === 'user' ? '4px' : '12px',
+                                        borderTopLeftRadius: m.role === 'user' ? '12px' : '4px',
+                                        maxWidth: '85%'
+                                    }}>
+                                        {m.text}
+                                    </div>
+                                </div>
+                            ))}
+                            {isLoading && (
+                                <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'row' }}>
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <Bot size={14} color="white" />
+                                    </div>
+                                    <div style={{ padding: '0.75rem 1rem', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99,102,241,0.2)', borderTopLeftRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Loader2 size={14} className="spin" color="#818cf8" />
+                                        <span style={{ fontSize: '0.85rem', color: '#818cf8' }}>Thinking...</span>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Input Area */}
+                        <div style={{ padding: '1.25rem', borderTop: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                            <form onSubmit={handleSend} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <input 
+                                    type="text"
+                                    value={input}
+                                    onChange={e => setInput(e.target.value)}
+                                    placeholder="Ask anything or run a command..."
+                                    style={{ 
+                                        width: '100%', padding: '12px 48px 12px 16px', borderRadius: '12px', 
+                                        background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+                                        color: 'white', fontSize: '0.9rem', outline: 'none'
+                                    }}
+                                />
+                                <button 
+                                    type="submit" 
+                                    disabled={!input.trim() || isLoading}
+                                    style={{ 
+                                        position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)',
+                                        width: '32px', height: '32px', borderRadius: '8px', 
+                                        background: input.trim() && !isLoading ? '#6366f1' : 'rgba(255,255,255,0.1)', 
+                                        border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        color: 'white', cursor: input.trim() && !isLoading ? 'pointer' : 'not-allowed',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <Send size={14} />
+                                </button>
+                            </form>
+                        </div>
+                    </motion.div>
+                </>
+            )}
+        </AnimatePresence>
+    );
+}
