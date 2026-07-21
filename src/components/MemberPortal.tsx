@@ -823,10 +823,13 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                                         <input
                                             type="tel"
                                             required
+                                            minLength={14}
                                             maxLength={14}
+                                            pattern="^\(\d{3}\) \d{3}-\d{4}$"
+                                            title="Please enter a full 10-digit phone number"
                                             value={newMemberPhone}
                                             onChange={(e) => setNewMemberPhone(formatPhoneNumber(e.target.value))}
-                                            placeholder="+1 (555) 000-0000"
+                                            placeholder="(555) 000-0000"
                                             className="glass-input"
                                             style={{ width: '100%', padding: '12px 12px 12px 36px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
                                         />
@@ -955,8 +958,8 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                                 {/* Phone */}
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}><Phone size={10} style={{ display: 'inline', marginRight: '4px' }} />{t('phoneNumber')} <span style={{ color: '#ef4444' }}>*</span></label>
-                                    <input type="tel" required maxLength={14} value={editPhone} onChange={e => setEditPhone(formatPhoneNumber(e.target.value))}
-                                        placeholder="+1 (555) 000-0000"
+                                    <input type="tel" required minLength={14} maxLength={14} pattern="^\(\d{3}\) \d{3}-\d{4}$" title="Please enter a full 10-digit phone number" value={editPhone} onChange={e => setEditPhone(formatPhoneNumber(e.target.value))}
+                                        placeholder="(555) 000-0000"
                                         style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
                                 </div>
                                 {/* Role + Status grid */}
