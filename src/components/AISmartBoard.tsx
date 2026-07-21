@@ -90,10 +90,21 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                 supabase.from('funds').select('id, name, balance, type').eq('church_id', profile.church_id)
             ]);
 
+            // EXTREME PAYLOAD OPTIMIZATION
+            // We strip out unneeded fields to prevent hitting the AI token limits
+            const totalIncome = (ledger || []).filter(l => l.type === 'Income').reduce((sum, l) => sum + Number(l.amount), 0);
+            const totalExpense = (ledger || []).filter(l => l.type === 'Expense').reduce((sum, l) => sum + Number(l.amount), 0);
+
             const context = {
-                members: members || [],
-                ledger: ledger || [],
-                funds: funds || []
+                summary: {
+                    totalIncome,
+                    totalExpense,
+                    netBalance: totalIncome - totalExpense,
+                    totalMembers: (members || []).length
+                },
+                members: (members || []).map(m => ({ name: m.name, status: m.status })),
+                recentTransactions: (ledger || []).map(l => ({ date: l.date, type: l.type, amount: l.amount, category: l.category })),
+                funds: (funds || []).map(f => ({ name: f.name, balance: f.balance }))
             };
 
             // 2. Call our Edge Function with Retries
