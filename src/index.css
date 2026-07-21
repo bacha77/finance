@@ -140,6 +140,16 @@ h1, h2, h3, h4, h5, h6 {
   outline: none;
 }
 
+.glass-input:-webkit-autofill,
+.glass-input:-webkit-autofill:hover, 
+.glass-input:-webkit-autofill:focus, 
+.glass-input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px hsla(215, 28%, 17%, 1) inset !important;
+    -webkit-text-fill-color: hsl(var(--text-main)) !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+
 /* ── BUTTONS ─────────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;

@@ -30,4 +30,4 @@ jobs:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
         run: |
           # You can change this search term in the future if you want to target other cities!
-          node scripts/scrape_leads.js "Churches in Ohio"
+          node scripts/scrape_leads.js "Churches in Columbus Metro Area, OH"

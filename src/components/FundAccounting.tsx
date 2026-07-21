@@ -154,7 +154,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
 
     // Form States
     const [txMember, setTxMember] = useState('');
-    const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
+    const [txDate, setTxDate] = useState(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]);
     const [paymentMethod, setPaymentMethod] = useState('Cash');
     const [txNotes, setTxNotes] = useState('');
     const [allocations, setAllocations] = useState([{ deptId: '', fundId: '', amount: '' }]);
@@ -845,7 +845,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                     <tbody>
                                         {ledger.map((tx, idx) => (
                                             <tr key={idx}>
-                                                <td style={{ fontWeight: 600 }}>{new Date(tx.date || tx.created_at || '').toLocaleDateString()}</td>
+                                                <td style={{ fontWeight: 600 }}>{tx.date ? new Date(tx.date + 'T12:00:00Z').toLocaleDateString() : new Date(tx.created_at || '').toLocaleDateString()}</td>
                                                 <td>
                                                     <div style={{ color: 'white', fontWeight: 700, fontSize: '0.95rem' }}>{tx.description}</div>
                                                     {tx.member && <div style={{ fontSize: '0.75rem', color: 'var(--primary-light)', fontWeight: 800 }}>{tx.member}</div>}

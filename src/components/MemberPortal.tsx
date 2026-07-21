@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
     Download, FileText, Mail, MoreVertical, Phone, 
     Trash2, UserPlus, X, Printer, ShieldCheck, 
-    Check, Edit3, TrendingUp, Clock, Send 
+    Check, Edit3, TrendingUp, Clock, Send, Search 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -23,6 +23,17 @@ interface Member {
     distribution_method?: 'automated' | 'manual';
 }
 
+const formatPhoneNumber = (value: string) => {
+    if (!value) return value;
+    const phoneNumber = value.replace(/[^\d]/g, '');
+    const phoneNumberLength = phoneNumber.length;
+    if (phoneNumberLength < 4) return phoneNumber;
+    if (phoneNumberLength < 7) {
+        return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+    }
+    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+};
+
 
 
 interface MemberPortalProps {
@@ -41,6 +52,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
     const [editingMember, setEditingMember] = useState<{ member: Member; idx: number } | null>(null);
     const [newMemberDistMethod, setNewMemberDistMethod] = useState<'automated' | 'manual'>('manual');
     const [editDistMethod, setEditDistMethod] = useState<'automated' | 'manual'>('manual');
+    const [searchQuery, setSearchQuery] = useState('');
     const menuRef = useRef<HTMLDivElement>(null);
 
     // Close menu on outside click
@@ -566,7 +578,17 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
             </header>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {members.map((member: Member, idx: number) => (
+                <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: '0.75rem 1.25rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
+                    <Search size={18} color="var(--text-muted)" />
+                    <input 
+                        type="text" 
+                        placeholder={t('searchPlaceholder') || 'Search members by name or email...'} 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{ background: 'none', border: 'none', color: 'white', marginLeft: '0.75rem', outline: 'none', width: '100%', fontSize: '0.9rem' }} 
+                    />
+                </div>
+                {members.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.email.toLowerCase().includes(searchQuery.toLowerCase())).map((member: Member, idx: number) => (
                     <motion.div
                         key={idx}
                         whileHover={{ y: openMenuId === idx ? 0 : -4, backgroundColor: 'rgba(255,255,255,0.02)' }}
@@ -787,7 +809,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                                         required
                                         placeholder="required for report delivery"
                                         value={newMemberEmail}
-                                        onChange={(e) => setNewMemberEmail(e.target.value)}
+                                        onChange={(e) => setNewMemberEmail(e.target.value.toLowerCase())}
                                         className="glass-input"
                                         style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
                                     />
@@ -799,7 +821,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                                         <input
                                             type="tel"
                                             value={newMemberPhone}
-                                            onChange={(e) => setNewMemberPhone(e.target.value)}
+                                            onChange={(e) => setNewMemberPhone(formatPhoneNumber(e.target.value))}
                                             placeholder="+1 (555) 000-0000"
                                             className="glass-input"
                                             style={{ width: '100%', padding: '12px 12px 12px 36px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white' }}
@@ -921,13 +943,13 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                                     <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'white', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                         {t('email')} <span style={{ color: '#ef4444' }}>*</span>
                                     </label>
-                                    <input type="email" required value={editEmail} onChange={e => setEditEmail(e.target.value)}
+                                    <input type="email" required value={editEmail} onChange={e => setEditEmail(e.target.value.toLowerCase())}
                                         style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
                                 </div>
                                 {/* Phone */}
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}><Phone size={10} style={{ display: 'inline', marginRight: '4px' }} />{t('phoneNumber')}</label>
-                                    <input type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)}
+                                    <input type="tel" value={editPhone} onChange={e => setEditPhone(formatPhoneNumber(e.target.value))}
                                         placeholder="+1 (555) 000-0000"
                                         style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontFamily: 'inherit' }} />
                                 </div>

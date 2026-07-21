@@ -398,7 +398,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
             }).reverse();
 
             last7.forEach(tx => {
-                const d = new Date(tx.date || tx.created_at).toLocaleDateString();
+                const d = tx.date ? new Date(tx.date + 'T12:00:00Z').toLocaleDateString() : new Date(tx.created_at).toLocaleDateString();
                 if (!days[d]) days[d] = { date: d, income: 0, missions: 0, building: 0, expense: 0 };
                 const amt = Math.abs(tx.amount || 0);
                 if (tx.type === 'in' || tx.type === 'revenue') {
@@ -864,7 +864,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white' }}>{tx.description || tx.desc || 'System Tx'}</div>
-                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>{new Date(tx.date || tx.created_at).toLocaleDateString()}</div>
+                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>{tx.date ? new Date(tx.date + 'T12:00:00Z').toLocaleDateString() : new Date(tx.created_at).toLocaleDateString()}</div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                     <div style={{ fontSize: '1.05rem', fontWeight: 900, color: tx.amount < 0 ? '#ef4444' : '#10b981' }}>

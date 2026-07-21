@@ -99,7 +99,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
     const [dept, setDept] = useState('General');
     const [cat, setCat] = useState(categories[0] || 'Supplies'); // Initialize with first available category
     const [method, setMethod] = useState('CASH');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]);
     const [receiptImage, setReceiptImage] = useState<string | null>(null);
 
     const [availableDepts, setAvailableDepts] = useState<{ id: string, name: string }[]>([]);
@@ -260,7 +260,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
         setDept('General');
         setCat(categories[0] || 'Supplies');
         setMethod('CASH');
-        setDate(new Date().toISOString().split('T')[0]);
+        setDate(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]);
         setReceiptImage(null);
         setIsAddingCategory(false);
         setNewCatName('');
