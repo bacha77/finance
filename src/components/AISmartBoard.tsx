@@ -107,18 +107,13 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                 });
 
                 if (response.error) {
-                    const errorStr = response.error.context ? JSON.stringify(response.error.context) : response.error.message;
-                    if (errorStr.includes('429') || errorStr.includes('quota') || errorStr.toLowerCase().includes('rate') || errorStr.includes('non-2xx')) {
-                        attempt++;
-                        if (attempt >= maxRetries) {
-                            throw new Error("The AI is currently overloaded on the free tier. Please wait about 20 seconds and try again.");
-                        }
-                        // Wait before retrying (exponential backoff: 2s, 4s...)
-                        await new Promise(resolve => setTimeout(resolve, attempt * 2000));
-                        continue;
-                    } else {
-                        throw new Error(errorStr || 'Failed to communicate with AI');
+                    attempt++;
+                    if (attempt >= maxRetries) {
+                        throw new Error("The AI is currently overloaded on the free tier. Please wait about 30 seconds and try again.");
                     }
+                    // Wait before retrying (exponential backoff: 2s, 4s...)
+                    await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+                    continue;
                 }
 
                 data = response.data;
