@@ -921,26 +921,41 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                     </div>
                                     <form onSubmit={handleAddTransaction} autoComplete="off">
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                                            <select value={txMember} onChange={e => setTxMember(e.target.value)} className="glass-input">
-                                                <option value="" disabled hidden>{t('member')}</option>
-                                                {members.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
-                                            </select>
-                                            <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className="glass-input" />
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>{t('member')}</label>
+                                                <select value={txMember} onChange={e => setTxMember(e.target.value)} className="glass-input" style={{ width: '100%' }}>
+                                                    <option value="" disabled hidden>Select Member...</option>
+                                                    {members.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Date</label>
+                                                <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className="glass-input" style={{ width: '100%' }} />
+                                            </div>
                                         </div>
                                         <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '1rem', paddingRight: '4px' }}>
                                             {allocations.map((alloc, idx) => (
-                                                <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.8rem', alignItems: 'center' }}>
-                                                    <select value={alloc.deptId} onChange={e => handleAllocationChange(idx, 'deptId', e.target.value)} className="glass-input" style={{ flex: 1, fontSize: '0.8rem' }}>
-                                                        <option value="" disabled hidden>{t('department') || 'Dept'}</option>
-                                                        {availableDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                                    </select>
-                                                    <select value={alloc.fundId} onChange={e => handleAllocationChange(idx, 'fundId', e.target.value)} className="glass-input" style={{ flex: 1, fontSize: '0.8rem' }}>
-                                                        <option value="" disabled hidden>{t('fund')}</option>
-                                                        {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                                                    </select>
-                                                    <input type="number" placeholder="0.00" value={alloc.amount} onChange={e => handleAllocationChange(idx, 'amount', e.target.value)} className="glass-input" style={{ width: '90px', textAlign: 'right' }} />
+                                                <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.8rem', alignItems: 'flex-end' }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>{t('department') || 'Dept'}</label>}
+                                                        <select value={alloc.deptId} onChange={e => handleAllocationChange(idx, 'deptId', e.target.value)} className="glass-input" style={{ width: '100%', fontSize: '0.8rem' }}>
+                                                            <option value="" disabled hidden>Select Dept...</option>
+                                                            {availableDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>{t('fund')}</label>}
+                                                        <select value={alloc.fundId} onChange={e => handleAllocationChange(idx, 'fundId', e.target.value)} className="glass-input" style={{ width: '100%', fontSize: '0.8rem' }}>
+                                                            <option value="" disabled hidden>Select Fund...</option>
+                                                            {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ width: '90px' }}>
+                                                        {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Amount</label>}
+                                                        <input type="number" placeholder="0.00" value={alloc.amount} onChange={e => handleAllocationChange(idx, 'amount', e.target.value)} className="glass-input" style={{ width: '100%', textAlign: 'right' }} />
+                                                    </div>
                                                     {allocations.length > 1 && (
-                                                        <button type="button" onClick={() => removeAllocation(idx)} style={{ background: 'none', border: 'none', color: '#ef4444', padding: '4px', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                                                        <button type="button" onClick={() => removeAllocation(idx)} style={{ background: 'none', border: 'none', color: '#ef4444', padding: '12px 4px', cursor: 'pointer', marginBottom: '2px' }}><Trash2 size={16} /></button>
                                                     )}
                                                 </div>
                                             ))}
