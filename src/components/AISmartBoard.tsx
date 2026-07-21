@@ -103,8 +103,17 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                 netBalance: totalBalance,
                 totalMembers: (members || []).length
             },
-            members: (members || []).map(m => ({ name: m.name, status: m.status })),
-            recentTransactions: (ledger || []).map(l => ({ date: l.date, type: l.type, amount: l.amount, category: l.category })),
+            members: (members || []).map(m => ({ id: m.id, name: m.name, status: m.status })),
+            recentTransactions: (ledger || []).map(l => {
+                const memberObj = (members || []).find(m => m.id === l.member);
+                return { 
+                    date: l.date, 
+                    type: l.type, 
+                    amount: l.amount, 
+                    category: l.category,
+                    member_name: memberObj ? memberObj.name : (l.type === 'in' ? 'Anonymous' : 'Expense')
+                };
+            }),
             funds: (funds || []).map(f => ({ name: f.name, balance: f.balance }))
         };
     };
@@ -118,6 +127,7 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                 role: 'assistant', 
                 text: "Here is your instant chart. It was generated completely locally, bypassing the internet!",
                 type: 'chart',
+                action: 'render_chart',
                 payload: { 
                     title: "Income vs Expenses (YTD)", 
                     data: [
@@ -146,8 +156,8 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                 payload: { 
                     title: "Financial Summary Report", 
                     summary: `This is a quick summary of your recent finances. Total Balance: $${context.summary.totalBalance.toFixed(2)}. Collections (Year-to-Date): $${context.summary.ytdIncome.toFixed(2)}. Expenses (Year-to-Date): $${context.summary.ytdExpense.toFixed(2)}.`, 
-                    columns: ["Date", "Type", "Category", "Amount"], 
-                    rows: context.recentTransactions.slice(0, 15).map(t => [t.date, t.type, t.category, `$${Number(t.amount).toFixed(2)}`])
+                    columns: ["Date", "Donor/Type", "Category", "Amount"], 
+                    rows: context.recentTransactions.slice(0, 15).map(t => [t.date, t.member_name || t.type, t.category, `$${Number(t.amount).toFixed(2)}`])
                 }
             }]);
         } catch(e) {
