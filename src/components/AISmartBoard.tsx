@@ -120,8 +120,12 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
             }]);
 
         } catch (err: any) {
-            console.error('AI Error:', err);
-            setMessages(prev => [...prev, { role: 'assistant', text: `Sorry, I encountered an error: ${err.message}` }]);
+            console.error("Error communicating with AI:", err);
+            const fullErr = err.context ? JSON.stringify(err.context) : err.message;
+            setMessages(prev => [...prev, { 
+                role: 'assistant', 
+                text: `Sorry, I encountered an error: ${fullErr}` 
+            }]);
         } finally {
             setIsLoading(false);
         }
