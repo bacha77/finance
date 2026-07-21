@@ -788,7 +788,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.25rem', color: 'white', letterSpacing: '-0.03em' }}>{t('addMember')}</h2>
                             <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem', fontSize: '0.8rem', fontWeight: 500 }}>{t('manuallyAddMemberDesc')}</p>
 
-                            <form onSubmit={handleAddMember}>
+                            <form onSubmit={handleAddMember} autoComplete="off">
                                  <div style={{ marginBottom: '0.75rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>{t('fullName')} <span style={{ color: '#ef4444' }}>*</span></label>
                                     <input
@@ -935,7 +935,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                                     <X size={18} />
                                 </button>
                             </div>
-                            <form onSubmit={handleEditSave} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                            <form onSubmit={handleEditSave} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                                 {/* Name */}
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'white', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

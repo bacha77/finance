@@ -614,7 +614,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(2, 6, 23, 0.9)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={() => { setShowAddModal(false); resetForm(); }}>
                         <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="glass-card" style={{ width: '100%', maxWidth: '500px', borderRadius: '24px', padding: '3rem', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem', color: 'white' }}>{editingExpenseId ? t('updateExpense') : t('newExpense')}</h2>
-                            <form onSubmit={handleAddExpense}>
+                            <form onSubmit={handleAddExpense} autoComplete="off">
                                 <div style={{ marginBottom: '1.5rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('receiptPdf')}</label>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>

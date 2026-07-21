@@ -887,7 +887,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => setShowNewFundModal(false)}>
                                 <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-card" style={{ width: '400px', padding: '2rem' }} onClick={e => e.stopPropagation()}>
                                     <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1.5rem', color: 'white' }}>{t('createFund')}</h2>
-                                    <form onSubmit={async (e) => {
+                                    <form autoComplete="off" onSubmit={async (e) => {
                                         e.preventDefault();
                                         try {
                                             const name = (e.target as any).fundName.value;
@@ -919,10 +919,10 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                         <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white' }}>{editingTx ? 'Edit Transaction' : t('recordDeposit')}</h2>
                                         <button onClick={() => { setShowNewTxModal(false); setEditingTx(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
                                     </div>
-                                    <form onSubmit={handleAddTransaction}>
+                                    <form onSubmit={handleAddTransaction} autoComplete="off">
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                             <select value={txMember} onChange={e => setTxMember(e.target.value)} className="glass-input">
-                                                <option value="">{t('member')}</option>
+                                                <option value="" disabled hidden>{t('member')}</option>
                                                 {members.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
                                             </select>
                                             <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className="glass-input" />
@@ -931,11 +931,11 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                             {allocations.map((alloc, idx) => (
                                                 <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.8rem', alignItems: 'center' }}>
                                                     <select value={alloc.deptId} onChange={e => handleAllocationChange(idx, 'deptId', e.target.value)} className="glass-input" style={{ flex: 1, fontSize: '0.8rem' }}>
-                                                        <option value="">{t('department') || 'Dept'}</option>
+                                                        <option value="" disabled hidden>{t('department') || 'Dept'}</option>
                                                         {availableDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                                     </select>
                                                     <select value={alloc.fundId} onChange={e => handleAllocationChange(idx, 'fundId', e.target.value)} className="glass-input" style={{ flex: 1, fontSize: '0.8rem' }}>
-                                                        <option value="">{t('fund')}</option>
+                                                        <option value="" disabled hidden>{t('fund')}</option>
                                                         {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                                                     </select>
                                                     <input type="number" placeholder="0.00" value={alloc.amount} onChange={e => handleAllocationChange(idx, 'amount', e.target.value)} className="glass-input" style={{ width: '90px', textAlign: 'right' }} />
@@ -1055,7 +1055,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                         <div style={{ color: 'white', fontWeight: 900, marginTop: '4px', fontSize: '1.2rem' }}>${recordingBankItem.amount.toLocaleString()} ({recordingBankItem.date})</div>
                                     </div>
 
-                                    <form onSubmit={handleQuickRecord}>
+                                    <form onSubmit={handleQuickRecord} autoComplete="off">
                                         <div style={{ marginBottom: '1.5rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                                 <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>CHURCH MEMBER</label>
