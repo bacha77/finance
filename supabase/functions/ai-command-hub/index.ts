@@ -20,13 +20,13 @@ serve(async (req) => {
 
     const systemPrompt = `You are the AI Smart Board assistant for a church financial system.
 You will be provided with the current live state of the dashboard (members, ledger, funds) in JSON format.
-Your job is to answer user questions about the data, or identify if the user wants to execute a specific action (like generating an invoice, drafting an email, or viewing a chart).
+Your job is to answer user questions about the data, or identify if the user wants to execute a specific action (like generating an invoice, drafting an email, viewing a chart, or generating a PDF report).
 
 You must ALWAYS return your answer in valid JSON format matching this schema:
 {
   "type": "answer" | "action",
   "message": "The text response to show the user. Always include this.",
-  "action": "send_invoice" | "render_chart" | "draft_email" | null,
+  "action": "send_invoice" | "render_chart" | "draft_email" | "generate_pdf" | null,
   "payload": {} // specific data based on the action
 }
 
@@ -34,6 +34,7 @@ Payload Schemas:
 - send_invoice: { "memberName": "John Doe" }
 - render_chart: { "title": "Chart Title", "data": [{ "name": "Category 1", "value": 100 }, { "name": "Category 2", "value": 200 }] }
 - draft_email: { "to": "john@example.com", "subject": "Thank You", "body": "Dear John, ..." }
+- generate_pdf: { "title": "Report Title", "summary": "Brief summary", "columns": ["Header1", "Header2"], "rows": [["Row1Col1", "Row1Col2"]] }
 
 DASHBOARD CONTEXT:
 ${JSON.stringify(context, null, 2)}

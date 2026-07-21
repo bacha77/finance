@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Bot, User, Loader2, Sparkles, Trash2, Mail } from 'lucide-react';
+import { X, Send, Bot, User, Loader2, Sparkles, Trash2, Mail, FileText, Download } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
 
 interface AISmartBoardProps {
@@ -39,6 +41,36 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
         if (window.confirm("Are you sure you want to clear the chat history?")) {
             setMessages([{ role: 'assistant', text: "Hello! I am your AI Smart Board. I have access to your live dashboard data. You can ask me questions, generate charts, or draft emails." }]);
         }
+    };
+
+    const downloadPDF = (payload: any) => {
+        const doc = new jsPDF();
+        
+        // Header
+        doc.setFillColor(99, 102, 241);
+        doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.text(payload.title || 'Financial Report', 14, 25);
+        
+        // Summary
+        doc.setTextColor(60, 60, 60);
+        doc.setFontSize(11);
+        const splitSummary = doc.splitTextToSize(payload.summary || '', 180);
+        doc.text(splitSummary, 14, 55);
+        
+        // Table
+        if (payload.columns && payload.rows) {
+            autoTable(doc, {
+                startY: 55 + (splitSummary.length * 6) + 10,
+                head: [payload.columns],
+                body: payload.rows,
+                theme: 'striped',
+                headStyles: { fillColor: [99, 102, 241] },
+            });
+        }
+        
+        doc.save((payload.title || 'report').replace(/\s+/g, '_').toLowerCase() + ".pdf");
     };
 
     const handleSend = async (e?: React.FormEvent) => {
@@ -156,7 +188,7 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                                         borderTopRightRadius: m.role === 'user' ? '4px' : '12px',
                                         borderTopLeftRadius: m.role === 'user' ? '12px' : '4px',
                                         maxWidth: '85%',
-                                        width: m.action === 'render_chart' || m.action === 'draft_email' ? '100%' : 'auto'
+                                        width: m.action === 'render_chart' || m.action === 'draft_email' || m.action === 'generate_pdf' ? '100%' : 'auto'
                                     }}>
                                         {m.text}
                                         
@@ -196,6 +228,27 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
                                                     >
                                                         <Mail size={14} /> Send Email
                                                     </a>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* PDF Report Rendering */}
+                                        {m.action === 'generate_pdf' && m.payload && (
+                                            <div style={{ marginTop: '1rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                                                <div style={{ padding: '0.75rem', borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <FileText size={16} color="#818cf8" />
+                                                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{m.payload.title || 'Financial Report'}</div>
+                                                </div>
+                                                <div style={{ padding: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                                    {m.payload.summary || 'A structured PDF report has been generated based on your dashboard data.'}
+                                                </div>
+                                                <div style={{ padding: '0.75rem', borderTop: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                                                    <button 
+                                                        onClick={() => downloadPDF(m.payload)}
+                                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#6366f1', color: 'white', padding: '6px 12px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500 }}
+                                                    >
+                                                        <Download size={14} /> Download PDF
+                                                    </button>
                                                 </div>
                                             </div>
                                         )}
