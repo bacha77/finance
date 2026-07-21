@@ -3,8 +3,8 @@ import { supabase } from '../lib/supabase';
 
 export interface FinanceStats {
     balance: number;
-    monthlyIncome: number;
-    monthlyExpenses: number;
+    ytdIncome: number;
+    ytdExpenses: number;
     membersCount: number;
     incomeChange: number | null;
     expenseChange: number | null;
@@ -64,13 +64,8 @@ export const useFinanceData = (churchId: string | null) => {
 
     const stats = useMemo((): FinanceStats => {
         const now = new Date();
-        const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
-
-        const prevMonthDate = new Date();
-        prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
-        const prevMonth = prevMonthDate.getMonth();
-        const prevYear = prevMonthDate.getFullYear();
+        const prevYear = currentYear - 1;
 
         // 1. All-time Balance (Sum of all signed amounts in ledger)
         const totalBalance = ledger.reduce((s, t) => s + (t.amount || 0), 0);
@@ -78,46 +73,47 @@ export const useFinanceData = (churchId: string | null) => {
         // 2. Total Assets (Sum of all fund balances - cross-check)
         const totalAssets = funds.reduce((s, f) => s + (f.balance || 0), 0);
 
-        // 3. Current Month Totals
-        const monthlyLedger = ledger.filter(t => {
+        // 3. Current Year Totals (YTD)
+        const ytdLedger = ledger.filter(t => {
             const d = new Date(t.date || t.created_at);
-            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            return d.getFullYear() === currentYear;
         });
 
-        const monthlyIncome = monthlyLedger
+        const ytdIncome = ytdLedger
             .filter(t => t.type === 'in' || t.type === 'revenue')
             .reduce((s, t) => s + Math.abs(t.amount || 0), 0);
 
-        const monthlyExpenses = monthlyLedger
+        const ytdExpenses = ytdLedger
             .filter(t => t.type === 'out' || t.type === 'expense')
             .reduce((s, t) => s + Math.abs(t.amount || 0), 0);
 
-        // 4. Previous Month Totals (for growth)
-        const prevMonthLedger = ledger.filter(t => {
+        // 4. Previous Year Totals (for growth, comparing full previous year, or YTD of previous year)
+        // To be perfectly accurate we would compare against YTD last year. For simplicity here we just use last year.
+        const prevYearLedger = ledger.filter(t => {
             const d = new Date(t.date || t.created_at);
-            return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
+            return d.getFullYear() === prevYear;
         });
 
-        const prevIncome = prevMonthLedger
+        const prevIncome = prevYearLedger
             .filter(t => t.type === 'in' || t.type === 'revenue')
             .reduce((s, t) => s + Math.abs(t.amount || 0), 0);
 
-        const prevExpenses = prevMonthLedger
+        const prevExpenses = prevYearLedger
             .filter(t => t.type === 'out' || t.type === 'expense')
             .reduce((s, t) => s + Math.abs(t.amount || 0), 0);
 
-        // 5. Growth Rates (Compare against previous month)
-        const incomeChange = prevIncome > 0 ? ((monthlyIncome - prevIncome) / prevIncome) * 100 : null;
-        const expenseChange = prevExpenses > 0 ? ((monthlyExpenses - prevExpenses) / prevExpenses) * 100 : null;
+        // 5. Growth Rates (Compare against previous year)
+        const incomeChange = prevIncome > 0 ? ((ytdIncome - prevIncome) / prevIncome) * 100 : null;
+        const expenseChange = prevExpenses > 0 ? ((ytdExpenses - prevExpenses) / prevExpenses) * 100 : null;
         
-        const currentSurplus = monthlyIncome - monthlyExpenses;
+        const currentSurplus = ytdIncome - ytdExpenses;
         const prevSurplus = prevIncome - prevExpenses;
         const balanceChange = prevSurplus !== 0 ? ((currentSurplus - prevSurplus) / Math.abs(prevSurplus)) * 100 : null;
 
         return {
             balance: totalBalance,
-            monthlyIncome,
-            monthlyExpenses,
+            ytdIncome,
+            ytdExpenses,
             membersCount: members.length,
             incomeChange,
             expenseChange,

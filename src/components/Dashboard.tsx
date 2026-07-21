@@ -291,12 +291,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
     const insights = useMemo(() => {
         if (!ledger || ledger.length === 0) return [];
         const res = [];
-        const health = (financeStats.monthlyIncome || 1) / (financeStats.monthlyExpenses || 1);
+        const health = (financeStats.ytdIncome || 1) / (financeStats.ytdExpenses || 1);
         
         if (health > 1.2) res.push({ text: "Revenue efficiency is 20% above optimal threshold.", icon: Zap, color: "#10b981" });
         else if (health < 1) res.push({ text: "Spend rate is exceeding income. Neural shield active.", icon: AlertTriangle, color: "#ef4444" });
         
-        if (financeStats.incomeChange !== null && financeStats.incomeChange > 0) res.push({ text: `Growth trend detected: +${financeStats.incomeChange.toFixed(1)}% vs prev month.`, icon: TrendUp, color: "#3b82f6" });
+        if (financeStats.incomeChange !== null && financeStats.incomeChange > 0) res.push({ text: `Growth trend detected: +${financeStats.incomeChange.toFixed(1)}% vs prev year.`, icon: TrendUp, color: "#3b82f6" });
         
         res.push({ text: "Fiscal integrity verified. All transactions synchronized with shard US-E1.", icon: Shield, color: "#a855f7" });
         return res;
@@ -332,11 +332,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
             }
         });
 
-        if (financeStats.monthlyIncome < financeStats.monthlyExpenses) {
+        if (financeStats.ytdIncome < financeStats.ytdExpenses) {
             insights.push({
                 type: 'warning',
                 title: 'Operational Gap Detected',
-                message: 'Monthly burn rate exceeds revenue intake. Scan indicates reliance on reserve liquidity.',
+                message: 'YTD burn rate exceeds revenue intake. Scan indicates reliance on reserve liquidity.',
                 impact: 'Critical'
             });
         }
@@ -425,8 +425,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
             delay: 0,
         },
         {
-            label: t('monthlyCollections'),
-            value: fmt(financeStats.monthlyIncome),
+            label: t('ytdCollections'),
+            value: fmt(financeStats.ytdIncome),
             change: financeStats.incomeChange !== null ? `${financeStats.incomeChange >= 0 ? '+' : ''}${financeStats.incomeChange.toFixed(1)}%` : null,
             up: financeStats.incomeChange !== null ? financeStats.incomeChange >= 0 : undefined,
             icon: Activity,
@@ -448,7 +448,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
         },
         {
             label: t('expenses'),
-            value: fmt(financeStats.monthlyExpenses),
+            value: fmt(financeStats.ytdExpenses),
             change: financeStats.expenseChange !== null ? `${financeStats.expenseChange >= 0 ? '+' : ''}${financeStats.expenseChange.toFixed(1)}%` : null,
             up: financeStats.expenseChange !== null ? financeStats.expenseChange <= 0 : undefined,
             icon: Target,
@@ -479,9 +479,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
         doc.setTextColor(0);
         doc.setFontSize(12);
         doc.text(`Total Church Funds: ${fmt(financeStats.balance)}`, 14, 45);
-        doc.text(`${t('monthlyCollections')}: ${fmt(financeStats.monthlyIncome)}`, 14, 52);
+        doc.text(`${t('ytdCollections')}: ${fmt(financeStats.ytdIncome)}`, 14, 52);
         doc.text(`Active Members: ${financeStats.membersCount}`, 14, 59);
-        doc.text(`Monthly Expenses: ${fmt(financeStats.monthlyExpenses)}`, 14, 66);
+        doc.text(`YTD Expenses: ${fmt(financeStats.ytdExpenses)}`, 14, 66);
 
         autoTable(doc, {
             startY: 75,
@@ -648,26 +648,26 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
                          <div style={{ position: 'relative' }}>
-                             <RadialProgress value={Math.min(100, Math.round(((financeStats.monthlyIncome || 1) / (financeStats.monthlyExpenses || 1)) * 50))} color="#10b981" size={100} />
+                             <RadialProgress value={Math.min(100, Math.round(((financeStats.ytdIncome || 1) / (financeStats.ytdExpenses || 1)) * 50))} color="#10b981" size={100} />
                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', fontWeight: 900, color: 'white' }}>
-                                 {Math.min(100, Math.round(((financeStats.monthlyIncome || 1) / (financeStats.monthlyExpenses || 1)) * 50))}%
+                                 {Math.min(100, Math.round(((financeStats.ytdIncome || 1) / (financeStats.ytdExpenses || 1)) * 50))}%
                              </div>
                          </div>
                          <div>
                              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '4px' }}>{t('financialHealth')}</h4>
                              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem', lineHeight: 1.5, maxWidth: '300px' }}>
-                                 Based on your current MTD metrics. Your income-to-expense ratio is performing {financeStats.monthlyIncome > financeStats.monthlyExpenses ? 'optimally' : 'under pressure'}.
+                                    Based on your current YTD metrics. Your income-to-expense ratio is performing {financeStats.ytdIncome > financeStats.ytdExpenses ? 'optimally' : 'under pressure'}.
                              </p>
                          </div>
                     </div>
                     <div style={{ display: 'flex', gap: '2.5rem', padding: '1rem 2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px' }}>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, marginBottom: '4px' }}>BURN RATE</div>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#ef4444' }}>{fmtShort(financeStats.monthlyExpenses)}</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#ef4444' }}>{fmtShort(financeStats.ytdExpenses)}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, marginBottom: '4px' }}>RUNWAY</div>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#2563eb' }}>{Math.max(0, Math.round(financeStats.balance / (financeStats.monthlyExpenses || 1)))} mo</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#2563eb' }}>{Math.max(0, Math.round(financeStats.balance / (financeStats.ytdExpenses / 12 || 1)))} mo</div>
                         </div>
                     </div>
                 </motion.div>
