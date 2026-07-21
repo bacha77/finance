@@ -156,6 +156,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
     const [txMember, setTxMember] = useState('');
     const [txDate, setTxDate] = useState(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]);
     const [paymentMethod, setPaymentMethod] = useState('Cash');
+    const [txCategory, setTxCategory] = useState('Tithe');
     const [txNotes, setTxNotes] = useState('');
     const [allocations, setAllocations] = useState([{ deptId: '', fundId: '', amount: '' }]);
 
@@ -208,6 +209,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
         setTxMember(tx.member || '');
         setTxDate(tx.date || tx.created_at?.split('T')[0] || '');
         setPaymentMethod(tx.method || 'Cash');
+        setTxCategory(tx.category || 'Tithe');
         setTxNotes(tx.notes || '');
         setAllocations([{ 
             deptId: availableDepts.find(d => d.name === tx.department)?.id || '1', 
@@ -509,8 +511,8 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
 
             const txData: Transaction = {
                 date: txDate,
-                description: txNotes ? `${t('donations')}: ${txNotes}` : `${t('donations')} ${t('to')} ${selectedDept?.name}`,
-                category: t('revenue'),
+                description: txNotes ? `${t('donations')}: ${txNotes}` : `${txCategory} ${t('to')} ${selectedDept?.name}`,
+                category: txCategory,
                 fund: selectedFund?.name || 'General Fund',
                 fund_id: alloc.fundId,
                 department: selectedDept?.name || 'General',
@@ -588,6 +590,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
             setTxMember('');
             setTxNotes('');
             setPaymentMethod('Cash');
+            setTxCategory('Tithe');
             setAllocations([{ deptId: '1', fundId: funds[0]?.id || '', amount: '' }]);
 
             // Refresh local data
@@ -926,6 +929,28 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                                 <select value={txMember} onChange={e => setTxMember(e.target.value)} className="glass-input" style={{ width: '100%' }}>
                                                     <option value="" disabled hidden>Select Member...</option>
                                                     {members.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Donation Type</label>
+                                                <select value={txCategory} onChange={e => setTxCategory(e.target.value)} className="glass-input" style={{ width: '100%' }}>
+                                                    <option value="Tithe">Tithe</option>
+                                                    <option value="Offering">Offering (Offrande)</option>
+                                                    <option value="Building Fund">Building Fund</option>
+                                                    <option value="Local Basket">Local Basket</option>
+                                                    <option value="Other">Other</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Payment Method</label>
+                                                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="glass-input" style={{ width: '100%' }}>
+                                                    <option value="Cash">Cash</option>
+                                                    <option value="Check">Check</option>
+                                                    <option value="Zelle">Zelle</option>
+                                                    <option value="Credit Card">Credit Card</option>
+                                                    <option value="Online">Online</option>
                                                 </select>
                                             </div>
                                             <div>
