@@ -926,10 +926,18 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>{t('member')}</label>
-                                                <select value={txMember} onChange={e => setTxMember(e.target.value)} className="glass-input" style={{ width: '100%' }}>
-                                                    <option value="" disabled hidden>Select Member...</option>
-                                                    {members.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
-                                                </select>
+                                                <input 
+                                                    list="member-options"
+                                                    value={txMember} 
+                                                    onChange={e => setTxMember(e.target.value)} 
+                                                    className="glass-input" 
+                                                    style={{ width: '100%' }} 
+                                                    placeholder="Search member..."
+                                                    autoComplete="off"
+                                                />
+                                                <datalist id="member-options">
+                                                    {members.map((m, i) => <option key={i} value={m.name} />)}
+                                                </datalist>
                                             </div>
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Donation Type</label>
