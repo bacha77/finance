@@ -457,7 +457,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId, userRole = 'viewer' }) => {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '16px', overflowX: 'auto' }}>
+                <div className="glass" style={{ display: 'flex', gap: '0.5rem', padding: '0.5rem', borderRadius: '24px', overflowX: 'auto', width: 'fit-content' }}>
                     <TabButton id="overview" label="Mission Control" icon={Landmark} />
                     <TabButton id="statements" label="Tax Statements" icon={FileText} />
                     <TabButton id="gaap" label="Financial Statements" icon={PieIcon} />
