@@ -156,9 +156,8 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
     const [txMember, setTxMember] = useState('');
     const [txDate, setTxDate] = useState(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]);
     const [paymentMethod, setPaymentMethod] = useState('Cash');
-    const [txCategory, setTxCategory] = useState('Tithe');
     const [txNotes, setTxNotes] = useState('');
-    const [allocations, setAllocations] = useState([{ deptId: '', fundId: '', amount: '' }]);
+    const [allocations, setAllocations] = useState([{ category: 'Tithe', fundId: '', amount: '' }]);
 
     const [members, setAvailableMembers] = useState<{ name: string }[]>([]);
     const [availableDepts, setAvailableDepts] = useState<{ id: string, name: string }[]>([]);
@@ -193,7 +192,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
     };
 
     const addAllocation = () => {
-        setAllocations([...allocations, { deptId: '1', fundId: funds[0]?.id || '', amount: '' }]);
+        setAllocations([...allocations, { category: 'Tithe', fundId: funds[0]?.id || '', amount: '' }]);
     };
 
     const removeAllocation = (index: number) => {
@@ -209,10 +208,9 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
         setTxMember(tx.member || '');
         setTxDate(tx.date || tx.created_at?.split('T')[0] || '');
         setPaymentMethod(tx.method || 'Cash');
-        setTxCategory(tx.category || 'Tithe');
         setTxNotes(tx.notes || '');
         setAllocations([{ 
-            deptId: availableDepts.find(d => d.name === tx.department)?.id || '1', 
+            category: tx.category || 'Tithe', 
             fundId: tx.fund_id || '', 
             amount: tx.amount.toString() 
         }]);
@@ -507,15 +505,14 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                 alert(t('selectFund') || 'Please select a valid fund.');
                 return;
             }
-            const selectedDept = availableDepts.find(d => d.id === alloc.deptId);
 
             const txData: Transaction = {
                 date: txDate,
-                description: txNotes ? `${t('donations')}: ${txNotes}` : `${txCategory} ${t('to')} ${selectedDept?.name}`,
-                category: txCategory,
+                description: txNotes ? `${t('donations')}: ${txNotes}` : `${alloc.category} Deposit`,
+                category: alloc.category,
                 fund: selectedFund?.name || 'General Fund',
                 fund_id: alloc.fundId,
-                department: selectedDept?.name || 'General',
+                department: 'General',
                 amount: amount,
                 type: 'in',
                 member: txMember,
@@ -590,8 +587,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
             setTxMember('');
             setTxNotes('');
             setPaymentMethod('Cash');
-            setTxCategory('Tithe');
-            setAllocations([{ deptId: '1', fundId: funds[0]?.id || '', amount: '' }]);
+            setAllocations([{ category: 'Tithe', fundId: funds[0]?.id || '', amount: '' }]);
 
             // Refresh local data
             const { data: freshLedger } = await supabase
@@ -923,52 +919,21 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                         <button onClick={() => { setShowNewTxModal(false); setEditingTx(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
                                     </div>
                                     <form onSubmit={handleAddTransaction} autoComplete="off">
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>{t('member')} <span style={{ color: '#ef4444' }}>*</span></label>
-                                                <input 
-                                                    list="member-options"
-                                                    value={txMember} 
-                                                    onChange={e => setTxMember(e.target.value)} 
-                                                    className="glass-input" 
-                                                    style={{ width: '100%' }} 
-                                                    placeholder="Search member..."
-                                                    autoComplete="off"
-                                                    required
-                                                />
-                                                <datalist id="member-options">
-                                                    {members.map((m, i) => <option key={i} value={m.name} />)}
-                                                </datalist>
-                                            </div>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Donation Type <span style={{ color: '#ef4444' }}>*</span></label>
-                                                <select 
-                                                    value={['Tithe', 'Offering', 'Building Fund', 'Local Basket'].includes(txCategory) ? txCategory : 'Other'} 
-                                                    onChange={e => {
-                                                        if (e.target.value !== 'Other') setTxCategory(e.target.value);
-                                                        else setTxCategory('');
-                                                    }} 
-                                                    className="glass-input" 
-                                                    style={{ width: '100%', marginBottom: (!['Tithe', 'Offering', 'Building Fund', 'Local Basket'].includes(txCategory)) ? '0.5rem' : '0' }}
-                                                >
-                                                    <option value="Tithe">Tithe</option>
-                                                    <option value="Offering">Offering (Offrande)</option>
-                                                    <option value="Building Fund">Building Fund</option>
-                                                    <option value="Local Basket">Local Basket</option>
-                                                    <option value="Other">Other (Custom)...</option>
-                                                </select>
-                                                {(!['Tithe', 'Offering', 'Building Fund', 'Local Basket'].includes(txCategory)) && (
-                                                    <input 
-                                                        type="text"
-                                                        value={txCategory}
-                                                        onChange={e => setTxCategory(e.target.value)}
-                                                        className="glass-input"
-                                                        style={{ width: '100%' }}
-                                                        placeholder="Type custom donation type..."
-                                                        autoFocus
-                                                    />
-                                                )}
-                                            </div>
+                                        <div style={{ marginBottom: '1rem' }}>
+                                            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>{t('member')} <span style={{ color: '#ef4444' }}>*</span></label>
+                                            <input 
+                                                list="member-options"
+                                                value={txMember} 
+                                                onChange={e => setTxMember(e.target.value)} 
+                                                className="glass-input" 
+                                                style={{ width: '100%' }} 
+                                                placeholder="Search member..."
+                                                autoComplete="off"
+                                                required
+                                            />
+                                            <datalist id="member-options">
+                                                {members.map((m, i) => <option key={i} value={m.name} />)}
+                                            </datalist>
                                         </div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                             <div>
@@ -990,11 +955,34 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                             {allocations.map((alloc, idx) => (
                                                 <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.8rem', alignItems: 'flex-end' }}>
                                                     <div style={{ flex: 1 }}>
-                                                        {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>{t('department')} <span style={{ color: '#ef4444' }}>*</span></label>}
-                                                        <select value={alloc.deptId} onChange={e => handleAllocationChange(idx, 'deptId', e.target.value)} className="glass-input" style={{ width: '100%', fontSize: '0.8rem' }} required>
-                                                            <option value="" disabled hidden>Select Dept...</option>
-                                                            {availableDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                        {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Donation Type <span style={{ color: '#ef4444' }}>*</span></label>}
+                                                        <select 
+                                                            value={['Tithe', 'Offering', 'Building Fund', 'Local Basket'].includes(alloc.category) ? alloc.category : 'Other'} 
+                                                            onChange={e => {
+                                                                if (e.target.value !== 'Other') handleAllocationChange(idx, 'category', e.target.value);
+                                                                else handleAllocationChange(idx, 'category', '');
+                                                            }} 
+                                                            className="glass-input" 
+                                                            style={{ width: '100%', fontSize: '0.8rem', marginBottom: (!['Tithe', 'Offering', 'Building Fund', 'Local Basket'].includes(alloc.category)) ? '0.5rem' : '0' }}
+                                                            required
+                                                        >
+                                                            <option value="Tithe">Tithe</option>
+                                                            <option value="Offering">Offering (Offrande)</option>
+                                                            <option value="Building Fund">Building Fund</option>
+                                                            <option value="Local Basket">Local Basket</option>
+                                                            <option value="Other">Other (Custom)...</option>
                                                         </select>
+                                                        {(!['Tithe', 'Offering', 'Building Fund', 'Local Basket'].includes(alloc.category)) && (
+                                                            <input 
+                                                                type="text"
+                                                                value={alloc.category}
+                                                                onChange={e => handleAllocationChange(idx, 'category', e.target.value)}
+                                                                className="glass-input"
+                                                                style={{ width: '100%', fontSize: '0.8rem' }}
+                                                                placeholder="Type custom donation type..."
+                                                                required
+                                                            />
+                                                        )}
                                                     </div>
                                                     <div style={{ width: '90px' }}>
                                                         {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Amount <span style={{ color: '#ef4444' }}>*</span></label>}
