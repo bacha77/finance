@@ -500,7 +500,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                 return;
             }
 
-            const selectedFund = updatedFunds.find(f => f.id === alloc.fundId);
+            const selectedFund = updatedFunds.find(f => f.id === alloc.fundId) || updatedFunds[0];
             if (!selectedFund) {
                 alert(t('selectFund') || 'Please select a valid fund.');
                 return;
@@ -511,7 +511,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                 description: txNotes ? `${t('donations')}: ${txNotes}` : `${alloc.category} Deposit`,
                 category: alloc.category,
                 fund: selectedFund?.name || 'General Fund',
-                fund_id: alloc.fundId,
+                fund_id: selectedFund?.id || '',
                 department: 'General',
                 amount: amount,
                 type: 'in',
