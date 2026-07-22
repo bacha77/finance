@@ -157,7 +157,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
     const [txDate, setTxDate] = useState(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]);
     const [paymentMethod, setPaymentMethod] = useState('Cash');
     const [txNotes, setTxNotes] = useState('');
-    const [allocations, setAllocations] = useState([{ category: 'Tithe', fundId: '', amount: '' }]);
+    const [allocations, setAllocations] = useState([{ category: 'Tithe', fundId: '', customFundName: '', amount: '' }]);
 
     const [members, setAvailableMembers] = useState<{ name: string }[]>([]);
     const [availableDepts, setAvailableDepts] = useState<{ id: string, name: string }[]>([]);
@@ -192,7 +192,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
     };
 
     const addAllocation = () => {
-        setAllocations([...allocations, { category: 'Tithe', fundId: funds[0]?.id || '', amount: '' }]);
+        setAllocations([...allocations, { category: 'Tithe', fundId: funds[0]?.id || '', customFundName: '', amount: '' }]);
     };
 
     const removeAllocation = (index: number) => {
@@ -212,6 +212,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
         setAllocations([{ 
             category: tx.category || 'Tithe', 
             fundId: tx.fund_id || '', 
+            customFundName: '',
             amount: tx.amount.toString() 
         }]);
         setShowNewTxModal(true);
@@ -500,7 +501,34 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                 return;
             }
 
-            const selectedFund = updatedFunds.find(f => f.id === alloc.fundId) || updatedFunds[0];
+            let selectedFund = updatedFunds.find(f => f.id === alloc.fundId);
+            
+            if (alloc.fundId === 'Other' && alloc.customFundName) {
+                // Check if it already exists
+                const existingFund = updatedFunds.find(f => f.name.toLowerCase() === alloc.customFundName?.toLowerCase());
+                if (existingFund) {
+                    selectedFund = existingFund;
+                } else {
+                    // Create new fund
+                    const newFundId = crypto.randomUUID();
+                    const newFund = {
+                        id: newFundId,
+                        church_id: churchId,
+                        name: alloc.customFundName,
+                        type: 'Restricted',
+                        balance: 0,
+                        target: 0
+                    };
+                    const { error: fundError } = await supabase.from('funds').insert(newFund);
+                    if (fundError) throw fundError;
+                    
+                    selectedFund = newFund as any;
+                    updatedFunds.push(selectedFund as any); // Update local cache
+                }
+            } else if (!selectedFund) {
+                selectedFund = updatedFunds[0];
+            }
+
             if (!selectedFund) {
                 alert(t('selectFund') || 'Please select a valid fund.');
                 return;
@@ -587,7 +615,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
             setTxMember('');
             setTxNotes('');
             setPaymentMethod('Cash');
-            setAllocations([{ category: 'Tithe', fundId: funds[0]?.id || '', amount: '' }]);
+            setAllocations([{ category: 'Tithe', fundId: funds[0]?.id || '', customFundName: '', amount: '' }]);
 
             // Refresh local data
             const { data: freshLedger } = await supabase
@@ -988,11 +1016,23 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                                             value={alloc.fundId}
                                                             onChange={e => handleAllocationChange(idx, 'fundId', e.target.value)}
                                                             className="glass-input"
-                                                            style={{ width: '100%', fontSize: '0.8rem' }}
+                                                            style={{ width: '100%', fontSize: '0.8rem', marginBottom: alloc.fundId === 'Other' ? '0.5rem' : '0' }}
                                                             required
                                                         >
                                                             {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                                            <option value="Other">Other (Custom)...</option>
                                                         </select>
+                                                        {alloc.fundId === 'Other' && (
+                                                            <input 
+                                                                type="text"
+                                                                value={alloc.customFundName || ''}
+                                                                onChange={e => handleAllocationChange(idx, 'customFundName', e.target.value)}
+                                                                className="glass-input"
+                                                                style={{ width: '100%', fontSize: '0.8rem' }}
+                                                                placeholder="Type custom fund name..."
+                                                                required
+                                                            />
+                                                        )}
                                                     </div>
                                                     <div style={{ width: '90px' }}>
                                                         {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Amount <span style={{ color: '#ef4444' }}>*</span></label>}
