@@ -359,6 +359,16 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                 },
             });
             if (error) throw error;
+            
+            // Fire welcome email asynchronously (don't block signup if it fails)
+            try {
+                supabase.functions.invoke('send-welcome-email', {
+                    body: { record: { email: email.trim() } }
+                });
+            } catch (e) {
+                console.error("Welcome email trigger failed", e);
+            }
+
             setSignedUpEmail(email);
             setMode('verified');
         } catch (err: any) {

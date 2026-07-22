@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@paypal/react-paypal-js": "^9.0.1",
+    "@sentry/react": "^10.67.0",
+    "@sentry/tracing": "^7.120.4",
     "@supabase/supabase-js": "^2.98.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
