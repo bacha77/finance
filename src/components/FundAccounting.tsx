@@ -502,6 +502,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
             }
 
             let selectedFund = updatedFunds.find(f => f.id === alloc.fundId);
+            let selectedDeptName = 'General';
             
             if (alloc.fundId === 'Other' && alloc.customFundName) {
                 // Check if it already exists
@@ -525,6 +526,12 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                     selectedFund = newFund as any;
                     updatedFunds.push(selectedFund as any); // Update local cache
                 }
+            } else if (alloc.fundId.startsWith('dept_')) {
+                const deptId = alloc.fundId.replace('dept_', '');
+                const dept = availableDepts.find((d: any) => d.id === deptId);
+                selectedDeptName = dept?.name || 'General';
+                // Department allocations logically go into the General Fund bucket
+                selectedFund = updatedFunds.find(f => f.name.toLowerCase().includes('general')) || updatedFunds[0];
             } else if (!selectedFund) {
                 selectedFund = updatedFunds[0];
             }
@@ -540,7 +547,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                 category: alloc.category,
                 fund: selectedFund?.name || 'General Fund',
                 fund_id: selectedFund?.id || '',
-                department: 'General',
+                department: selectedDeptName,
                 amount: amount,
                 type: 'in',
                 member: txMember,
@@ -1019,7 +1026,14 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                                             style={{ width: '100%', fontSize: '0.8rem', marginBottom: alloc.fundId === 'Other' ? '0.5rem' : '0' }}
                                                             required
                                                         >
-                                                            {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                                            <optgroup label="Funds">
+                                                                {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                                            </optgroup>
+                                                            {availableDepts.length > 0 && (
+                                                                <optgroup label="Departments">
+                                                                    {availableDepts.map(d => <option key={d.id} value={`dept_${d.id}`}>{d.name}</option>)}
+                                                                </optgroup>
+                                                            )}
                                                             <option value="Other">Other (Custom)...</option>
                                                         </select>
                                                         {alloc.fundId === 'Other' && (
