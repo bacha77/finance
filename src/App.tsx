@@ -264,11 +264,23 @@ function App() {
           fiscal_year_start: newData.fiscalYearStart,
           logo_url: newData.logo_url,
           cancel_at_period_end: newData.cancel_at_period_end,
-          cancellation_reason: newData.cancellation_reason
+          cancellation_reason: newData.cancellation_reason,
+          tax_exempt: newData.taxExempt,
+          auto_receipts: newData.autoReceipts,
+          mfa_enabled: newData.mfaEnabled,
+          notifications: newData.notifications
         })
         .eq('id', church.id);
 
       if (error) throw error;
+
+      if (newData.full_name && newData.full_name !== profile.full_name) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ full_name: newData.full_name })
+          .eq('id', profile.id);
+        if (profileError) throw profileError;
+      }
 
       // Persist and apply theme locally
       if (newData.theme) {
@@ -285,13 +297,18 @@ function App() {
       // Update local state without reload
       setProfile({
         ...profile,
+        full_name: newData.full_name || profile.full_name,
         churches: {
           ...church,
           ...newData,
           // Map snake_case from DB back to the camelCase local if needed, 
           // or just ensure church object reflects standard naming
           fiscal_year_start: newData.fiscalYearStart,
-          logo_url: newData.logo_url
+          logo_url: newData.logo_url,
+          tax_exempt: newData.taxExempt,
+          auto_receipts: newData.autoReceipts,
+          mfa_enabled: newData.mfaEnabled,
+          notifications: newData.notifications
         }
       });
     } catch (err) {

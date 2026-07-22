@@ -65,7 +65,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // Mock data for initial UI
+  // Load data from DB and fallback to mock data
   const [formData, setFormData] = useState({
     name: churchData?.name || 'My Church',
     address: churchData?.address || '',
@@ -77,17 +77,25 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
     theme: localStorage.getItem('sanctuary_theme') || 'Dark',
     brandColor: localStorage.getItem('sanctuary_brandColor') || '#6366f1',
     density: 'Compact',
-    mfaEnabled: false,
-    taxExempt: true,
-    autoReceipts: false,
-    notifications: {
+    mfaEnabled: churchData?.mfa_enabled ?? false,
+    taxExempt: churchData?.tax_exempt ?? true,
+    autoReceipts: churchData?.auto_receipts ?? false,
+    notifications: churchData?.notifications ?? {
       budget: true,
       payroll: true,
       security: true,
       giving: false,
       announcements: true
-    }
+    },
+    full_name: profile?.full_name || ''
   });
+
+  // Keep full_name in sync if profile loads late
+  React.useEffect(() => {
+    if (profile?.full_name && formData.full_name === '') {
+      setFormData(prev => ({ ...prev, full_name: profile.full_name }));
+    }
+  }, [profile?.full_name]);
 
   const [isUploading, setIsUploading] = useState(false);
   const logoInputRef = React.useRef<HTMLInputElement>(null);
@@ -898,7 +906,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
                 <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input 
                   type="text" 
-                  defaultValue={profile?.full_name}
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                   style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem 0.875rem 0.875rem 2.5rem', borderRadius: '0.75rem', color: 'white', outline: 'none' }}
                 />
               </div>

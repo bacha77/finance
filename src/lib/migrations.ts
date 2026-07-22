@@ -529,6 +529,15 @@ const MIGRATIONS: { name: string; sql: string }[] = [
             ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS working_hours TEXT;
             ALTER TABLE public.churches ADD COLUMN IF NOT EXISTS referred_by UUID REFERENCES auth.users(id);
         `
+    },
+    {
+        name: 'settings_wiring_v1',
+        sql: `
+            ALTER TABLE public.churches ADD COLUMN IF NOT EXISTS tax_exempt BOOLEAN DEFAULT true;
+            ALTER TABLE public.churches ADD COLUMN IF NOT EXISTS auto_receipts BOOLEAN DEFAULT false;
+            ALTER TABLE public.churches ADD COLUMN IF NOT EXISTS mfa_enabled BOOLEAN DEFAULT false;
+            ALTER TABLE public.churches ADD COLUMN IF NOT EXISTS notifications JSONB DEFAULT '{}';
+        `
     }
 ];
 
