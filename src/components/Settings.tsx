@@ -53,6 +53,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
   const [isRestoring, setIsRestoring] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState('');
   const [resetCountdown, setResetCountdown] = useState(0);
+  const [newPassword, setNewPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   React.useEffect(() => {
     if (initialSection) setActiveSection(initialSection);
@@ -580,11 +582,59 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
     </motion.div>
   );
 
+  const handleUpdatePassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      alert(t('error') + ': Password must be at least 6 characters.');
+      return;
+    }
+    setIsUpdatingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      alert(t('success') + ': Password updated successfully!');
+      setNewPassword('');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to update password.');
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
   const renderSecurity = () => (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
       {renderSectionHeader(t('security'), t('securityDesc'))}
       
       <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Change Password</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              Update your personal account password. You will be kept logged in after this change.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="password" 
+                  placeholder="New Password (min 6 characters)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '0.875rem 0.875rem 0.875rem 2.5rem', borderRadius: '0.75rem', color: 'white', outline: 'none' }}
+                />
+              </div>
+              <button 
+                onClick={handleUpdatePassword}
+                disabled={isUpdatingPassword || !newPassword}
+                className="btn btn-primary"
+                style={{ height: '48px', padding: '0 1.5rem' }}
+              >
+                {isUpdatingPassword ? <Loader2 className="spin" size={18} /> : 'Save Password'}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{t('adminAccess')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -616,7 +666,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{t('mfa')}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('mfaDesc')}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Workspace Policy: Require 2FA for all administrator logins. (Does not enroll you personally).</div>
             </div>
             <div 
               onClick={() => setFormData({ ...formData, mfaEnabled: !formData.mfaEnabled })}
