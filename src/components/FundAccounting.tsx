@@ -157,7 +157,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
     const [txDate, setTxDate] = useState(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]);
     const [paymentMethod, setPaymentMethod] = useState('Cash');
     const [txNotes, setTxNotes] = useState('');
-    const [allocations, setAllocations] = useState([{ category: 'General Fund', fundId: '', amount: '' }]);
+    const [allocations, setAllocations] = useState([{ category: 'Tithe', fundId: '', amount: '' }]);
 
     const [members, setAvailableMembers] = useState<{ name: string }[]>([]);
     const [availableDepts, setAvailableDepts] = useState<{ id: string, name: string }[]>([]);
@@ -192,7 +192,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
     };
 
     const addAllocation = () => {
-        setAllocations([...allocations, { category: 'General Fund', fundId: funds[0]?.id || '', amount: '' }]);
+        setAllocations([...allocations, { category: 'Tithe', fundId: funds[0]?.id || '', amount: '' }]);
     };
 
     const removeAllocation = (index: number) => {
@@ -587,7 +587,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
             setTxMember('');
             setTxNotes('');
             setPaymentMethod('Cash');
-            setAllocations([{ category: 'General Fund', fundId: funds[0]?.id || '', amount: '' }]);
+            setAllocations([{ category: 'Tithe', fundId: funds[0]?.id || '', amount: '' }]);
 
             // Refresh local data
             const { data: freshLedger } = await supabase
@@ -957,21 +957,20 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                                     <div style={{ flex: 1 }}>
                                                         {idx === 0 && <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Donation Type <span style={{ color: '#ef4444' }}>*</span></label>}
                                                         <select 
-                                                            value={['Tithe', 'Offering', 'General Fund'].includes(alloc.category) ? alloc.category : 'Other'} 
+                                                            value={['Tithe', 'Offering'].includes(alloc.category) ? alloc.category : 'Other'} 
                                                             onChange={e => {
                                                                 if (e.target.value !== 'Other') handleAllocationChange(idx, 'category', e.target.value);
                                                                 else handleAllocationChange(idx, 'category', '');
                                                             }} 
                                                             className="glass-input" 
-                                                            style={{ width: '100%', fontSize: '0.8rem', marginBottom: (!['Tithe', 'Offering', 'General Fund'].includes(alloc.category)) ? '0.5rem' : '0' }}
+                                                            style={{ width: '100%', fontSize: '0.8rem', marginBottom: (!['Tithe', 'Offering'].includes(alloc.category)) ? '0.5rem' : '0' }}
                                                             required
                                                         >
                                                             <option value="Tithe">Tithe</option>
                                                             <option value="Offering">Offering (Offrande)</option>
-                                                            <option value="General Fund">General Fund</option>
                                                             <option value="Other">Other (Custom)...</option>
                                                         </select>
-                                                        {(!['Tithe', 'Offering', 'General Fund'].includes(alloc.category)) && (
+                                                        {(!['Tithe', 'Offering'].includes(alloc.category)) && (
                                                             <input 
                                                                 type="text"
                                                                 value={alloc.category}
