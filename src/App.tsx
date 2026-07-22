@@ -24,6 +24,7 @@ import AISmartBoard from './components/AISmartBoard';
 import { supabase } from './lib/supabase';
 import { getSubscriptionStatus } from './lib/subscriptionConfig';
 import { runMigrations } from './lib/migrations';
+import { applyThemeToDOM } from './lib/theme';
 import type { SubscriptionStatus } from './lib/subscriptionConfig';
 import StaffSetup from './components/StaffSetup';
 import {
@@ -123,6 +124,10 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const savedTheme = localStorage.getItem('sanctuary_theme') || 'Dark';
+    const savedColor = localStorage.getItem('sanctuary_brandColor') || '#6366f1';
+    applyThemeToDOM(savedTheme, savedColor);
+
     runMigrations();
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -264,6 +269,18 @@ function App() {
         .eq('id', church.id);
 
       if (error) throw error;
+
+      // Persist and apply theme locally
+      if (newData.theme) {
+        localStorage.setItem('sanctuary_theme', newData.theme);
+      }
+      if (newData.brandColor) {
+        localStorage.setItem('sanctuary_brandColor', newData.brandColor);
+      }
+      applyThemeToDOM(
+        newData.theme || localStorage.getItem('sanctuary_theme') || 'Dark',
+        newData.brandColor || localStorage.getItem('sanctuary_brandColor') || '#6366f1'
+      );
 
       // Update local state without reload
       setProfile({

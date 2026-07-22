@@ -32,6 +32,7 @@ import { getSubscriptionStatus } from '../lib/subscriptionConfig';
 import { PLANS } from '../lib/trialConfig';
 import Pricing from './Pricing';
 import { useLanguage } from '../contexts/LanguageContext';
+import { applyThemeToDOM } from '../lib/theme';
 
 interface SettingsProps {
   churchData?: any;
@@ -73,8 +74,8 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
     taxId: churchData?.tax_id || '',
     fiscalYearStart: churchData?.fiscal_year_start || 'January',
     logo_url: churchData?.logo_url || '',
-    theme: 'Dark',
-    brandColor: '#6366f1',
+    theme: localStorage.getItem('sanctuary_theme') || 'Dark',
+    brandColor: localStorage.getItem('sanctuary_brandColor') || '#6366f1',
     density: 'Compact',
     mfaEnabled: false,
     taxExempt: true,
@@ -802,7 +803,10 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
             {['Light', 'Dark', 'System'].map(mode => (
               <button 
                 key={mode} 
-                onClick={() => setFormData({ ...formData, theme: mode })}
+                onClick={() => {
+                  setFormData({ ...formData, theme: mode });
+                  applyThemeToDOM(mode, formData.brandColor);
+                }}
                 style={{
                   padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)',
                   background: formData.theme === mode ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255,255,255,0.02)',
@@ -824,7 +828,10 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
             {['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4'].map(color => (
               <div 
                 key={color} 
-                onClick={() => setFormData({ ...formData, brandColor: color })}
+                onClick={() => {
+                  setFormData({ ...formData, brandColor: color });
+                  applyThemeToDOM(formData.theme, color);
+                }}
                 style={{
                   width: '40px', height: '40px', borderRadius: '50%', background: color,
                   cursor: 'pointer', border: formData.brandColor === color ? '3px solid white' : '2px solid transparent',
