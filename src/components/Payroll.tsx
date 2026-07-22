@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Users,
     Calendar,
@@ -299,7 +299,28 @@ const Payroll: React.FC<PayrollProps> = ({ churchId, userRole = 'viewer' }) => {
     };
 
 
-    const taxForms: any[] = [];
+    const taxForms = useMemo(() => {
+        const forms: any[] = [];
+        const currentYear = new Date().getFullYear();
+        staff.forEach(person => {
+            if (person.type === 'Full-time') {
+                forms.push({
+                    year: currentYear,
+                    type: 'W-2 Wage and Tax Statement',
+                    recipient: person.name,
+                    status: 'Ready'
+                });
+            } else if (person.type === 'Contractor') {
+                forms.push({
+                    year: currentYear,
+                    type: '1099-NEC Nonemployee Comp.',
+                    recipient: person.name,
+                    status: 'Ready'
+                });
+            }
+        });
+        return forms;
+    }, [staff]);
 
     if (isLoading) {
         return (
@@ -782,7 +803,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId, userRole = 'viewer' }) => {
                             {[
                                 { label: 'YTD Federal Withholding', value: '$0.00', icon: ShieldCheck, color: 'var(--primary)' },
                                 { label: 'Employer FICA Liability', value: '$0.00', icon: Briefcase, color: '#a855f7' },
-                                { label: 'Active Tax Forms', value: '0 Ready', icon: FileText, color: 'var(--success)' },
+                                { label: 'Active Tax Forms', value: `${taxForms.length} Ready`, icon: FileText, color: 'var(--success)' },
                                 { label: 'Next Filing Deadline', value: 'N/A', icon: Calendar, color: '#f59e0b' },
                             ].map((stat, idx) => (
                                 <motion.div whileHover={{ scale: 1.02 }} key={idx} className="glass-card" style={{ padding: '2rem' }}>

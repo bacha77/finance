@@ -5,7 +5,7 @@ import {
     Calendar, Activity, X,
     Shield, PieChart as PieIcon, Landmark, LineChart, Search,
     Send, RefreshCw, Printer, Zap, Lock,
-    BadgeCheck, ArrowUpRight, ArrowRight, Download, ArrowLeft, Users
+    BadgeCheck, ArrowUpRight, ArrowRight, Download, ArrowLeft, Users, FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -20,7 +20,10 @@ import {
     Legend
 } from 'recharts';
 
-type ActiveTab = 'overview' | 'analytics' | 'automated' | 'vault' | 'transparency';
+import TaxStatements from './TaxStatements';
+import GaapReports from './GaapReports';
+
+type ActiveTab = 'overview' | 'analytics' | 'automated' | 'vault' | 'transparency' | 'statements' | 'gaap';
 type StatementType = 'pnl' | 'balance' | 'cashflow' | 'board' | 'ledger' | null;
 
 interface Member {
@@ -382,9 +385,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId, userRole = 'viewer' }) => {
         </button>
     );
 
-    const Cpu = (props: any) => (
-      <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="16" x="4" y="4" rx="2" /><rect width="6" height="6" x="9" y="9" rx="1" /><path d="M15 2v2" /><path d="M15 20v2" /><path d="M2 15h2" /><path d="M2 9h2" /><path d="M20 15h2" /><path d="M20 9h2" /><path d="M9 2v2" /><path d="M9 20v2" /></svg>
-    );
+
 
     if (isLoading) return (
         <div className="container" style={{ padding: '10rem 0', textAlign: 'center' }}>
@@ -456,12 +457,14 @@ const Reports: React.FC<ReportsProps> = ({ churchId, userRole = 'viewer' }) => {
                     </div>
                 </div>
 
-                <div className="glass" style={{ display: 'flex', padding: '0.4rem', borderRadius: '24px', width: 'fit-content' }}>
-                    <TabButton id="overview" label="Overview" icon={BarChart3} />
-                    <TabButton id="analytics" label="Deep scan" icon={LineChart} />
-                    <TabButton id="automated" label="Automated" icon={Cpu} />
-                    <TabButton id="vault" label="Secure Vault" icon={Lock} />
-                    <TabButton id="transparency" label="Forensic Audit" icon={Shield} />
+                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '16px', overflowX: 'auto' }}>
+                    <TabButton id="overview" label="Mission Control" icon={Landmark} />
+                    <TabButton id="statements" label="Tax Statements" icon={FileText} />
+                    <TabButton id="gaap" label="Financial Statements" icon={PieIcon} />
+                    <TabButton id="analytics" label="Intelligence" icon={Activity} />
+                    <TabButton id="automated" label="Auto-Close" icon={Zap} />
+                    <TabButton id="vault" label="Archive" icon={Lock} />
+                    <TabButton id="transparency" label="Audit" icon={ShieldCheck} />
                 </div>
             </header>
 
@@ -603,6 +606,18 @@ const Reports: React.FC<ReportsProps> = ({ churchId, userRole = 'viewer' }) => {
                 {activeTab === 'transparency' && (
                     <motion.div key="transparency" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                         <AuditLogs churchId={churchId} />
+                    </motion.div>
+                )}
+
+                {activeTab === 'statements' && (
+                    <motion.div key="statements" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                        <TaxStatements churchId={churchId} churchName={church?.name || 'Your Church'} />
+                    </motion.div>
+                )}
+
+                {activeTab === 'gaap' && (
+                    <motion.div key="gaap" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                        <GaapReports churchId={churchId} churchName={church?.name || 'Your Church'} />
                     </motion.div>
                 )}
             </AnimatePresence>
