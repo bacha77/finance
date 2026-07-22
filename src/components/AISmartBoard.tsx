@@ -105,13 +105,13 @@ export default function AISmartBoard({ isOpen, onClose, profile }: AISmartBoardP
             },
             members: (members || []).map(m => ({ id: m.id, name: m.name, status: m.status })),
             recentTransactions: (ledger || []).map(l => {
-                const memberObj = (members || []).find(m => m.id === l.member);
+                const memberObj = (members || []).find(m => m.id === l.member || m.name === l.member);
                 return { 
                     date: l.date, 
                     type: l.type, 
                     amount: l.amount, 
                     category: l.category,
-                    member_name: memberObj ? memberObj.name : (l.type === 'in' ? 'Anonymous' : 'Expense')
+                    member_name: memberObj ? memberObj.name : (l.member || (l.type === 'in' ? 'Anonymous' : 'Expense'))
                 };
             }),
             funds: (funds || []).map(f => ({ name: f.name, balance: f.balance }))
