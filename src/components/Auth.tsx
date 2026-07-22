@@ -394,9 +394,31 @@ const Auth: React.FC<AuthProps> = ({ onBypass }) => {
                     <h1 className="text-4xl lg:text-5xl font-black text-white mb-6 leading-tight">
                         Modern Finance for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Growing Churches</span>.
                     </h1>
-                    <p className="text-slate-400 text-lg mb-10 leading-relaxed">
+                    <p className="text-slate-400 text-lg mb-6 leading-relaxed">
                         Join pastors and treasurers everywhere who have abandoned spreadsheets for an all-in-one financial, payroll, and member management platform.
                     </p>
+                    
+                    <div className="flex flex-col gap-3 mb-10">
+                        <div className="flex items-center gap-3 text-slate-300 bg-white/5 border border-white/10 p-3 rounded-xl w-max">
+                            <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                            <span className="font-semibold text-sm">Automated GAAP-Compliant Board Reports</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-slate-300 bg-white/5 border border-white/10 p-3 rounded-xl w-max">
+                            <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                            <span className="font-semibold text-sm">One-Click End-of-Year Donor Tax Statements</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-slate-300 bg-white/5 border border-white/10 p-3 rounded-xl w-max">
+                            <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                            <span className="font-semibold text-sm">Built-in Clergy Payroll & Housing Allowances</span>
+                        </div>
+                    </div>
+
                     <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-sm w-max">
                         <div className="flex -space-x-3">
                             <div className="w-10 h-10 rounded-full border-2 border-slate-900 bg-slate-800 flex items-center justify-center text-xs font-bold text-white">PJ</div>
