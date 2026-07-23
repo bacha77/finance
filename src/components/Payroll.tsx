@@ -5,6 +5,7 @@ import {
     CheckCircle2, Loader2, Check, DollarSign, Edit2, Download, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { calculatePayroll } from '../lib/payrollUtils';
 import { generatePayStub } from '../lib/taxPdfGenerator';
@@ -24,9 +25,10 @@ const US_STATES = [
 ];
 
 const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
-    const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'run' | 'history'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'run' | 'history' | 'reports'>('overview');
     const [staff, setStaff] = useState<any[]>([]);
     const [history, setHistory] = useState<any[]>([]);
+    const [dateFilter, setDateFilter] = useState('YTD');
     const [isLoading, setIsLoading] = useState(true);
     
     // Hire Modal
@@ -82,10 +84,93 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
     };
 
     useEffect(() => {
-        if (activeTab === 'history') {
+        if (activeTab === 'history' || activeTab === 'reports') {
             fetchHistory();
         }
     }, [activeTab]);
+
+    
+    const filteredHistory = useMemo(() => {
+        if (!history || history.length === 0) return [];
+        const now = new Date();
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        const startOfQ1 = new Date(now.getFullYear(), 0, 1);
+        const startOfQ2 = new Date(now.getFullYear(), 3, 1);
+        const startOfQ3 = new Date(now.getFullYear(), 6, 1);
+        const startOfQ4 = new Date(now.getFullYear(), 9, 1);
+        
+        return history.filter(h => {
+            const d = new Date(h.date);
+            if (dateFilter === 'YTD') return d >= startOfYear;
+            if (dateFilter === 'Q1') return d >= startOfQ1 && d < startOfQ2;
+            if (dateFilter === 'Q2') return d >= startOfQ2 && d < startOfQ3;
+            if (dateFilter === 'Q3') return d >= startOfQ3 && d < startOfQ4;
+            if (dateFilter === 'Q4') return d >= startOfQ4;
+            if (dateFilter === 'Last 30 Days') return (now.getTime() - d.getTime()) <= 30 * 24 * 60 * 60 * 1000;
+            return true; // All Time
+        });
+    }, [history, dateFilter]);
+
+    const reportData = useMemo(() => {
+        const staffTotals: Record<string, { name: string, gross: number, net: number, federal: number, state: number, fica: number }> = {};
+        let totalGross = 0;
+        let totalNet = 0;
+        let totalFed = 0;
+        let totalState = 0;
+        let totalFica = 0;
+
+        filteredHistory.forEach(h => {
+            if (!h.staff_name) return;
+            if (!staffTotals[h.staff_id]) {
+                staffTotals[h.staff_id] = { name: h.staff_name, gross: 0, net: 0, federal: 0, state: 0, fica: 0 };
+            }
+            const s = staffTotals[h.staff_id];
+            
+            const gross = h.gross_pay || 0;
+            const net = h.net_pay || h.amount || 0;
+            const fed = h.federal_tax || 0;
+            const state = h.state_tax || 0;
+            const fica = (h.medicare || 0) + (h.social_security || 0);
+
+            s.gross += gross;
+            s.net += net;
+            s.federal += fed;
+            s.state += state;
+            s.fica += fica;
+
+            totalGross += gross;
+            totalNet += net;
+            totalFed += fed;
+            totalState += state;
+            totalFica += fica;
+        });
+
+        return {
+            staffArray: Object.values(staffTotals).sort((a, b) => b.gross - a.gross),
+            totalGross, totalNet, totalFed, totalState, totalFica
+        };
+    }, [filteredHistory]);
+    
+    const exportCSV = () => {
+        const headers = ['Employee Name', 'Gross Pay', 'Net Pay', 'Federal Tax', 'State Tax', 'FICA'];
+        const rows = reportData.staffArray.map(s => [
+            s.name,
+            s.gross.toFixed(2),
+            s.net.toFixed(2),
+            s.federal.toFixed(2),
+            s.state.toFixed(2),
+            s.fica.toFixed(2)
+        ]);
+        
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `payroll_report_${dateFilter}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const handleEditClick = (s: any) => {
         setEditId(s.id);
@@ -300,9 +385,9 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             </div>
 
             <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
-                {['overview', 'team', 'run', 'history'].map(tab => (
+                {['overview', 'team', 'run', 'history', 'reports'].map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab as any)} style={{ background: 'none', border: 'none', color: activeTab === tab ? '#a855f7' : '#94a3b8', fontSize: '1rem', fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize', position: 'relative', transition: 'color 0.2s' }}>
-                        {tab === 'run' ? 'Run Payroll' : tab === 'history' ? 'History & Stubs' : tab}
+                        {tab === 'run' ? 'Run Payroll' : tab === 'history' ? 'History & Stubs' : tab === 'reports' ? 'Reports' : tab}
                         {activeTab === tab && <motion.div layoutId="activeTab" style={{ position: 'absolute', bottom: '-17px', left: 0, right: 0, height: '2px', background: '#a855f7' }} />}
                     </button>
                 ))}
@@ -555,6 +640,136 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                         )}
                     </motion.div>
                 )}
+            
+                {activeTab === 'reports' && (
+                    <motion.div key="reports" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                <span style={{ color: '#94a3b8', fontWeight: 600 }}>Filter By:</span>
+                                <select value={dateFilter} onChange={e => setDateFilter(e.target.value)} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px' }}>
+                                    <option value="All Time">All Time</option>
+                                    <option value="YTD">Year-to-Date (YTD)</option>
+                                    <option value="Q1">Q1</option>
+                                    <option value="Q2">Q2</option>
+                                    <option value="Q3">Q3</option>
+                                    <option value="Q4">Q4</option>
+                                    <option value="Last 30 Days">Last 30 Days</option>
+                                </select>
+                            </div>
+                            <button onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.5rem', background: '#3b82f6', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 600, cursor: 'pointer' }}>
+                                <Download size={18} /> Export CSV
+                            </button>
+                        </div>
+
+                        {reportData.totalGross === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>
+                                No payroll data found for the selected period.
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                                    <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div style={{ color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Total Gross Pay</div>
+                                        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white' }}>{fmt(reportData.totalGross)}</div>
+                                    </div>
+                                    <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div style={{ color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Total Net Pay</div>
+                                        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#10b981' }}>{fmt(reportData.totalNet)}</div>
+                                    </div>
+                                    <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div style={{ color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Total Taxes Withheld</div>
+                                        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#ef4444' }}>{fmt(reportData.totalFed + reportData.totalState + reportData.totalFica)}</div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+                                    <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <h3 style={{ color: 'white', fontWeight: 700, marginBottom: '1.5rem' }}>Tax Liability Breakdown</h3>
+                                        <div style={{ height: '300px' }}>
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie data={[
+                                                        { name: 'Net Pay', value: reportData.totalNet, color: '#10b981' },
+                                                        { name: 'Federal Tax', value: reportData.totalFed, color: '#ef4444' },
+                                                        { name: 'State Tax', value: reportData.totalState, color: '#f59e0b' },
+                                                        { name: 'FICA (SS & Medicare)', value: reportData.totalFica, color: '#a855f7' }
+                                                    ]} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={100} label>
+                                                        {
+                                                            [
+                                                                { name: 'Net Pay', value: reportData.totalNet, color: '#10b981' },
+                                                                { name: 'Federal Tax', value: reportData.totalFed, color: '#ef4444' },
+                                                                { name: 'State Tax', value: reportData.totalState, color: '#f59e0b' },
+                                                                { name: 'FICA (SS & Medicare)', value: reportData.totalFica, color: '#a855f7' }
+                                                            ].map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                                            ))
+                                                        }
+                                                    </Pie>
+                                                    <RechartsTooltip formatter={(val: any) => fmt(Number(val))} contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+
+                                    <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <h3 style={{ color: 'white', fontWeight: 700, marginBottom: '1.5rem' }}>Employer Tax Liabilities (to Remit)</h3>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <span style={{ color: '#94a3b8' }}>Total Federal Tax Withheld</span>
+                                                <span style={{ color: 'white', fontWeight: 600 }}>{fmt(reportData.totalFed)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <span style={{ color: '#94a3b8' }}>Total State Tax Withheld</span>
+                                                <span style={{ color: 'white', fontWeight: 600 }}>{fmt(reportData.totalState)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <span style={{ color: '#94a3b8' }}>FICA Withheld (Employee)</span>
+                                                <span style={{ color: 'white', fontWeight: 600 }}>{fmt(reportData.totalFica)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <span style={{ color: '#94a3b8' }}>Employer FICA Match (Est.)</span>
+                                                <span style={{ color: 'white', fontWeight: 600 }}>{fmt(reportData.totalFica)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
+                                                <span style={{ color: '#ef4444', fontWeight: 800 }}>Total Liability to IRS/State</span>
+                                                <span style={{ color: '#ef4444', fontWeight: 800 }}>{fmt(reportData.totalFed + reportData.totalState + (reportData.totalFica * 2))}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', overflowX: 'auto' }}>
+                                    <h3 style={{ color: 'white', fontWeight: 700, marginBottom: '1.5rem' }}>Employee Summaries ({dateFilter})</h3>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                        <thead>
+                                            <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                                                <th style={{ padding: '1rem', color: '#94a3b8', fontWeight: 600 }}>Employee</th>
+                                                <th style={{ padding: '1rem', color: '#94a3b8', fontWeight: 600 }}>Gross Pay</th>
+                                                <th style={{ padding: '1rem', color: '#94a3b8', fontWeight: 600 }}>Fed Tax</th>
+                                                <th style={{ padding: '1rem', color: '#94a3b8', fontWeight: 600 }}>State Tax</th>
+                                                <th style={{ padding: '1rem', color: '#94a3b8', fontWeight: 600 }}>FICA</th>
+                                                <th style={{ padding: '1rem', color: '#94a3b8', fontWeight: 600 }}>Net Pay</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {reportData.staffArray.map(s => (
+                                                <tr key={s.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <td style={{ padding: '1rem', color: 'white', fontWeight: 600 }}>{s.name}</td>
+                                                    <td style={{ padding: '1rem', color: '#cbd5e1' }}>{fmt(s.gross)}</td>
+                                                    <td style={{ padding: '1rem', color: '#ef4444' }}>{fmt(s.federal)}</td>
+                                                    <td style={{ padding: '1rem', color: '#f59e0b' }}>{fmt(s.state)}</td>
+                                                    <td style={{ padding: '1rem', color: '#a855f7' }}>{fmt(s.fica)}</td>
+                                                    <td style={{ padding: '1rem', color: '#10b981', fontWeight: 600 }}>{fmt(s.net)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
+                        )}
+                    </motion.div>
+                )}
+
             </AnimatePresence>
 
             {/* Hire Modal */}
