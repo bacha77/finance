@@ -231,10 +231,10 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
         if (status === 'done') setTimeout(() => setDlStatus(prev => ({ ...prev, [key]: 'idle' })), 4000);
     };
 
-    const handleDownload = async (key: string, fn: () => void) => {
+    const handleDownload = async (key: string, fn: () => void | Promise<void>) => {
         setStatus(key, 'loading');
         await new Promise(r => setTimeout(r, 600)); // slight delay so UI updates
-        try { fn(); setStatus(key, 'done'); }
+        try { await fn(); setStatus(key, 'done'); }
         catch (e) { console.error(e); setStatus(key, 'idle'); }
     };
 
@@ -380,12 +380,19 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                             status={dlStatus[`w2_${i}`] || 'idle'}
                             isTreasurer={isTreasurer}
                             totals={getTotals(emp.id)}
-                            onDownload={() => handleDownload(`w2_${i}`, () => generateW2FromTotals({
-                                name: emp.name, 
-                                role: emp.role,
-                                ssn: emp.ssn,
-                                address: emp.address,
-                            }, { ...getTotals(emp.id), housingAllowance: emp.housingAllowance }, church))}
+                            onDownload={() => handleDownload(`w2_${i}`, async () => {
+                                let finalSsn = emp.ssn;
+                                if (emp.ssn && emp.ssn.length > 20) {
+                                    const { data } = await supabase.rpc('decrypt_employee_pii', { p_employee_id: emp.id });
+                                    if (data && data.ssn) finalSsn = data.ssn;
+                                }
+                                generateW2FromTotals({
+                                    name: emp.name, 
+                                    role: emp.role,
+                                    ssn: finalSsn,
+                                    address: emp.address,
+                                }, { ...getTotals(emp.id), housingAllowance: emp.housingAllowance }, church);
+                            })}
                         />
                     ))}
                     {employees.length > 0 && (
@@ -423,9 +430,19 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                             status={dlStatus[`1099_${i}`] || 'idle'}
                             isTreasurer={isTreasurer}
                             totals={getTotals(con.id)}
-                            onDownload={() => handleDownload(`1099_${i}`, () => generate1099NECFromTotals({
-                                name: con.name, role: con.role
-                            }, getTotals(con.id), church))}
+                            onDownload={() => handleDownload(`1099_${i}`, async () => {
+                                let finalSsn = con.ssn;
+                                if (con.ssn && con.ssn.length > 20) {
+                                    const { data } = await supabase.rpc('decrypt_employee_pii', { p_employee_id: con.id });
+                                    if (data && data.ssn) finalSsn = data.ssn;
+                                }
+                                generate1099NECFromTotals({
+                                    name: con.name, 
+                                    role: con.role,
+                                    ssn: finalSsn,
+                                    address: con.address
+                                }, getTotals(con.id), church);
+                            })}
                         />
                     ))}
                 </div>

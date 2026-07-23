@@ -67,8 +67,8 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     status: s.status,
                     recurring: s.recurring !== false,
                     frequency: s.frequency || 'Monthly',
-                    ssn: s.ssn || '',
-                    dob: s.dob || '',
+                    ssn: s.ssn ? '***-**-' + s.ssn.slice(-4) : '',
+                    dob: s.dob ? '••/••/••••' : '',
                     address: s.address || '',
                     email: s.email || '',
                     phone: s.phone || ''
@@ -195,8 +195,8 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             state_residence: s.stateResidence,
             recurring: s.recurring,
             frequency: s.frequency || 'Monthly',
-            ssn: s.ssn || '',
-            dob: s.dob || '',
+            ssn: s.ssn ? '***-**-' + s.ssn.slice(-4) : '',
+                    dob: s.dob ? '••/••/••••' : '',
             address: s.address || '',
             email: s.email || '',
             phone: s.phone || ''
@@ -219,6 +219,14 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             };
 
             let error;
+            let targetId = editId;
+            
+            // Remove SSN and DOB from payload so they are never saved in plain text
+            const ssn = newStaff.ssn;
+            const dob = newStaff.dob;
+            delete (newStaff as any).ssn;
+            delete (newStaff as any).dob;
+
             if (editId) {
                 const { error: updateError } = await supabase.from('staff').update({
                     name: newStaff.name,
@@ -229,17 +237,31 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     dependents: newStaff.dependents,
                     filing_status: newStaff.filing_status,
                     state_residence: newStaff.state_residence,
-                    ssn: newStaff.ssn,
-                    dob: newStaff.dob,
                     address: newStaff.address,
                     email: newStaff.email,
                     phone: newStaff.phone
                 }).eq('id', editId);
                 error = updateError;
             } else {
-                const { error: insertError } = await supabase.from('staff').insert([newStaff]);
+                const { data: insertedData, error: insertError } = await supabase.from('staff').insert([newStaff]).select();
                 error = insertError;
+                if (insertedData && insertedData.length > 0) {
+                    targetId = insertedData[0].id;
+                }
             }
+
+            // If no error, securely encrypt and save the PII
+            if (!error && targetId && (ssn || dob)) {
+                // If it's masked, don't overwrite it
+                if (!ssn.includes('***')) {
+                    await supabase.rpc('encrypt_employee_pii', { 
+                        p_employee_id: targetId,
+                        p_ssn: ssn,
+                        p_dob: dob
+                    });
+                }
+            }
+
             
             if (error && error.message?.includes('column')) {
                alert('Database migration required! The new tax profile columns (dependents, filing_status) do not exist in your database. Please run the SQL migration script in your Supabase SQL editor.');
@@ -254,8 +276,8 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     id: s.id, name: s.name, role: s.role, type: s.type || 'Full-time', salary: s.salary, 
                     housingAllowance: s.housing_allowance || 0, dependents: s.dependents || 0, filingStatus: s.filing_status || 'Single',
                     stateResidence: s.state_residence || 'TX', lastPaid: s.last_paid, status: s.status, recurring: s.recurring !== false, frequency: s.frequency || 'Monthly',
-                    ssn: s.ssn || '',
-                    dob: s.dob || '',
+                    ssn: s.ssn ? '***-**-' + s.ssn.slice(-4) : '',
+                    dob: s.dob ? '••/••/••••' : '',
                     address: s.address || '',
                     email: s.email || '',
                     phone: s.phone || ''
@@ -379,8 +401,8 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     id: s.id, name: s.name, role: s.role, type: s.type || 'Full-time', salary: s.salary, 
                     housingAllowance: s.housing_allowance || 0, dependents: s.dependents || 0, filingStatus: s.filing_status || 'Single',
                     stateResidence: s.state_residence || 'TX', lastPaid: s.last_paid, status: s.status, recurring: s.recurring !== false, frequency: s.frequency || 'Monthly',
-                    ssn: s.ssn || '',
-                    dob: s.dob || '',
+                    ssn: s.ssn ? '***-**-' + s.ssn.slice(-4) : '',
+                    dob: s.dob ? '••/••/••••' : '',
                     address: s.address || '',
                     email: s.email || '',
                     phone: s.phone || ''
@@ -819,7 +841,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                 {showHireModal && (
                     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowHireModal(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} />
-                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="glass-card" style={{ position: 'relative', width: '100%', maxWidth: '600px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '2rem', overflow: 'hidden' }}>
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="glass-card" style={{ position: 'relative', width: '100%', maxWidth: '600px', maxHeight: '90vh', background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '2rem', overflowY: 'auto' }}>
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{editId ? 'Edit Team Member' : 'Add Team Member'}</h2>
                             <form onSubmit={handleHire} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem' }}>

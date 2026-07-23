@@ -586,7 +586,100 @@ CREATE TABLE IF NOT EXISTS public.campaigns (
     description TEXT,
     target_amount NUMERIC DEFAULT 0,
     match_keyword TEXT,
-    status      TEXT DEFAULT ''Active'',
+    status      TEXT DEFAULT 'Active',
     church_id   UUID,
     created_at  TIMESTAMPTZ DEFAULT now()
 );
+
+
+-- ==========================================
+-- SSN & DOB Encryption Setup (pgcrypto)
+-- ==========================================
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- 1. Create a secure table for the encryption key
+CREATE TABLE IF NOT EXISTS public.app_secrets (
+    name TEXT PRIMARY KEY,
+    secret_value TEXT NOT NULL
+);
+
+-- Deny all access to app_secrets from the API
+ALTER TABLE public.app_secrets ENABLE ROW LEVEL SECURITY;
+-- No policies means default deny for all roles
+
+-- 2. Function to encrypt and update employee PII
+-- Security definer means it runs with elevated privileges so it can read app_secrets
+CREATE OR REPLACE FUNCTION public.encrypt_employee_pii(
+    p_employee_id UUID,
+    p_ssn TEXT,
+    p_dob TEXT
+) RETURNS void AS $$
+DECLARE
+    v_key TEXT;
+BEGIN
+    -- Fetch the secret key
+    SELECT secret_value INTO v_key FROM public.app_secrets WHERE name = 'encryption_key';
+    
+    IF v_key IS NULL THEN
+        RAISE EXCEPTION 'Encryption key not found in app_secrets.';
+    END IF;
+
+    -- Update the employee record with encrypted data
+    -- pgp_sym_encrypt returns bytea, but since our columns are TEXT, we use encode(..., 'base64')
+    UPDATE public.employees
+    SET 
+        ssn = encode(pgp_sym_encrypt(p_ssn, v_key), 'base64'),
+        dob = encode(pgp_sym_encrypt(p_dob, v_key), 'base64')
+    WHERE id = p_employee_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Function to decrypt employee PII
+-- Only returns data if the user has access to the employee (handled by the initial SELECT)
+CREATE OR REPLACE FUNCTION public.decrypt_employee_pii(
+    p_employee_id UUID
+) RETURNS json AS $$
+DECLARE
+    v_key TEXT;
+    v_enc_ssn TEXT;
+    v_enc_dob TEXT;
+    v_plain_ssn TEXT;
+    v_plain_dob TEXT;
+BEGIN
+    -- Ensure the user actually has access to this employee (respects RLS on employees table)
+    SELECT ssn, dob INTO v_enc_ssn, v_enc_dob FROM public.employees WHERE id = p_employee_id;
+    
+    IF v_enc_ssn IS NULL AND v_enc_dob IS NULL THEN
+        RETURN json_build_object('ssn', NULL, 'dob', NULL);
+    END IF;
+
+    -- Fetch the secret key
+    SELECT secret_value INTO v_key FROM public.app_secrets WHERE name = 'encryption_key';
+    
+    IF v_key IS NULL THEN
+        RAISE EXCEPTION 'Encryption key not found in app_secrets.';
+    END IF;
+
+    -- Decrypt SSN
+    IF v_enc_ssn IS NOT NULL AND v_enc_ssn != '' THEN
+        BEGIN
+            v_plain_ssn := pgp_sym_decrypt(decode(v_enc_ssn, 'base64'), v_key);
+        EXCEPTION WHEN OTHERS THEN
+            -- If it fails, it might be legacy unencrypted data or invalid base64
+            v_plain_ssn := v_enc_ssn;
+        END;
+    END IF;
+
+    -- Decrypt DOB
+    IF v_enc_dob IS NOT NULL AND v_enc_dob != '' THEN
+        BEGIN
+            v_plain_dob := pgp_sym_decrypt(decode(v_enc_dob, 'base64'), v_key);
+        EXCEPTION WHEN OTHERS THEN
+            v_plain_dob := v_enc_dob;
+        END;
+    END IF;
+
+    RETURN json_build_object('ssn', v_plain_ssn, 'dob', v_plain_dob);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

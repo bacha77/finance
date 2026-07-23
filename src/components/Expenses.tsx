@@ -682,15 +682,15 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
  
                                 <div style={{ marginBottom: '1.25rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('description')}</label>
-                                    <input type="text" required value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Office Supplies" style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.95rem' }} />
+                                    <input type="text" required value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Office Supplies" style={{ width: '100%', padding: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', color: 'white', fontSize: '0.95rem' }} />
                                 </div>
                                 <div style={{ marginBottom: '1.25rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('amount')}</label>
-                                    <input type="number" step="0.01" required value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.95rem' }} />
+                                    <input type="number" step="0.01" required value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" style={{ width: '100%', padding: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', color: 'white', fontSize: '0.95rem' }} />
                                 </div>
                                 <div style={{ marginBottom: '1.25rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('department')}</label>
-                                    <select value={dept} onChange={e => setDept(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.95rem', appearance: 'none', background: 'white' }}>
+                                    <select value={dept} onChange={e => setDept(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', fontSize: '0.95rem', background: 'rgba(0,0,0,0.2)' }}>
                                         {availableDepts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                     </select>
                                 </div>
@@ -713,7 +713,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
                                                 value={newCatName}
                                                 onChange={e => setNewCatName(e.target.value)}
                                                 placeholder="Category name"
-                                                style={{ flex: 1, padding: '10px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.9rem' }}
+                                                style={{ flex: 1, padding: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', color: 'white', fontSize: '0.9rem' }}
                                             />
                                             <button
                                                 type="button"
@@ -732,7 +732,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
                                             </button>
                                         </div>
                                     ) : (
-                                        <select value={cat} onChange={e => setCat(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.95rem', appearance: 'none', background: 'white' }}>
+                                        <select value={cat} onChange={e => setCat(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', fontSize: '0.95rem', background: 'rgba(0,0,0,0.2)' }}>
                                             {categories.map(c => <option key={c} value={c}>{c}</option>)}
                                         </select>
                                     )}
@@ -740,11 +740,11 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.75rem' }}>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('date')}</label>
-                                        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.95rem' }} />
+                                        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', color: 'white', fontSize: '0.95rem' }} />
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '8px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('paymentMethod')}</label>
-                                        <select value={method} onChange={e => setMethod(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px', color: '#1e293b', fontSize: '0.95rem', appearance: 'none', background: 'white' }}>
+                                        <select value={method} onChange={e => setMethod(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', fontSize: '0.95rem', background: 'rgba(0,0,0,0.2)' }}>
                                             <option value="CASH">CASH</option>
                                             <option value="CHECK">CHECK</option>
                                             <option value="ONLINE">ONLINE</option>
