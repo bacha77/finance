@@ -442,7 +442,7 @@ Pay Date: ${entry.date}`);
 
 
 // ── W-2 Generator (From Totals) ──────────────────────────────────────────────
-export function generateW2FromTotals(employee: { name: string; role: string }, totals: { gross: number; net: number; federal: number; state: number; fica: number; housingAllowance?: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
+export function generateW2FromTotals(employee: { name: string; role: string; ssn?: string; address?: string }, totals: { gross: number; net: number; federal: number; state: number; fica: number; housingAllowance?: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
     const { doc, churchName, ein } = baseDoc(church.name, church.ein);
     const addr = church.address || '123 Church Street, City, ST 00000';
 
@@ -527,7 +527,7 @@ export function generateW2FromTotals(employee: { name: string; role: string }, t
 }
 
 // ── 1099-NEC Generator (From Totals) ─────────────────────────────────────────
-export function generate1099NECFromTotals(contractor: { name: string; role: string }, totals: { gross: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
+export function generate1099NECFromTotals(contractor: { name: string; role: string; ssn?: string; address?: string }, totals: { gross: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
     const { doc, churchName, ein } = baseDoc(church.name, church.ein);
     const addr = church.address || '123 Church Street, City, ST 00000';
 

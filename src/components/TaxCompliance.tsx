@@ -371,6 +371,8 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                             onDownload={() => handleDownload(`w2_${i}`, () => generateW2FromTotals({
                                 name: emp.name, 
                                 role: emp.role,
+                                ssn: emp.ssn,
+                                address: emp.address,
                             }, { ...getTotals(emp.id), housingAllowance: emp.housingAllowance }, church))}
                         />
                     ))}

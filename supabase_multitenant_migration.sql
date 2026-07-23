@@ -119,6 +119,11 @@ CREATE TABLE IF NOT EXISTS public.staff (
     status            TEXT DEFAULT 'active',
     last_paid         TEXT,
     church_id         UUID,
+    ssn               TEXT,
+    dob               TEXT,
+    address           TEXT,
+    email             TEXT,
+    phone             TEXT,
     created_at        TIMESTAMPTZ DEFAULT now()
 );
 

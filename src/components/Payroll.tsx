@@ -37,7 +37,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
     const [hireForm, setHireForm] = useState({
         name: '', role: '', type: 'Full-time', salary: '', 
         housing_allowance: '0', dependents: 0, filing_status: 'Single',
-        state_residence: 'TX', recurring: true, frequency: 'Monthly'
+        state_residence: 'TX', recurring: true, frequency: 'Monthly', ssn: '', dob: '', address: '', email: '', phone: ''
     });
 
     // Wizard
@@ -66,7 +66,12 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     lastPaid: s.last_paid,
                     status: s.status,
                     recurring: s.recurring !== false,
-                    frequency: s.frequency || 'Monthly'
+                    frequency: s.frequency || 'Monthly',
+                    ssn: s.ssn || '',
+                    dob: s.dob || '',
+                    address: s.address || '',
+                    email: s.email || '',
+                    phone: s.phone || ''
                 })) : []);
             } catch (err) {
                 console.error(err);
@@ -189,7 +194,12 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             filing_status: s.filingStatus,
             state_residence: s.stateResidence,
             recurring: s.recurring,
-            frequency: s.frequency
+            frequency: s.frequency || 'Monthly',
+            ssn: s.ssn || '',
+            dob: s.dob || '',
+            address: s.address || '',
+            email: s.email || '',
+            phone: s.phone || ''
         });
         setShowHireModal(true);
     };
@@ -218,7 +228,12 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     housing_allowance: newStaff.housing_allowance,
                     dependents: newStaff.dependents,
                     filing_status: newStaff.filing_status,
-                    state_residence: newStaff.state_residence
+                    state_residence: newStaff.state_residence,
+                    ssn: newStaff.ssn,
+                    dob: newStaff.dob,
+                    address: newStaff.address,
+                    email: newStaff.email,
+                    phone: newStaff.phone
                 }).eq('id', editId);
                 error = updateError;
             } else {
@@ -238,12 +253,17 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                 setStaff(data.map(s => ({
                     id: s.id, name: s.name, role: s.role, type: s.type || 'Full-time', salary: s.salary, 
                     housingAllowance: s.housing_allowance || 0, dependents: s.dependents || 0, filingStatus: s.filing_status || 'Single',
-                    stateResidence: s.state_residence || 'TX', lastPaid: s.last_paid, status: s.status, recurring: s.recurring !== false, frequency: s.frequency || 'Monthly'
+                    stateResidence: s.state_residence || 'TX', lastPaid: s.last_paid, status: s.status, recurring: s.recurring !== false, frequency: s.frequency || 'Monthly',
+                    ssn: s.ssn || '',
+                    dob: s.dob || '',
+                    address: s.address || '',
+                    email: s.email || '',
+                    phone: s.phone || ''
                 })));
             }
             setShowHireModal(false);
             setEditId(null);
-            setHireForm({ name: '', role: '', type: 'Full-time', salary: '', housing_allowance: '0', dependents: 0, filing_status: 'Single', state_residence: 'TX', recurring: true, frequency: 'Monthly' });
+            setHireForm({ name: '', role: '', type: 'Full-time', salary: '', housing_allowance: '0', dependents: 0, filing_status: 'Single', state_residence: 'TX', recurring: true, frequency: 'Monthly', ssn: '', dob: '', address: '', email: '', phone: '' });
         } catch (err: any) {
             alert('Error saving staff: ' + err.message);
         } finally {
@@ -358,7 +378,12 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                 setStaff(data.map(s => ({
                     id: s.id, name: s.name, role: s.role, type: s.type || 'Full-time', salary: s.salary, 
                     housingAllowance: s.housing_allowance || 0, dependents: s.dependents || 0, filingStatus: s.filing_status || 'Single',
-                    stateResidence: s.state_residence || 'TX', lastPaid: s.last_paid, status: s.status, recurring: s.recurring !== false, frequency: s.frequency || 'Monthly'
+                    stateResidence: s.state_residence || 'TX', lastPaid: s.last_paid, status: s.status, recurring: s.recurring !== false, frequency: s.frequency || 'Monthly',
+                    ssn: s.ssn || '',
+                    dob: s.dob || '',
+                    address: s.address || '',
+                    email: s.email || '',
+                    phone: s.phone || ''
                 })));
             }
         } catch (err) {
@@ -380,7 +405,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     <p style={{ color: '#94a3b8', fontSize: '1rem', marginTop: '0.5rem' }}>Premium workforce management (Isolated from Main Ledger)</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button onClick={() => { setEditId(null); setHireForm({ name: '', role: '', type: 'Full-time', salary: '', housing_allowance: '0', dependents: 0, filing_status: 'Single', state_residence: 'TX', recurring: true, frequency: 'Monthly' }); setShowHireModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>
+                    <button onClick={() => { setEditId(null); setHireForm({ name: '', role: '', type: 'Full-time', salary: '', housing_allowance: '0', dependents: 0, filing_status: 'Single', state_residence: 'TX', recurring: true, frequency: 'Monthly', ssn: '', dob: '', address: '', email: '', phone: '' }); setShowHireModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>
                         <Plus size={18} /> Add Team Member
                     </button>
                     <button onClick={() => { setActiveTab('run'); setWizardStep(1); setProcessComplete(null); }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', background: 'linear-gradient(135deg, #a855f7, #ec4899)', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 15px rgba(168, 85, 247, 0.3)', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}>
@@ -855,6 +880,34 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                         <div>
                                             <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Dependents</label>
                                             <input type="number" required value={hireForm.dependents} onChange={e => setHireForm({...hireForm, dependents: parseInt(e.target.value) || 0})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                                                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1rem', marginTop: '1rem' }}>
+                                    <h4 style={{ color: '#3b82f6', fontWeight: 600, marginBottom: '1rem', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Personal Information</h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>SSN</label>
+                                            <input value={hireForm.ssn} onChange={e => setHireForm({...hireForm, ssn: e.target.value})} placeholder="XXX-XX-XXXX" style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Date of Birth</label>
+                                            <input type="date" value={hireForm.dob} onChange={e => setHireForm({...hireForm, dob: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                                        </div>
+                                    </div>
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Address</label>
+                                        <input value={hireForm.address} onChange={e => setHireForm({...hireForm, address: e.target.value})} placeholder="123 Main St, City, ST 12345" style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Email</label>
+                                            <input type="email" value={hireForm.email} onChange={e => setHireForm({...hireForm, email: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Phone</label>
+                                            <input value={hireForm.phone} onChange={e => setHireForm({...hireForm, phone: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
                                         </div>
                                     </div>
                                 </div>
