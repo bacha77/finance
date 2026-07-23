@@ -214,7 +214,50 @@ const BudgetBurnDownWidget: React.FC<{ churchId: string, ledger: any[] }> = ({ c
     );
 };
 
-const GivingAnalyticsWidget: React.FC = () => {
+const GivingAnalyticsWidget: React.FC<{ ledger: any[] }> = ({ ledger }) => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    // Compute Recurring vs One-Time
+    let recurring = 0;
+    let oneTime = 0;
+    let thisMonthIncome = 0;
+    let lastMonthIncome = 0;
+
+    ledger.forEach(tx => {
+        if (tx.type === 'in' || tx.type === 'revenue') {
+            const txDate = new Date(tx.date || tx.created_at);
+            const amt = Math.abs(tx.amount);
+            
+            // Heuristic for recurring vs one-time
+            if (tx.category === 'Tithes' || tx.category === 'Tithes & Offerings' || tx.method?.toLowerCase().includes('stripe') || tx.description?.toLowerCase().includes('recurring')) {
+                recurring += amt;
+            } else {
+                oneTime += amt;
+            }
+
+            // Month-over-month growth
+            if (txDate.getFullYear() === currentYear) {
+                if (txDate.getMonth() === currentMonth) {
+                    thisMonthIncome += amt;
+                } else if (txDate.getMonth() === currentMonth - 1 || (currentMonth === 0 && txDate.getMonth() === 11 && txDate.getFullYear() === currentYear - 1)) {
+                    lastMonthIncome += amt;
+                }
+            }
+        }
+    });
+
+    const totalGiving = recurring + oneTime;
+    const recurringPct = totalGiving > 0 ? Math.round((recurring / totalGiving) * 100) : 0;
+    const oneTimePct = totalGiving > 0 ? Math.round((oneTime / totalGiving) * 100) : 0;
+    
+    let projectedGrowth = 0;
+    if (lastMonthIncome > 0) {
+        projectedGrowth = Math.round(((thisMonthIncome - lastMonthIncome) / lastMonthIncome) * 100);
+    } else if (thisMonthIncome > 0) {
+        projectedGrowth = 100;
+    }
+
     return (
         <div className="glass-card" style={{ padding: '1.5rem', flex: 1, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -222,26 +265,34 @@ const GivingAnalyticsWidget: React.FC = () => {
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', margin: '1rem 0' }}>
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>0%</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>{recurringPct}%</div>
                     <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Recurring</div>
                 </div>
                 <div style={{ width: '1px', height: '40px', background: 'rgba(255,255,255,0.1)' }} />
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>0%</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>{oneTimePct}%</div>
                     <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>One-Time</div>
                 </div>
             </div>
             <div style={{ padding: '0.75rem', background: 'rgba(168, 85, 247, 0.05)', borderRadius: '8px', border: '1px solid rgba(168, 85, 247, 0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <BrainCircuit size={16} color="#a855f7" />
-                <span style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 600 }}>Projecting <strong style={{ color: 'white' }}>+0%</strong> growth this month</span>
+                <span style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 600 }}>Projecting <strong style={{ color: projectedGrowth >= 0 ? '#10b981' : '#ef4444' }}>{projectedGrowth > 0 ? '+' : ''}{projectedGrowth}%</strong> growth this month</span>
             </div>
         </div>
     );
 };
 
-const CampaignProgressWidget: React.FC = () => {
-    const goal = 0;
-    const raised = 0;
+const CampaignProgressWidget: React.FC<{ ledger: any[] }> = ({ ledger }) => {
+    // We heuristically identify Campaign funds or categories
+    const raised = ledger
+        .filter(tx => (tx.type === 'in' || tx.type === 'revenue') && (
+            tx.fund?.toLowerCase().includes('campaign') || 
+            tx.fund?.toLowerCase().includes('building') ||
+            tx.category?.toLowerCase().includes('campaign')
+        ))
+        .reduce((s, tx) => s + Math.abs(tx.amount), 0);
+        
+    const goal = 50000; // Hardcoded default goal
     const pct = goal > 0 ? Math.min(100, (raised / goal) * 100) : 0;
     return (
         <div className="glass-card" style={{ padding: '1.5rem', flex: 1, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
@@ -249,11 +300,12 @@ const CampaignProgressWidget: React.FC = () => {
             <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative', zIndex: 1 }}>
                 <Target size={18} color="#ec4899" /> Capital Campaign
             </h3>
-            <div style={{ position: 'relative', zIndex: 1 }}>
-                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white', lineHeight: 1, marginBottom: '0.5rem' }}>{fmtShort(raised)}</div>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, marginBottom: '1rem' }}>Raised of {fmtShort(goal)} goal</div>
-                
-                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative', zIndex: 1 }}>
+                <div>
+                    <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{fmtShort(raised)}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, marginTop: '4px' }}>Raised of {fmtShort(goal)} goal</div>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
                     <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
@@ -261,7 +313,7 @@ const CampaignProgressWidget: React.FC = () => {
                         style={{ height: '100%', background: 'linear-gradient(90deg, #ec4899, #f43f5e)', borderRadius: '10px' }} 
                     />
                 </div>
-                <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#ec4899', fontWeight: 800 }}>{pct.toFixed(0)}%</div>
+                <div style={{ textAlign: 'right', fontSize: '0.75rem', fontWeight: 800, color: '#ec4899' }}>{Math.round(pct)}%</div>
             </div>
         </div>
     );
@@ -674,8 +726,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
             {/* Advanced Analytics Widgets */}
             <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
                 <BudgetBurnDownWidget churchId={churchId} ledger={ledger} />
-                <GivingAnalyticsWidget />
-                <CampaignProgressWidget />
+                <GivingAnalyticsWidget ledger={ledger} />
+                <CampaignProgressWidget ledger={ledger} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.75rem', marginBottom: '2.5rem' }}>
