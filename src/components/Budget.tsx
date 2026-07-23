@@ -102,10 +102,14 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
             .reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
     };
 
-    const currentBudget = budgets.find(b => b.year === activeYear) || budgets[0];
+    const currentBudget = budgets.find(b => b.year === activeYear) || budgets[0] || { year: activeYear, totalBudget: 0, allocations: [] };
 
     const updateCurrentBudget = (updates: Partial<BudgetYear>) => {
-        setBudgets(budgets.map(b => b.year === activeYear ? { ...b, ...updates } : b));
+        if (budgets.length === 0) {
+            setBudgets([{ year: activeYear, totalBudget: 0, allocations: [], ...updates }]);
+        } else {
+            setBudgets(budgets.map(b => b.year === activeYear ? { ...b, ...updates } : b));
+        }
     };
 
     const handleTotalBudgetChange = (value: string) => {
@@ -175,6 +179,17 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
                 }, { onConflict: 'year,church_id' }); // Conflict should be on year AND church for multi-tenancy
 
             if (error) throw error;
+            
+            // Sync allocations directly to the departments table so it shows up on the Department page
+            for (const alloc of currentBudget.allocations) {
+                if (alloc.deptId) {
+                    await supabase
+                        .from('departments')
+                        .update({ annual_budget: alloc.amount })
+                        .eq('id', alloc.deptId);
+                }
+            }
+
             alert(language === 'es' ? `¡Presupuesto para el año ${activeYear} guardado!` : `Budget for fiscal year ${activeYear} saved successfully!`);
         } catch (err) {
             console.error('Error saving budget:', err);
