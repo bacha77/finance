@@ -192,8 +192,20 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
     const totalMonthlySalary = useMemo(() => eligibleStaff.reduce((s, st) => s + (st.salary || 0), 0), [eligibleStaff]);
 
     const getGrossPay = (s: any) => {
-        const base = s.type === 'Hourly' ? (s.salary || 0) * (hoursWorked[s.id] || 0) : (s.salary || 0);
-        return Math.max(0, base + (adjustments[s.id] || 0));
+        if (s.type === 'Hourly') {
+            const base = (s.salary || 0) * (hoursWorked[s.id] || 0);
+            return Math.max(0, base + (adjustments[s.id] || 0));
+        } else {
+            const f = s.frequency || 'Monthly';
+            let factor = 12;
+            if (f === 'Weekly') factor = 52;
+            if (f === 'Bi-weekly') factor = 26;
+            if (f === 'Semi-monthly') factor = 24;
+            if (f === 'Annually') factor = 1;
+            
+            const base = (s.salary || 0) / factor;
+            return Math.max(0, base + (adjustments[s.id] || 0));
+        }
     };
 
     const runPayroll = async () => {
@@ -209,7 +221,15 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                 const gross = getGrossPay(s);
                 if (s.type === 'Hourly' && gross === 0) return; // Skip hourly employees with 0 hours
 
-                const taxes = calculatePayroll(gross, s.housingAllowance, s.type !== 'Contractor', s.stateResidence, s.filingStatus, s.dependents);
+                const f = s.frequency || 'Monthly';
+                let factor = 12;
+                if (f === 'Weekly') factor = 52;
+                if (f === 'Bi-weekly') factor = 26;
+                if (f === 'Semi-monthly') factor = 24;
+                if (f === 'Annually') factor = 1;
+                const periodHousing = (s.housingAllowance || 0) / factor;
+
+                const taxes = calculatePayroll(gross, periodHousing, s.type !== 'Contractor', s.stateResidence, s.filingStatus, s.dependents, f);
                 totalNet += taxes.net;
                 
                 const lastPaidStr = new Date().toLocaleDateString();

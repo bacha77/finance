@@ -68,7 +68,7 @@ function footer(doc: jsPDF, note: string) {
 // ── W-2 Generator ────────────────────────────────────────────────────────────
 export function generateW2(employee: { name: string; role: string; salary: number; housingAllowance?: number; stateResidence?: string; filingStatus?: string; dependents?: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
     const { doc, churchName, ein } = baseDoc(church.name, church.ein);
-    const taxes = calculatePayroll(employee.salary * 12, (employee.housingAllowance || 0) * 12, true, employee.stateResidence || 'TX', employee.filingStatus || 'Single', employee.dependents || 0);
+    const taxes = calculatePayroll(employee.salary, employee.housingAllowance || 0, true, employee.stateResidence || 'TX', employee.filingStatus || 'Single', employee.dependents || 0, 'Annually');
     const addr = church.address || '123 Church Street, City, ST 00000';
 
     pageHeader(doc, 'Form W-2', 'Wage and Tax Statement', TAX_YEAR, church.logo_url);
@@ -220,7 +220,7 @@ export function generate941(staff: any[], church: { name: string; ein: string; l
 
     const employees = staff.filter((s: any) => s.type === 'Full-time' || s.type === 'Part-time');
     const quarterlyTotals = employees.reduce((acc, s) => {
-        const t = calculatePayroll(s.salary * 3, (s.housing_allowance || 0) * 3, true, s.state_tax_rate || 0.05);
+        const t = calculatePayroll((s.salary || 0) / 4, (s.housing_allowance || 0) / 4, true, s.state_residence || 'TX', s.filing_status || 'Single', s.dependents || 0, 'Quarterly');
         return {
             gross: acc.gross + t.gross,
             taxable: acc.taxable + t.taxableGross,
@@ -269,7 +269,7 @@ export function generateW3(staff: any[], church: { name: string; ein: string; lo
     const employees = staff.filter((s: any) => s.type === 'Full-time' || s.type === 'Part-time');
     const totals = employees.reduce(
         (acc: any, s: any) => {
-            const t = calculatePayroll(s.salary * 12, (s.housing_allowance || 0) * 12, true, s.state_tax_rate || 0.05);
+            const t = calculatePayroll(s.salary || 0, s.housing_allowance || 0, true, s.state_residence || 'TX', s.filing_status || 'Single', s.dependents || 0, 'Annually');
             return {
                 gross: acc.gross + t.gross,
                 taxable: acc.taxable + t.taxableGross,

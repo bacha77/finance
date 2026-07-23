@@ -15,84 +15,80 @@ export interface PayrollResult {
     totalEmployerLiability: number;
 }
 
-/**
- * Ecclesiastical Payroll Calculator
- * Handles Ministerial Housing Allowance and standard FICA/Withholding.
- */
 export function calculatePayroll(
-    gross: number, 
-    housingAllowance: number = 0, 
+    periodGross: number, 
+    periodHousingAllowance: number = 0, 
     isEmployee: boolean = true,
     stateResidence: string = 'TX',
     filingStatus: string = 'Single',
-    dependents: number = 0
+    dependents: number = 0,
+    frequency: string = 'Monthly'
 ): PayrollResult {
-    // If Contractor (1099), no withholding
     if (!isEmployee) {
         return {
-            gross,
+            gross: periodGross,
             housingAllowance: 0,
-            taxableGross: gross,
+            taxableGross: periodGross,
             federalTax: 0,
             socialSecurity: 0,
             medicare: 0,
             stateTax: 0,
             totalWithholding: 0,
-            net: gross,
+            net: periodGross,
             employerSS: 0,
             employerMedicare: 0,
             totalEmployerLiability: 0
         };
     }
 
-    // Ministerial Housing Allowance logic:
-    // It is subtracted from Taxable Gross for Federal Income Tax,
-    // but usually kept for Social Security / Medicare (SECA) unless exempt.
-    const baseTaxableGross = Math.max(0, gross - housingAllowance);
+    let factor = 12;
+    if (frequency === 'Weekly') factor = 52;
+    if (frequency === 'Bi-weekly') factor = 26;
+    if (frequency === 'Semi-monthly') factor = 24;
+    if (frequency === 'Quarterly') factor = 4;
+    if (frequency === 'Annually') factor = 1;
+
+    const annualGross = periodGross * factor;
+    const annualHousing = periodHousingAllowance * factor;
     
-    // Final Taxable Gross for Federal/State
-    const taxableGross = Math.max(0, baseTaxableGross);
+    const baseAnnualTaxable = Math.max(0, annualGross - annualHousing);
+    const annualTaxableGross = Math.max(0, baseAnnualTaxable);
     
-    // FICA Taxes (Based on full gross)
-    const ss = gross * 0.062;
-    const medicare = gross * 0.0145;
+    let annualFed = 0;
+    if (annualTaxableGross > 96000) annualFed = annualTaxableGross * 0.22;
+    else if (annualTaxableGross > 48000) annualFed = annualTaxableGross * 0.12;
+    else if (annualTaxableGross > 12000) annualFed = annualTaxableGross * 0.10;
     
-    // Federal Income Tax (Simulated Progressive Bracket)
-    let federalTax = 0;
-    if (taxableGross > 8000) { federalTax = taxableGross * 0.22; }
-    else if (taxableGross > 4000) { federalTax = taxableGross * 0.12; }
-    else if (taxableGross > 1000) { federalTax = taxableGross * 0.10; }
-    
-    // Filing Status Multiplier (Married usually pays slightly less percentage-wise)
     const statusMultiplier = filingStatus === 'Married' ? 0.85 : filingStatus === 'Head of Household' ? 0.90 : 1.0;
-    federalTax = federalTax * statusMultiplier;
+    annualFed = annualFed * statusMultiplier;
     
-    // Dependent Tax Credit ($2000/year per dependent = $166.66/month)
-    // Child Tax Credit reduces the tax liability directly
-    const dependentCredit = dependents * 166.66;
-    federalTax = Math.max(0, federalTax - dependentCredit);
+    const annualChildCredit = dependents * 2000;
+    annualFed = Math.max(0, annualFed - annualChildCredit);
     
-    // State Tax (Simulated by State)
     const noTaxStates = ['TX', 'FL', 'NV', 'SD', 'WA', 'WY', 'AK', 'TN', 'NH'];
     const highTaxStates = ['CA', 'NY', 'HI', 'NJ', 'OR', 'MN', 'DC', 'VT', 'IA'];
     
-    let stateTaxRate = 0.05; // Default middle ground for the other 32 states
+    let stateTaxRate = 0.05; 
     if (noTaxStates.includes(stateResidence)) stateTaxRate = 0.0;
     else if (highTaxStates.includes(stateResidence)) stateTaxRate = 0.09;
     
-    const stateTax = taxableGross * stateTaxRate;
+    const annualStateTax = annualTaxableGross * stateTaxRate;
+    
+    const ss = periodGross * 0.062;
+    const medicare = periodGross * 0.0145;
+    const federalTax = annualFed / factor;
+    const stateTax = annualStateTax / factor;
     
     const totalWithholding = ss + medicare + federalTax + stateTax;
-    const net = gross - totalWithholding;
+    const net = periodGross - totalWithholding;
 
-    // Employer Liabilities (FICA Match)
-    const employerSS = gross * 0.062;
-    const employerMedicare = gross * 0.0145;
+    const employerSS = periodGross * 0.062;
+    const employerMedicare = periodGross * 0.0145;
 
     return {
-        gross,
-        housingAllowance,
-        taxableGross,
+        gross: periodGross,
+        housingAllowance: periodHousingAllowance,
+        taxableGross: annualTaxableGross / factor,
         federalTax,
         socialSecurity: ss,
         medicare,
@@ -105,9 +101,6 @@ export function calculatePayroll(
     };
 }
 
-/**
- * Reconciles actual payroll history from the ledger for a specific period.
- */
 export async function getPayrollReconciliation(churchId: string, startDate: string, endDate: string) {
     const { data, error } = await supabase
         .from('ledger')
@@ -120,8 +113,6 @@ export async function getPayrollReconciliation(churchId: string, startDate: stri
     if (error) throw error;
 
     return (data || []).reduce((acc, entry) => {
-        // Here we would ideally parse the detailed breakdown if stored in 'notes' or a separate table.
-        // For now, we aggregate the net amounts disbursed.
         return {
             totalDisbursed: acc.totalDisbursed + Math.abs(entry.amount),
             count: acc.count + 1
