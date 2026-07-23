@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
     Users, Plus, ArrowRight,
     ShieldCheck, Zap,
-    CheckCircle2, Loader2, Check, Activity, DollarSign, Edit2
+    CheckCircle2, Loader2, Check, DollarSign, Edit2, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { calculatePayroll } from '../lib/payrollUtils';
+import { generatePayStub } from '../lib/taxPdfGenerator';
 
 interface PayrollProps {
     churchId: string;
@@ -23,8 +24,9 @@ const US_STATES = [
 ];
 
 const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
-    const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'run'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'run' | 'history'>('overview');
     const [staff, setStaff] = useState<any[]>([]);
+    const [history, setHistory] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     
     // Hire Modal
@@ -40,6 +42,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
     const [wizardStep, setWizardStep] = useState(1);
     const [processing, setProcessing] = useState(false);
     const [processComplete, setProcessComplete] = useState<any>(null);
+    const [hoursWorked, setHoursWorked] = useState<Record<string, number>>({});
 
     useEffect(() => {
         const fetchStaff = async () => {
@@ -70,6 +73,18 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
         };
         fetchStaff();
     }, [churchId]);
+
+    const fetchHistory = async () => {
+        if (!churchId) return;
+        const { data } = await supabase.from('payroll_history').select('*').eq('church_id', churchId).order('date', { ascending: false });
+        if (data) setHistory(data);
+    };
+
+    useEffect(() => {
+        if (activeTab === 'history') {
+            fetchHistory();
+        }
+    }, [activeTab]);
 
     const handleEditClick = (s: any) => {
         setEditId(s.id);
@@ -148,6 +163,13 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
     const eligibleStaff = useMemo(() => staff.filter(s => s.status !== 'Terminated'), [staff]);
     const totalMonthlySalary = useMemo(() => eligibleStaff.reduce((s, st) => s + (st.salary || 0), 0), [eligibleStaff]);
 
+    const getGrossPay = (s: any) => {
+        if (s.type === 'Hourly') {
+            return (s.salary || 0) * (hoursWorked[s.id] || 0);
+        }
+        return s.salary || 0;
+    };
+
     const runPayroll = async () => {
         setProcessing(true);
         try {
@@ -158,10 +180,14 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             const staffUpdates: any[] = [];
 
             eligibleStaff.forEach(s => {
-                const taxes = calculatePayroll(s.salary, s.housingAllowance, s.type !== 'Contractor', s.stateResidence, s.filingStatus, s.dependents);
+                const gross = getGrossPay(s);
+                if (s.type === 'Hourly' && gross === 0) return; // Skip hourly employees with 0 hours
+
+                const taxes = calculatePayroll(gross, s.housingAllowance, s.type !== 'Contractor', s.stateResidence, s.filingStatus, s.dependents);
                 totalNet += taxes.net;
                 
                 const lastPaidStr = new Date().toLocaleDateString();
+                const notes = s.type === 'Hourly' ? `${hoursWorked[s.id] || 0} Hours worked` : `${s.frequency} ${s.type} salary run`;
                 
                 historyEntries.push({
                     church_id: churchId,
@@ -174,7 +200,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     state_tax: taxes.stateTax,
                     medicare: taxes.medicare,
                     social_security: taxes.socialSecurity,
-                    notes: `${s.frequency} ${s.type} salary run`,
+                    notes: notes,
                     created_at: new Date().toISOString()
                 });
                 staffUpdates.push({ id: s.id, status: 'Paid', last_paid: lastPaidStr });
@@ -182,17 +208,13 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
 
             if (historyEntries.length > 0) {
                 const { error: histError } = await supabase.from('payroll_history').insert(historyEntries);
-                if (histError && histError.message?.includes('does not exist')) {
-                    console.warn("payroll_history table not found, skipping insert. Please run SQL migration.");
-                } else if (histError) {
-                    throw histError;
-                }
+                if (histError) throw histError;
 
                 const updates = staffUpdates.map(u => supabase.from('staff').update({ status: u.status, last_paid: u.last_paid }).eq('id', u.id).eq('church_id', churchId));
                 await Promise.all(updates);
             }
 
-            setProcessComplete({ staffCount: eligibleStaff.length, amount: totalNet });
+            setProcessComplete({ staffCount: historyEntries.length, amount: totalNet });
             
             // Refetch
             const { data } = await supabase.from('staff').select('*').eq('church_id', churchId);
@@ -207,6 +229,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             alert('Failed to process payroll. Check if payroll_history table exists.');
         } finally {
             setProcessing(false);
+            setHoursWorked({});
         }
     };
 
@@ -230,9 +253,9 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             </div>
 
             <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
-                {['overview', 'team', 'run'].map(tab => (
+                {['overview', 'team', 'run', 'history'].map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab as any)} style={{ background: 'none', border: 'none', color: activeTab === tab ? '#a855f7' : '#94a3b8', fontSize: '1rem', fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize', position: 'relative', transition: 'color 0.2s' }}>
-                        {tab === 'run' ? 'Run Payroll' : tab}
+                        {tab === 'run' ? 'Run Payroll' : tab === 'history' ? 'History & Stubs' : tab}
                         {activeTab === tab && <motion.div layoutId="activeTab" style={{ position: 'absolute', bottom: '-17px', left: 0, right: 0, height: '2px', background: '#a855f7' }} />}
                     </button>
                 ))}
@@ -251,11 +274,6 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                 <div style={{ color: '#10b981', marginBottom: '1rem' }}><Users size={24} /></div>
                                 <h3 style={{ fontSize: '0.875rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Active Team</h3>
                                 <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', marginTop: '0.5rem' }}>{eligibleStaff.length}</div>
-                            </div>
-                            <div className="glass-card" style={{ padding: '2rem', borderRadius: '24px', background: 'linear-gradient(145deg, rgba(236,72,153,0.1), rgba(0,0,0,0))', border: '1px solid rgba(236,72,153,0.2)' }}>
-                                <div style={{ color: '#ec4899', marginBottom: '1rem' }}><Activity size={24} /></div>
-                                <h3 style={{ fontSize: '0.875rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>YTD Taxes Withheld</h3>
-                                <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', marginTop: '0.5rem' }}>$0.00</div>
                             </div>
                         </div>
                     </motion.div>
@@ -288,12 +306,50 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                             <span style={{ color: 'white', fontWeight: 600 }}>{s.type}</span>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                                            <span style={{ color: '#94a3b8' }}>Status</span>
-                                            <span style={{ color: s.status === 'Paid' ? '#10b981' : '#f59e0b', fontWeight: 600 }}>{s.status}</span>
+                                            <span style={{ color: '#94a3b8' }}>Rate / Salary</span>
+                                            <span style={{ color: 'white', fontWeight: 600 }}>{s.type === 'Hourly' ? `${fmt(s.salary)}/hr` : fmt(s.salary)}</span>
                                         </div>
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'history' && (
+                    <motion.div key="history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                        <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '24px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                                        <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Date</th>
+                                        <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Employee</th>
+                                        <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Gross Pay</th>
+                                        <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Net Pay</th>
+                                        <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {history.map(entry => (
+                                        <tr key={entry.id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <td style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem' }}>{entry.date}</td>
+                                            <td style={{ padding: '1rem 1.5rem', color: 'white', fontWeight: 600 }}>{entry.staff_name}</td>
+                                            <td style={{ padding: '1rem 1.5rem', color: 'white' }}>{fmt(entry.gross_pay)}</td>
+                                            <td style={{ padding: '1rem 1.5rem', color: '#10b981', fontWeight: 700 }}>{fmt(entry.net_pay)}</td>
+                                            <td style={{ padding: '1rem 1.5rem' }}>
+                                                <button onClick={() => generatePayStub(entry, { name: 'Your Church' })} style={{ padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', fontSize: '0.875rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <Download size={14} /> Stub
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {history.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No payroll history found.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </motion.div>
                 )}
@@ -307,7 +363,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                 </motion.div>
                                 <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'white', marginBottom: '1rem' }}>Payroll Complete</h2>
                                 <p style={{ color: '#94a3b8', fontSize: '1.1rem', marginBottom: '2rem' }}>Successfully processed {fmt(processComplete.amount)} for {processComplete.staffCount} team members.</p>
-                                <button onClick={() => setActiveTab('overview')} style={{ padding: '0.75rem 2rem', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 600, cursor: 'pointer' }}>Back to Dashboard</button>
+                                <button onClick={() => setActiveTab('history')} style={{ padding: '0.75rem 2rem', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 600, cursor: 'pointer' }}>View History</button>
                             </div>
                         ) : (
                             <>
@@ -327,24 +383,42 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
 
                                 {wizardStep === 1 && (
                                     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                                        <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Review Salaries</h3>
+                                        <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Review Salaries & Hours</h3>
                                         <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '16px', overflow: 'hidden' }}>
                                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                                 <thead>
                                                     <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
                                                         <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Employee</th>
-                                                        <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Role</th>
+                                                        <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Type</th>
+                                                        <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Rate / Salary</th>
+                                                        <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Hours Worked</th>
                                                         <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Gross Pay</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {eligibleStaff.map(s => (
+                                                    {eligibleStaff.map(s => {
+                                                        const isHourly = s.type === 'Hourly';
+                                                        const gross = getGrossPay(s);
+                                                        return (
                                                         <tr key={s.id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                                                             <td style={{ padding: '1rem 1.5rem', color: 'white', fontWeight: 600 }}>{s.name}</td>
-                                                            <td style={{ padding: '1rem 1.5rem', color: '#94a3b8' }}>{s.role}</td>
-                                                            <td style={{ padding: '1rem 1.5rem', color: 'white' }}>{fmt(s.salary)}</td>
+                                                            <td style={{ padding: '1rem 1.5rem', color: '#94a3b8' }}>{s.type}</td>
+                                                            <td style={{ padding: '1rem 1.5rem', color: '#94a3b8' }}>{isHourly ? `${fmt(s.salary)}/hr` : fmt(s.salary)}</td>
+                                                            <td style={{ padding: '1rem 1.5rem' }}>
+                                                                {isHourly ? (
+                                                                    <input 
+                                                                        type="number" 
+                                                                        min="0"
+                                                                        placeholder="0"
+                                                                        value={hoursWorked[s.id] || ''}
+                                                                        onChange={e => setHoursWorked({...hoursWorked, [s.id]: parseFloat(e.target.value) || 0})}
+                                                                        style={{ width: '80px', padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'white' }}
+                                                                    />
+                                                                ) : <span style={{ color: '#475569' }}>—</span>}
+                                                            </td>
+                                                            <td style={{ padding: '1rem 1.5rem', color: 'white', fontWeight: 600 }}>{fmt(gross)}</td>
                                                         </tr>
-                                                    ))}
+                                                    )})}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -359,7 +433,10 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                         <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Taxes & Deductions</h3>
                                         <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '16px', padding: '1.5rem' }}>
                                             {eligibleStaff.map(s => {
-                                                const taxes = calculatePayroll(s.salary, s.housingAllowance, s.type !== 'Contractor', s.stateResidence, s.filingStatus, s.dependents);
+                                                const gross = getGrossPay(s);
+                                                if (s.type === 'Hourly' && gross === 0) return null;
+
+                                                const taxes = calculatePayroll(gross, s.housingAllowance, s.type !== 'Contractor', s.stateResidence, s.filingStatus, s.dependents);
                                                 return (
                                                     <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '1rem', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                                         <div>
@@ -396,7 +473,11 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                         <div style={{ background: 'linear-gradient(145deg, rgba(168,85,247,0.1), rgba(0,0,0,0.2))', border: '1px solid rgba(168,85,247,0.2)', borderRadius: '16px', padding: '2rem', textAlign: 'center' }}>
                                             <div style={{ color: '#94a3b8', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: '0.5rem' }}>Total Cash Requirement</div>
                                             <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'white', marginBottom: '1.5rem' }}>
-                                                {fmt(eligibleStaff.reduce((s, st) => s + calculatePayroll(st.salary, st.housingAllowance, st.type !== 'Contractor', st.stateResidence, st.filingStatus, st.dependents).net, 0))}
+                                                {fmt(eligibleStaff.reduce((s, st) => {
+                                                    const g = getGrossPay(st);
+                                                    if (g === 0) return s;
+                                                    return s + calculatePayroll(g, st.housingAllowance, st.type !== 'Contractor', st.stateResidence, st.filingStatus, st.dependents).net;
+                                                }, 0))}
                                             </div>
                                             <p style={{ color: '#cbd5e1' }}>This will be processed to the <strong>payroll_history</strong> ledger and will not affect the main church dashboard.</p>
                                         </div>
@@ -433,6 +514,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                             <option value="Full-time">Full-time (W-2)</option>
                                             <option value="Part-time">Part-time (W-2)</option>
                                             <option value="Contractor">Contractor (1099)</option>
+                                            <option value="Hourly">Hourly</option>
                                         </select>
                                     </div>
                                 </div>
@@ -443,7 +525,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                         <input required value={hireForm.role} onChange={e => setHireForm({...hireForm, role: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Gross Salary</label>
+                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{hireForm.type === 'Hourly' ? 'Hourly Rate' : 'Gross Salary'}</label>
                                         <input type="number" required value={hireForm.salary} onChange={e => setHireForm({...hireForm, salary: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
                                     </div>
                                 </div>

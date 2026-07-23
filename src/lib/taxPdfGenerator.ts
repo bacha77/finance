@@ -383,3 +383,59 @@ export function generate990Summary(totals: { income: number; expenses: number; b
     footer(doc, 'Complete Form 990 or 990-EZ at irs.gov by May 15. This worksheet helps prepare your return.');
     doc.save(`Form990_Summary_${TAX_YEAR}.pdf`);
 }
+
+export function generatePayStub(entry: any, church: { name: string; address?: string; logo_url?: string }) {
+    const { doc, churchName } = baseDoc(church.name, "N/A");
+    const addr = church.address || '123 Church Street, City, ST 00000';
+
+    pageHeader(doc, 'Pay Stub', 'Earnings and Deductions Statement', entry.date ? entry.date.substring(0,4) : TAX_YEAR, church.logo_url);
+
+    let y = 65;
+    doc.setFontSize(9); doc.setTextColor(30, 30, 30); doc.setFont('helvetica', 'bold');
+    doc.text('COMPANY INFORMATION', 40, y); 
+    doc.text('EMPLOYEE INFORMATION', 310, y);
+    doc.setFont('helvetica', 'normal');
+
+    y += 12;
+    drawBox(doc, 40, y, 260, 44, 'Company Name & Address', `${churchName}
+${addr}`);
+    drawBox(doc, 310, y, 260, 44, 'Employee Name', `${entry.staff_name}
+Pay Date: ${entry.date}`);
+
+    y += 56;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    doc.text('EARNINGS', 40, y);
+    doc.setFont('helvetica', 'normal');
+    
+    y += 12;
+    drawBox(doc, 40, y, 530, 40, 'Gross Pay', fmt(entry.gross_pay), 8, 12);
+
+    y += 52;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    doc.text('WITHHOLDINGS & DEDUCTIONS', 40, y);
+    doc.setFont('helvetica', 'normal');
+
+    y += 12;
+    drawBox(doc, 40, y, 125, 40, 'Federal Tax', fmt(entry.federal_tax));
+    drawBox(doc, 175, y, 125, 40, 'State Tax', fmt(entry.state_tax));
+    drawBox(doc, 310, y, 125, 40, 'Social Security', fmt(entry.social_security));
+    drawBox(doc, 445, y, 125, 40, 'Medicare', fmt(entry.medicare));
+
+    y += 52;
+    const totalWithheld = entry.federal_tax + entry.state_tax + entry.social_security + entry.medicare;
+    drawBox(doc, 40, y, 530, 30, 'Total Deductions', fmt(totalWithheld));
+
+    y += 50;
+    doc.setFillColor(240, 250, 245);
+    doc.rect(40, y, 530, 60, 'F');
+    doc.setDrawColor(16, 185, 129);
+    doc.rect(40, y, 530, 60);
+    
+    doc.setFontSize(10); doc.setTextColor(8, 90, 50); doc.setFont('helvetica', 'bold');
+    doc.text('NET PAY', 52, y + 20);
+    doc.setFontSize(18);
+    doc.text(fmt(entry.net_pay), 52, y + 45);
+
+    footer(doc, 'Keep this record for your tax files.');
+    doc.save(`PayStub_${entry.staff_name.replace(/ /g, '_')}_${entry.date}.pdf`);
+}
