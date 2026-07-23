@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
     Users, Plus, ArrowRight,
     ShieldCheck, Zap,
-    CheckCircle2, Loader2, Check, DollarSign, Edit2, Download
+    CheckCircle2, Loader2, Check, DollarSign, Edit2, Download, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -161,7 +161,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
         }
     };
 
-        const handleTerminate = async (id: string) => {
+    const handleTerminate = async (id: string) => {
         if (!confirm('Are you sure you want to terminate this employee? They will be removed from future payroll runs, but their history will be preserved.')) return;
         setIsLoading(true);
         try {
@@ -170,6 +170,19 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             setShowHireModal(false);
         } catch (err: any) {
             alert('Error terminating staff: ' + err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to permanently delete this employee? Use this for mistakes. If they have already been paid, consider terminating them instead.')) return;
+        setIsLoading(true);
+        try {
+            await supabase.from('staff').delete().eq('id', id);
+            setStaff(staff.filter(s => s.id !== id));
+        } catch (err: any) {
+            alert('Error deleting staff: ' + err.message);
         } finally {
             setIsLoading(false);
         }
@@ -298,9 +311,14 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
                             {staff.map(s => (
                                 <div key={s.id} className="glass-card" style={{ padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', position: 'relative' }}>
-                                    <button onClick={() => handleEditClick(s)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', padding: '0.5rem', color: 'white', cursor: 'pointer' }}>
-                                        <Edit2 size={16} />
-                                    </button>
+                                    <div style={{ position: 'absolute', top: '1rem', right: '1rem', display: 'flex', gap: '0.5rem' }}>
+                                        <button onClick={() => handleEditClick(s)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', padding: '0.5rem', color: 'white', cursor: 'pointer' }}>
+                                            <Edit2 size={16} />
+                                        </button>
+                                        <button onClick={() => handleDelete(s.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: '8px', padding: '0.5rem', color: '#ef4444', cursor: 'pointer' }}>
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                                         <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.25rem', fontWeight: 800 }}>
                                             {s.name.charAt(0)}
