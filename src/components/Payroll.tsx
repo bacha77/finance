@@ -10,7 +10,6 @@ import { calculatePayroll } from '../lib/payrollUtils';
 
 interface PayrollProps {
     churchId: string;
-    userRole?: string;
 }
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
@@ -24,8 +23,8 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
     const [showHireModal, setShowHireModal] = useState(false);
     const [hireForm, setHireForm] = useState({
         name: '', role: '', type: 'Full-time', salary: '', 
-        housing_allowance: '0', state_tax_rate: '0.05', 
-        recurring: true, frequency: 'Monthly'
+        housing_allowance: '0', dependents: 0, filing_status: 'Single',
+        state_residence: 'TX', recurring: true, frequency: 'Monthly'
     });
 
     // Wizard
@@ -46,7 +45,9 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     type: s.type || 'Full-time',
                     salary: s.salary,
                     housingAllowance: s.housing_allowance || 0,
-                    stateTaxRate: s.state_tax_rate || 0.05,
+                    dependents: s.dependents || 0,
+                    filingStatus: s.filing_status || 'Single',
+                    stateResidence: s.state_residence || 'TX',
                     lastPaid: s.last_paid,
                     status: s.status,
                     recurring: s.recurring !== false,
@@ -69,7 +70,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                 ...hireForm,
                 salary: parseFloat(hireForm.salary) || 0,
                 housing_allowance: parseFloat(hireForm.housing_allowance) || 0,
-                state_tax_rate: parseFloat(hireForm.state_tax_rate) || 0.05,
+                dependents: parseInt(hireForm.dependents as any) || 0,
                 church_id: churchId,
                 status: 'Pending',
                 last_paid: 'Never'
@@ -80,7 +81,9 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             if (error && error.message?.includes('column')) {
                const simpleStaff: any = { ...newStaff };
                delete simpleStaff.housing_allowance;
-               delete simpleStaff.state_tax_rate;
+               delete simpleStaff.dependents;
+               delete simpleStaff.filing_status;
+               delete simpleStaff.state_residence;
                delete simpleStaff.type;
                delete simpleStaff.frequency;
                delete simpleStaff.recurring;
@@ -92,21 +95,13 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             const { data } = await supabase.from('staff').select('*').eq('church_id', churchId);
             if (data) {
                 setStaff(data.map(s => ({
-                    id: s.id,
-                    name: s.name,
-                    role: s.role,
-                    type: s.type || 'Full-time',
-                    salary: s.salary,
-                    housingAllowance: s.housing_allowance || 0,
-                    stateTaxRate: s.state_tax_rate || 0.05,
-                    lastPaid: s.last_paid,
-                    status: s.status,
-                    recurring: s.recurring !== false,
-                    frequency: s.frequency || 'Monthly'
+                    id: s.id, name: s.name, role: s.role, type: s.type || 'Full-time', salary: s.salary, 
+                    housingAllowance: s.housing_allowance || 0, dependents: s.dependents || 0, filingStatus: s.filing_status || 'Single',
+                    stateResidence: s.state_residence || 'TX', lastPaid: s.last_paid, status: s.status, recurring: s.recurring !== false, frequency: s.frequency || 'Monthly'
                 })));
             }
             setShowHireModal(false);
-            setHireForm({ name: '', role: '', type: 'Full-time', salary: '', housing_allowance: '0', state_tax_rate: '0.05', recurring: true, frequency: 'Monthly' });
+            setHireForm({ name: '', role: '', type: 'Full-time', salary: '', housing_allowance: '0', dependents: 0, filing_status: 'Single', state_residence: 'TX', recurring: true, frequency: 'Monthly' });
         } catch (err) {
             alert('Error saving staff');
         } finally {
@@ -123,34 +118,39 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             await new Promise(r => setTimeout(r, 1500));
             
             let totalNet = 0;
-            const ledgerEntries: any[] = [];
+            const historyEntries: any[] = [];
             const staffUpdates: any[] = [];
 
             eligibleStaff.forEach(s => {
-                const taxes = calculatePayroll(s.salary, s.housingAllowance, s.type !== 'Contractor', s.stateTaxRate);
+                const taxes = calculatePayroll(s.salary, s.housingAllowance, s.type !== 'Contractor', s.stateResidence, s.filingStatus, s.dependents);
                 totalNet += taxes.net;
                 
                 const lastPaidStr = new Date().toLocaleDateString();
-                ledgerEntries.push({
-                    date: new Date().toISOString().split('T')[0],
-                    description: `Payroll: ${s.name}`,
-                    category: 'Payroll',
-                    department: 'HR & Administration',
-                    amount: -taxes.net,
-                    type: 'out',
-                    notes: `${s.frequency} ${s.type} salary run`,
+                
+                historyEntries.push({
                     church_id: churchId,
+                    staff_id: s.id,
+                    staff_name: s.name,
+                    date: new Date().toISOString().split('T')[0],
+                    gross_pay: taxes.gross,
+                    net_pay: taxes.net,
+                    federal_tax: taxes.federalTax,
+                    state_tax: taxes.stateTax,
+                    medicare: taxes.medicare,
+                    social_security: taxes.socialSecurity,
+                    notes: `${s.frequency} ${s.type} salary run`,
                     created_at: new Date().toISOString()
                 });
                 staffUpdates.push({ id: s.id, status: 'Paid', last_paid: lastPaidStr });
             });
 
-            if (ledgerEntries.length > 0) {
-                const { data: gfData } = await supabase.from('funds').select('*').eq('church_id', churchId).ilike('name', '%General%').maybeSingle();
-                const activeFund = gfData || (await supabase.from('funds').select('*').eq('church_id', churchId).limit(1).maybeSingle()).data;
-
-                const finalLedgerEntries = ledgerEntries.map(tx => ({ ...tx, fund_id: activeFund?.id }));
-                await supabase.from('ledger').insert(finalLedgerEntries);
+            if (historyEntries.length > 0) {
+                const { error: histError } = await supabase.from('payroll_history').insert(historyEntries);
+                if (histError && histError.message?.includes('does not exist')) {
+                    console.warn("payroll_history table not found, skipping insert. Please run SQL migration.");
+                } else if (histError) {
+                    throw histError;
+                }
 
                 const updates = staffUpdates.map(u => supabase.from('staff').update({ status: u.status, last_paid: u.last_paid }).eq('id', u.id).eq('church_id', churchId));
                 await Promise.all(updates);
@@ -162,12 +162,13 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
             const { data } = await supabase.from('staff').select('*').eq('church_id', churchId);
             if (data) {
                 setStaff(data.map(s => ({
-                    id: s.id, name: s.name, role: s.role, type: s.type || 'Full-time', salary: s.salary, housingAllowance: s.housing_allowance || 0,
-                    stateTaxRate: s.state_tax_rate || 0.05, lastPaid: s.last_paid, status: s.status, recurring: s.recurring !== false, frequency: s.frequency || 'Monthly'
+                    id: s.id, name: s.name, role: s.role, type: s.type || 'Full-time', salary: s.salary, 
+                    housingAllowance: s.housing_allowance || 0, dependents: s.dependents || 0, filingStatus: s.filing_status || 'Single',
+                    stateResidence: s.state_residence || 'TX', lastPaid: s.last_paid, status: s.status, recurring: s.recurring !== false, frequency: s.frequency || 'Monthly'
                 })));
             }
         } catch (err) {
-            alert('Failed to process payroll');
+            alert('Failed to process payroll. Check if payroll_history table exists.');
         } finally {
             setProcessing(false);
         }
@@ -180,7 +181,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     <h1 style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                         Team & Payroll
                     </h1>
-                    <p style={{ color: '#94a3b8', fontSize: '1rem', marginTop: '0.5rem' }}>Premium workforce management</p>
+                    <p style={{ color: '#94a3b8', fontSize: '1rem', marginTop: '0.5rem' }}>Premium workforce management (Isolated from Main Ledger)</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <button onClick={() => setShowHireModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>
@@ -217,7 +218,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                             </div>
                             <div className="glass-card" style={{ padding: '2rem', borderRadius: '24px', background: 'linear-gradient(145deg, rgba(236,72,153,0.1), rgba(0,0,0,0))', border: '1px solid rgba(236,72,153,0.2)' }}>
                                 <div style={{ color: '#ec4899', marginBottom: '1rem' }}><Activity size={24} /></div>
-                                <h3 style={{ fontSize: '0.875rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>YTD Taxes Paid</h3>
+                                <h3 style={{ fontSize: '0.875rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>YTD Taxes Withheld</h3>
                                 <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', marginTop: '0.5rem' }}>$0.00</div>
                             </div>
                         </div>
@@ -235,13 +236,13 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                         </div>
                                         <div>
                                             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white' }}>{s.name}</h3>
-                                            <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>{s.role}</p>
+                                            <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>{s.role} • {s.stateResidence}</p>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                                            <span style={{ color: '#94a3b8' }}>Salary</span>
-                                            <span style={{ color: 'white', fontWeight: 600 }}>{fmt(s.salary)}</span>
+                                            <span style={{ color: '#94a3b8' }}>Tax Profile</span>
+                                            <span style={{ color: 'white', fontWeight: 600 }}>{s.filingStatus}, {s.dependents} Kids</span>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
                                             <span style={{ color: '#94a3b8' }}>Type</span>
@@ -319,16 +320,25 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                         <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Taxes & Deductions</h3>
                                         <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '16px', padding: '1.5rem' }}>
                                             {eligibleStaff.map(s => {
-                                                const taxes = calculatePayroll(s.salary, s.housingAllowance, s.type !== 'Contractor', s.stateTaxRate);
+                                                const taxes = calculatePayroll(s.salary, s.housingAllowance, s.type !== 'Contractor', s.stateResidence, s.filingStatus, s.dependents);
                                                 return (
-                                                    <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '1rem', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                                         <div>
                                                             <div style={{ color: 'white', fontWeight: 600 }}>{s.name}</div>
-                                                            <div style={{ color: '#94a3b8', fontSize: '0.875rem' }}>{s.type !== 'Contractor' ? 'W-2 Employee' : '1099 Contractor'}</div>
+                                                            <div style={{ color: '#a855f7', fontSize: '0.875rem' }}>{s.stateResidence} • {s.filingStatus} • {s.dependents} Dependents</div>
+                                                        </div>
+                                                        <div style={{ color: '#ef4444', fontSize: '0.875rem' }}>
+                                                            {s.type !== 'Contractor' ? (
+                                                                <>
+                                                                    <div>Fed Tax: {fmt(taxes.federalTax)}</div>
+                                                                    <div>State Tax: {fmt(taxes.stateTax)}</div>
+                                                                    <div>FICA: {fmt(taxes.socialSecurity + taxes.medicare)}</div>
+                                                                </>
+                                                            ) : 'No Withholdings (1099)'}
                                                         </div>
                                                         <div style={{ textAlign: 'right' }}>
-                                                            <div style={{ color: '#ef4444', fontSize: '0.875rem', fontWeight: 600 }}>- {fmt(taxes.totalWithholding)} Taxes</div>
-                                                            <div style={{ color: '#10b981', fontWeight: 700 }}>Net: {fmt(taxes.net)}</div>
+                                                            <div style={{ color: '#10b981', fontSize: '1.25rem', fontWeight: 800 }}>{fmt(taxes.net)}</div>
+                                                            <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Net Pay</div>
                                                         </div>
                                                     </div>
                                                 );
@@ -347,9 +357,9 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                         <div style={{ background: 'linear-gradient(145deg, rgba(168,85,247,0.1), rgba(0,0,0,0.2))', border: '1px solid rgba(168,85,247,0.2)', borderRadius: '16px', padding: '2rem', textAlign: 'center' }}>
                                             <div style={{ color: '#94a3b8', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: '0.5rem' }}>Total Cash Requirement</div>
                                             <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'white', marginBottom: '1.5rem' }}>
-                                                {fmt(eligibleStaff.reduce((s, st) => s + calculatePayroll(st.salary, st.housingAllowance, st.type !== 'Contractor', st.stateTaxRate).net, 0))}
+                                                {fmt(eligibleStaff.reduce((s, st) => s + calculatePayroll(st.salary, st.housingAllowance, st.type !== 'Contractor', st.stateResidence, st.filingStatus, st.dependents).net, 0))}
                                             </div>
-                                            <p style={{ color: '#cbd5e1' }}>This amount will be deducted from your General Fund and disbursed to {eligibleStaff.length} team members.</p>
+                                            <p style={{ color: '#cbd5e1' }}>This will be processed to the <strong>payroll_history</strong> ledger and will not affect the main church dashboard.</p>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem' }}>
                                             <button onClick={() => setWizardStep(2)} disabled={processing} style={{ padding: '0.75rem 2rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', fontWeight: 600, cursor: 'pointer' }}>Back</button>
@@ -370,17 +380,13 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                 {showHireModal && (
                     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowHireModal(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} />
-                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="glass-card" style={{ position: 'relative', width: '100%', maxWidth: '500px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '2rem', overflow: 'hidden' }}>
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="glass-card" style={{ position: 'relative', width: '100%', maxWidth: '600px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '2rem', overflow: 'hidden' }}>
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Add Team Member</h2>
                             <form onSubmit={handleHire} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Name</label>
-                                    <input required value={hireForm.name} onChange={e => setHireForm({...hireForm, name: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
                                     <div>
-                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Role</label>
-                                        <input required value={hireForm.role} onChange={e => setHireForm({...hireForm, role: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Name</label>
+                                        <input required value={hireForm.name} onChange={e => setHireForm({...hireForm, name: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Type</label>
@@ -391,10 +397,46 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                         </select>
                                     </div>
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Gross Salary</label>
-                                    <input type="number" required value={hireForm.salary} onChange={e => setHireForm({...hireForm, salary: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Role</label>
+                                        <input required value={hireForm.role} onChange={e => setHireForm({...hireForm, role: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Gross Salary</label>
+                                        <input type="number" required value={hireForm.salary} onChange={e => setHireForm({...hireForm, salary: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                                    </div>
                                 </div>
+
+                                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1rem', marginTop: '1rem' }}>
+                                    <h4 style={{ color: '#a855f7', fontWeight: 600, marginBottom: '1rem', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Tax Profile</h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>State</label>
+                                            <select value={hireForm.state_residence} onChange={e => setHireForm({...hireForm, state_residence: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}>
+                                                <option value="TX">TX (No State Tax)</option>
+                                                <option value="FL">FL (No State Tax)</option>
+                                                <option value="NY">NY (High Tax)</option>
+                                                <option value="CA">CA (High Tax)</option>
+                                                <option value="OH">OH (Standard)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Filing Status</label>
+                                            <select value={hireForm.filing_status} onChange={e => setHireForm({...hireForm, filing_status: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}>
+                                                <option value="Single">Single</option>
+                                                <option value="Married">Married</option>
+                                                <option value="Head of Household">Head of House</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Dependents</label>
+                                            <input type="number" required value={hireForm.dependents} onChange={e => setHireForm({...hireForm, dependents: parseInt(e.target.value) || 0})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
                                     <button type="button" onClick={() => setShowHireModal(false)} style={{ padding: '0.75rem 1.5rem', background: 'transparent', border: 'none', color: '#94a3b8', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
                                     <button type="submit" disabled={isLoading} style={{ padding: '0.75rem 1.5rem', background: '#a855f7', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 600, cursor: 'pointer' }}>{isLoading ? 'Saving...' : 'Add Member'}</button>

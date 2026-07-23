@@ -23,7 +23,9 @@ export function calculatePayroll(
     gross: number, 
     housingAllowance: number = 0, 
     isEmployee: boolean = true,
-    stateTaxRate: number = 0.05 // Default 5% for simulation
+    stateResidence: string = 'TX',
+    filingStatus: string = 'Single',
+    dependents: number = 0
 ): PayrollResult {
     // If Contractor (1099), no withholding
     if (!isEmployee) {
@@ -46,17 +48,37 @@ export function calculatePayroll(
     // Ministerial Housing Allowance logic:
     // It is subtracted from Taxable Gross for Federal Income Tax,
     // but usually kept for Social Security / Medicare (SECA) unless exempt.
-    // For standard payroll processing (W-2), we treat it as non-taxable federal.
-    const taxableGross = Math.max(0, gross - housingAllowance);
+    const baseTaxableGross = Math.max(0, gross - housingAllowance);
     
-    // Employee Withholding (Simplified Brackets)
+    // 1. Dependent Deduction ($166 per dependent per month approximation)
+    const dependentDeduction = dependents * 166.66;
+    
+    // 2. Filing Status Multiplier (Married usually pays slightly less percentage-wise)
+    const statusMultiplier = filingStatus === 'Married' ? 0.85 : filingStatus === 'Head of Household' ? 0.90 : 1.0;
+    
+    // Final Taxable Gross for Federal/State
+    const taxableGross = Math.max(0, baseTaxableGross - dependentDeduction);
+    
+    // FICA Taxes (Based on full gross)
     const ss = gross * 0.062;
     const medicare = gross * 0.0145;
     
-    // Federal Income Tax (Simplified 12% on taxable portion)
-    const federalTax = taxableGross * 0.12;
+    // Federal Income Tax (Simulated Progressive Bracket)
+    let federalTax = 0;
+    if (taxableGross > 8000) { federalTax = taxableGross * 0.22; }
+    else if (taxableGross > 4000) { federalTax = taxableGross * 0.12; }
+    else if (taxableGross > 1000) { federalTax = taxableGross * 0.10; }
     
-    // State Tax
+    federalTax = federalTax * statusMultiplier;
+    
+    // State Tax (Simulated by State)
+    const noTaxStates = ['TX', 'FL', 'NV', 'SD', 'WA', 'WY', 'AK'];
+    const highTaxStates = ['CA', 'NY', 'HI', 'NJ', 'OR'];
+    
+    let stateTaxRate = 0.05; // Default middle ground
+    if (noTaxStates.includes(stateResidence)) stateTaxRate = 0.0;
+    else if (highTaxStates.includes(stateResidence)) stateTaxRate = 0.09;
+    
     const stateTax = taxableGross * stateTaxRate;
     
     const totalWithholding = ss + medicare + federalTax + stateTax;

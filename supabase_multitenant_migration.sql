@@ -111,11 +111,30 @@ CREATE TABLE IF NOT EXISTS public.staff (
     salary            NUMERIC DEFAULT 0,
     housing_allowance NUMERIC DEFAULT 0,
     state_tax_rate    NUMERIC DEFAULT 0.05,
+    dependents        INTEGER DEFAULT 0,
+    filing_status     TEXT DEFAULT 'Single',
+    state_residence   TEXT DEFAULT 'TX',
     recurring         BOOLEAN DEFAULT true,
     frequency         TEXT DEFAULT 'Monthly',
     status            TEXT DEFAULT 'active',
     last_paid         TEXT,
     church_id         UUID,
+    created_at        TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.payroll_history (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    church_id         UUID NOT NULL,
+    staff_id          UUID,
+    staff_name        TEXT NOT NULL,
+    date              DATE NOT NULL,
+    gross_pay         NUMERIC NOT NULL,
+    net_pay           NUMERIC NOT NULL,
+    federal_tax       NUMERIC NOT NULL,
+    state_tax         NUMERIC NOT NULL,
+    medicare          NUMERIC NOT NULL,
+    social_security   NUMERIC NOT NULL,
+    notes             TEXT,
     created_at        TIMESTAMPTZ DEFAULT now()
 );
 
@@ -177,9 +196,18 @@ DO $$ BEGIN ALTER TABLE public.members     ADD COLUMN role TEXT;       EXCEPTION
 DO $$ BEGIN ALTER TABLE public.members     ADD COLUMN distribution_method TEXT DEFAULT 'manual'; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 
 -- STAFF Table
-DO $$ BEGIN ALTER TABLE public.staff       ADD COLUMN type TEXT;       EXCEPTION WHEN duplicate_column THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE public.staff       ADD COLUMN frequency TEXT;  EXCEPTION WHEN duplicate_column THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE public.staff       ADD COLUMN recurring BOOLEAN DEFAULT true; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$
+BEGIN
+    ALTER TABLE public.staff ADD COLUMN type TEXT DEFAULT 'Full-time';
+    ALTER TABLE public.staff ADD COLUMN housing_allowance NUMERIC DEFAULT 0;
+    ALTER TABLE public.staff ADD COLUMN state_tax_rate NUMERIC DEFAULT 0.05;
+    ALTER TABLE public.staff ADD COLUMN dependents INTEGER DEFAULT 0;
+    ALTER TABLE public.staff ADD COLUMN filing_status TEXT DEFAULT 'Single';
+    ALTER TABLE public.staff ADD COLUMN state_residence TEXT DEFAULT 'TX';
+    ALTER TABLE public.staff ADD COLUMN recurring BOOLEAN DEFAULT true;
+    ALTER TABLE public.staff ADD COLUMN frequency TEXT DEFAULT 'Monthly';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
 
 -- ── STEP 4.2: Unique Constraints for Multi-Tenancy (critical for upserts) ──
 DO $$ 

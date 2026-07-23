@@ -749,7 +749,7 @@ function App() {
                     {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
                     {activeTab === 'accounting' && <FundAccounting churchId={church.id} userRole={userRole} />}
                     {activeTab === 'members' && <MemberPortal churchId={church.id} userRole={userRole} />}
-                    {activeTab === 'payroll' && <Payroll churchId={church.id} userRole={userRole} />}
+                    {activeTab === 'payroll' && <Payroll churchId={church.id} />}
                     {activeTab === 'reports' && <Reports churchId={church.id} userRole={userRole} />}
                     {activeTab === 'departments' && <Departments setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
                     {activeTab === 'expenses' && <Expenses setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}

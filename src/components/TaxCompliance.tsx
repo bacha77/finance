@@ -352,10 +352,12 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                             isTreasurer={isTreasurer}
                             onDownload={() => handleDownload(`w2_${i}`, () => generateW2({
                                 name: emp.name, 
-                                role: emp.role, 
-                                salary: emp.salary, 
+                                role: emp.role,
+                                salary: emp.salary,
                                 housingAllowance: emp.housingAllowance,
-                                stateTaxRate: emp.stateTaxRate
+                                stateResidence: emp.stateResidence,
+                                filingStatus: emp.filingStatus,
+                                dependents: emp.dependents
                             }, church))}
                         />
                     ))}

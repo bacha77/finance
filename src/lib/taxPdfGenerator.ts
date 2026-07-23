@@ -66,9 +66,9 @@ function footer(doc: jsPDF, note: string) {
 }
 
 // ── W-2 Generator ────────────────────────────────────────────────────────────
-export function generateW2(employee: { name: string; role: string; salary: number; housingAllowance?: number; stateTaxRate?: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
+export function generateW2(employee: { name: string; role: string; salary: number; housingAllowance?: number; stateResidence?: string; filingStatus?: string; dependents?: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
     const { doc, churchName, ein } = baseDoc(church.name, church.ein);
-    const taxes = calculatePayroll(employee.salary * 12, (employee.housingAllowance || 0) * 12, true, employee.stateTaxRate || 0.05);
+    const taxes = calculatePayroll(employee.salary * 12, (employee.housingAllowance || 0) * 12, true, employee.stateResidence || 'TX', employee.filingStatus || 'Single', employee.dependents || 0);
     const addr = church.address || '123 Church Street, City, ST 00000';
 
     pageHeader(doc, 'Form W-2', 'Wage and Tax Statement', TAX_YEAR, church.logo_url);
