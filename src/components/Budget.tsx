@@ -531,8 +531,22 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
                             disabled={!selectedNewDept}
                             style={{ height: '46px', padding: '0 2rem' }}
                         >
-                            <Plus size={18} /> {t('save')}
+                            <Plus size={18} /> {t('addAllocation')}
                         </button>
+                    </div>
+
+                    <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+                        {canManage && (
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleSaveBudget}
+                                disabled={isSaving}
+                                style={{ padding: '1rem 2.5rem', fontSize: '1rem', fontWeight: 800, borderRadius: '12px', boxShadow: '0 4px 15px rgba(56, 189, 248, 0.3)' }}
+                            >
+                                {isSaving ? <RefreshCw size={20} className="spin" /> : <Save size={20} />}
+                                &nbsp; {isSaving ? t('loading') : t('saveToCloud')}
+                            </button>
+                        )}
                     </div>
 
                     <div style={{
