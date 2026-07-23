@@ -74,6 +74,7 @@ function FormRow({
     onDownload,
     status,
     isTreasurer,
+    totals,
 }: {
     form: string;
     person: string;
@@ -81,6 +82,7 @@ function FormRow({
     onDownload: () => void;
     status: 'idle' | 'loading' | 'done';
     isTreasurer: boolean;
+    totals?: any;
 }) {
     const info = FORM_INFO[form] || FORM_INFO['W-2'];
     const Icon = info.icon;
@@ -114,9 +116,18 @@ function FormRow({
                             {year} · Ready
                         </span>
                     </div>
+                    
                     <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {person} · Due {info.dueDate}
                     </div>
+                    {totals && (
+                        <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '6px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                            <span style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}><strong>YTD Gross:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totals.gross || 0)}</span>
+                            {totals.federal !== undefined && <span style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}><strong>Fed Tax:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totals.federal || 0)}</span>}
+                            {totals.fica !== undefined && <span style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}><strong>FICA:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totals.fica || 0)}</span>}
+                        </div>
+                    )}
+
                 </div>
             </div>
             {isTreasurer && (
@@ -368,6 +379,7 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                             year={TAX_YEAR}
                             status={dlStatus[`w2_${i}`] || 'idle'}
                             isTreasurer={isTreasurer}
+                            totals={getTotals(emp.id)}
                             onDownload={() => handleDownload(`w2_${i}`, () => generateW2FromTotals({
                                 name: emp.name, 
                                 role: emp.role,
@@ -410,6 +422,7 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                             year={TAX_YEAR}
                             status={dlStatus[`1099_${i}`] || 'idle'}
                             isTreasurer={isTreasurer}
+                            totals={getTotals(con.id)}
                             onDownload={() => handleDownload(`1099_${i}`, () => generate1099NECFromTotals({
                                 name: con.name, role: con.role
                             }, getTotals(con.id), church))}
