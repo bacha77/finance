@@ -81,6 +81,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
     const [funds, setFunds] = useState<Fund[]>([]);
     const [showNewFundModal, setShowNewFundModal] = useState(false);
     const [ledger, setLedger] = useState<Transaction[]>([]);
+    const [ledgerFilter, setLedgerFilter] = useState<'all' | 'income' | 'expense'>('all');
 
     // Supabase Sync & Realtime
     useEffect(() => {
@@ -858,9 +859,16 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                     <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{t('integratedLedger')}</h3>
                                     <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{t('ledgerDesc')}</p>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: '0.75rem 1.25rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', width: '320px' }}>
-                                    <Search size={18} color="var(--text-muted)" />
-                                    <input type="text" placeholder={t('searchPlaceholder')} style={{ background: 'none', border: 'none', color: 'white', marginLeft: '0.75rem', outline: 'none', width: '100%' }} />
+                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '8px' }}>
+                                        <button onClick={() => setLedgerFilter('all')} style={{ padding: '6px 12px', background: ledgerFilter === 'all' ? 'var(--primary-main)' : 'transparent', color: ledgerFilter === 'all' ? 'white' : 'var(--text-muted)', borderRadius: '6px', fontSize: '0.875rem', fontWeight: 600 }}>All</button>
+                                        <button onClick={() => setLedgerFilter('income')} style={{ padding: '6px 12px', background: ledgerFilter === 'income' ? 'var(--success)' : 'transparent', color: ledgerFilter === 'income' ? 'white' : 'var(--text-muted)', borderRadius: '6px', fontSize: '0.875rem', fontWeight: 600 }}>Income</button>
+                                        <button onClick={() => setLedgerFilter('expense')} style={{ padding: '6px 12px', background: ledgerFilter === 'expense' ? 'var(--danger)' : 'transparent', color: ledgerFilter === 'expense' ? 'white' : 'var(--text-muted)', borderRadius: '6px', fontSize: '0.875rem', fontWeight: 600 }}>Expenses</button>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: '0.75rem 1.25rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', width: '320px' }}>
+                                        <Search size={18} color="var(--text-muted)" />
+                                        <input type="text" placeholder={t('searchPlaceholder')} style={{ background: 'none', border: 'none', color: 'white', marginLeft: '0.75rem', outline: 'none', width: '100%' }} />
+                                    </div>
                                 </div>
                             </div>
 
@@ -877,7 +885,11 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {ledger.map((tx, idx) => (
+                                        {ledger.filter(tx => {
+                                            if (ledgerFilter === 'income') return tx.amount >= 0;
+                                            if (ledgerFilter === 'expense') return tx.amount < 0;
+                                            return true;
+                                        }).map((tx, idx) => (
                                             <tr key={idx}>
                                                 <td style={{ fontWeight: 600 }}>{tx.date ? new Date(tx.date + 'T12:00:00Z').toLocaleDateString() : new Date(tx.created_at || '').toLocaleDateString()}</td>
                                                 <td>
