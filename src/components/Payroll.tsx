@@ -43,6 +43,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
     const [processing, setProcessing] = useState(false);
     const [processComplete, setProcessComplete] = useState<any>(null);
     const [hoursWorked, setHoursWorked] = useState<Record<string, number>>({});
+    const [adjustments, setAdjustments] = useState<Record<string, number>>({});
 
     useEffect(() => {
         const fetchStaff = async () => {
@@ -160,14 +161,26 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
         }
     };
 
+        const handleTerminate = async (id: string) => {
+        if (!confirm('Are you sure you want to terminate this employee? They will be removed from future payroll runs, but their history will be preserved.')) return;
+        setIsLoading(true);
+        try {
+            await supabase.from('staff').update({ status: 'Terminated' }).eq('id', id);
+            setStaff(staff.map(s => s.id === id ? { ...s, status: 'Terminated' } : s));
+            setShowHireModal(false);
+        } catch (err: any) {
+            alert('Error terminating staff: ' + err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const eligibleStaff = useMemo(() => staff.filter(s => s.status !== 'Terminated'), [staff]);
     const totalMonthlySalary = useMemo(() => eligibleStaff.reduce((s, st) => s + (st.salary || 0), 0), [eligibleStaff]);
 
     const getGrossPay = (s: any) => {
-        if (s.type === 'Hourly') {
-            return (s.salary || 0) * (hoursWorked[s.id] || 0);
-        }
-        return s.salary || 0;
+        const base = s.type === 'Hourly' ? (s.salary || 0) * (hoursWorked[s.id] || 0) : (s.salary || 0);
+        return Math.max(0, base + (adjustments[s.id] || 0));
     };
 
     const runPayroll = async () => {
@@ -230,6 +243,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
         } finally {
             setProcessing(false);
             setHoursWorked({});
+            setAdjustments({});
         }
     };
 
@@ -392,6 +406,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                                         <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Type</th>
                                                         <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Rate / Salary</th>
                                                         <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Hours Worked</th>
+                                                        <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Adjustments ($)</th>
                                                         <th style={{ padding: '1rem 1.5rem', color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>Gross Pay</th>
                                                     </tr>
                                                 </thead>
@@ -415,6 +430,15 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                                                         style={{ width: '80px', padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'white' }}
                                                                     />
                                                                 ) : <span style={{ color: '#475569' }}>—</span>}
+                                                            </td>
+                                                            <td style={{ padding: '1rem 1.5rem' }}>
+                                                                <input 
+                                                                    type="number" 
+                                                                    placeholder="0"
+                                                                    value={adjustments[s.id] || ''}
+                                                                    onChange={e => setAdjustments({...adjustments, [s.id]: parseFloat(e.target.value) || 0})}
+                                                                    style={{ width: '80px', padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'white' }}
+                                                                />
                                                             </td>
                                                             <td style={{ padding: '1rem 1.5rem', color: 'white', fontWeight: 600 }}>{fmt(gross)}</td>
                                                         </tr>
@@ -556,6 +580,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
 
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
                                     <button type="button" onClick={() => setShowHireModal(false)} style={{ padding: '0.75rem 1.5rem', background: 'transparent', border: 'none', color: '#94a3b8', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                                    {editId && <button type="button" onClick={() => handleTerminate(editId)} style={{ padding: '0.75rem 1.5rem', background: 'transparent', border: '1px solid #ef4444', borderRadius: '8px', color: '#ef4444', fontWeight: 600, cursor: 'pointer', marginRight: 'auto' }}>Terminate</button>}
                                     <button type="submit" disabled={isLoading} style={{ padding: '0.75rem 1.5rem', background: '#a855f7', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 600, cursor: 'pointer' }}>{isLoading ? 'Saving...' : editId ? 'Save Changes' : 'Add Member'}</button>
                                 </div>
                             </form>
