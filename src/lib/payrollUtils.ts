@@ -50,14 +50,8 @@ export function calculatePayroll(
     // but usually kept for Social Security / Medicare (SECA) unless exempt.
     const baseTaxableGross = Math.max(0, gross - housingAllowance);
     
-    // 1. Dependent Deduction ($166 per dependent per month approximation)
-    const dependentDeduction = dependents * 166.66;
-    
-    // 2. Filing Status Multiplier (Married usually pays slightly less percentage-wise)
-    const statusMultiplier = filingStatus === 'Married' ? 0.85 : filingStatus === 'Head of Household' ? 0.90 : 1.0;
-    
     // Final Taxable Gross for Federal/State
-    const taxableGross = Math.max(0, baseTaxableGross - dependentDeduction);
+    const taxableGross = Math.max(0, baseTaxableGross);
     
     // FICA Taxes (Based on full gross)
     const ss = gross * 0.062;
@@ -69,7 +63,14 @@ export function calculatePayroll(
     else if (taxableGross > 4000) { federalTax = taxableGross * 0.12; }
     else if (taxableGross > 1000) { federalTax = taxableGross * 0.10; }
     
+    // Filing Status Multiplier (Married usually pays slightly less percentage-wise)
+    const statusMultiplier = filingStatus === 'Married' ? 0.85 : filingStatus === 'Head of Household' ? 0.90 : 1.0;
     federalTax = federalTax * statusMultiplier;
+    
+    // Dependent Tax Credit ($2000/year per dependent = $166.66/month)
+    // Child Tax Credit reduces the tax liability directly
+    const dependentCredit = dependents * 166.66;
+    federalTax = Math.max(0, federalTax - dependentCredit);
     
     // State Tax (Simulated by State)
     const noTaxStates = ['TX', 'FL', 'NV', 'SD', 'WA', 'WY', 'AK', 'TN', 'NH'];
