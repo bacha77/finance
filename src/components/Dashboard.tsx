@@ -282,24 +282,33 @@ const GivingAnalyticsWidget: React.FC<{ ledger: any[] }> = ({ ledger }) => {
     );
 };
 
-const CampaignProgressWidget: React.FC<{ ledger: any[] }> = ({ ledger }) => {
-    // We heuristically identify Campaign funds or categories
+const CampaignProgressWidget: React.FC<{ ledger: any[], campaign: any, onEdit: () => void, isTreasurer: boolean }> = ({ ledger, campaign, onEdit, isTreasurer }) => {
+    
+    const targetName = campaign?.name || 'Capital Campaign';
+    const keyword = campaign?.match_keyword?.toLowerCase() || 'campaign';
+    const goal = campaign?.target_amount || 0;
+
     const raised = ledger
         .filter(tx => (tx.type === 'in' || tx.type === 'revenue') && (
-            tx.fund?.toLowerCase().includes('campaign') || 
-            tx.fund?.toLowerCase().includes('building') ||
-            tx.category?.toLowerCase().includes('campaign')
+            (tx.fund && tx.fund.toLowerCase().includes(keyword)) ||
+            (tx.category && tx.category.toLowerCase().includes(keyword))
         ))
         .reduce((s, tx) => s + Math.abs(tx.amount), 0);
         
-    const goal = 50000; // Hardcoded default goal
     const pct = goal > 0 ? Math.min(100, (raised / goal) * 100) : 0;
     return (
         <div className="glass-card" style={{ padding: '1.5rem', flex: 1, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', right: -20, top: -20, opacity: 0.05 }}><Target size={120} /></div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative', zIndex: 1 }}>
-                <Target size={18} color="#ec4899" /> Capital Campaign
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', position: 'relative', zIndex: 1 }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Target size={18} color="#ec4899" /> {targetName}
+                </h3>
+                {isTreasurer && (
+                    <button onClick={onEdit} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', padding: '4px 8px', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '0.75rem' }}>
+                        Edit
+                    </button>
+                )}
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative', zIndex: 1 }}>
                 <div>
                     <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{fmtShort(raised)}</div>
@@ -362,6 +371,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
     const [churchName, setChurchName] = useState('');
     const [churchData, setChurchData] = useState<any>(null);
     const [aiInsights, setAiInsights] = useState<any[]>([]);
+    const [campaign, setCampaign] = useState<any>(null);
+    const [showCampaignModal, setShowCampaignModal] = useState(false);
 
     const today = new Date().toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -727,7 +738,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
             <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
                 <BudgetBurnDownWidget churchId={churchId} ledger={ledger} />
                 <GivingAnalyticsWidget ledger={ledger} />
-                <CampaignProgressWidget ledger={ledger} />
+                <CampaignProgressWidget ledger={ledger} campaign={campaign} isTreasurer={isTreasurer} onEdit={() => setShowCampaignModal(true)} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.75rem', marginBottom: '2.5rem' }}>
@@ -1099,6 +1110,84 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                      <ShieldCheck color="#10b981" size={20} />
                      <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>{t('fiscalVerification')}</span>
+                </div>
+            </motion.div>
+
+            <AnimatePresence>
+                {showCampaignModal && (
+                    <CampaignManagerModal 
+                        churchId={churchId} 
+                        existing={campaign} 
+                        onClose={() => setShowCampaignModal(false)} 
+                        onSave={(newCamp) => { setCampaign(newCamp); setShowCampaignModal(false); }} 
+                    />
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+
+
+const CampaignManagerModal: React.FC<{ churchId: string, existing: any, onClose: () => void, onSave: (camp: any) => void }> = ({ churchId, existing, onClose, onSave }) => {
+    const [name, setName] = React.useState(existing?.name || '');
+    const [target, setTarget] = React.useState(existing?.target_amount || '');
+    const [keyword, setKeyword] = React.useState(existing?.match_keyword || '');
+    const [desc, setDesc] = React.useState(existing?.description || '');
+    const [loading, setLoading] = React.useState(false);
+
+    const handleSave = async () => {
+        setLoading(true);
+        const payload = {
+            church_id: churchId,
+            name: name || 'Capital Campaign',
+            target_amount: parseFloat(target) || 0,
+            match_keyword: keyword || 'campaign',
+            description: desc,
+            status: 'Active'
+        };
+        
+        let savedData = null;
+        if (existing?.id) {
+            const { data, error } = await supabase.from('campaigns').update(payload).eq('id', existing.id).select().single();
+            if (!error && data) savedData = data;
+        } else {
+            const { data, error } = await supabase.from('campaigns').insert([payload]).select().single();
+            if (!error && data) savedData = data;
+        }
+        setLoading(false);
+        if (savedData) onSave(savedData);
+        else onSave(payload); // fallback
+    };
+
+    return (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="glass-card" style={{ width: '400px', padding: '2rem', background: '#0f172a', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Campaign Settings</h2>
+                
+                <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem' }}>Campaign Name</label>
+                    <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Building Fund" style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                </div>
+                
+                <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem' }}>Target Goal ($)</label>
+                    <input type="number" value={target} onChange={e => setTarget(e.target.value)} placeholder="e.g. 50000" style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                </div>
+                
+                <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem' }}>Match Keyword</label>
+                    <input type="text" value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="e.g. building" style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+                    <p style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.5rem' }}>Any income where the Fund or Category matches this word will count towards the goal.</p>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem' }}>Description</label>
+                    <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Campaign details..." style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', minHeight: '60px' }} />
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                    <button onClick={onClose} style={{ flex: 1, padding: '0.75rem', background: 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={handleSave} disabled={loading} style={{ flex: 1, padding: '0.75rem', background: '#ec4899', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>{loading ? 'Saving...' : 'Save Settings'}</button>
                 </div>
             </motion.div>
         </div>

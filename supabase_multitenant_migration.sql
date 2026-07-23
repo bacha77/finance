@@ -575,3 +575,18 @@ ALTER TABLE public.ledger ALTER COLUMN fund_id SET DEFAULT null; -- Ensure we ca
 ALTER TABLE public.ledger DROP CONSTRAINT IF EXISTS ledger_dual_entry_check;
 ALTER TABLE public.ledger ADD CONSTRAINT ledger_dual_entry_check 
 CHECK (fund_id IS NOT NULL AND category IS NOT NULL);
+
+
+-- ==========================================
+-- CAMPAIGNS TABLE (Auto-generated)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.campaigns (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        TEXT NOT NULL,
+    description TEXT,
+    target_amount NUMERIC DEFAULT 0,
+    match_keyword TEXT,
+    status      TEXT DEFAULT ''Active'',
+    church_id   UUID,
+    created_at  TIMESTAMPTZ DEFAULT now()
+);
