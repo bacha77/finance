@@ -144,13 +144,45 @@ const StatCard: React.FC<StatCardProps> = ({
 );
 
 // ── Advanced Financial Widgets ───────────────────────────────────────────
-const BudgetBurnDownWidget: React.FC = () => {
-    // Mock data for top 3 departments (reset to 0 per request)
-    const departments = [
-        { name: 'Youth Ministry', budget: 0, spent: 0 },
-        { name: 'Missions', budget: 0, spent: 0 },
-        { name: 'Operations', budget: 0, spent: 0 }
-    ];
+const BudgetBurnDownWidget: React.FC<{ churchId: string, ledger: any[] }> = ({ churchId, ledger }) => {
+    const [departments, setDepartments] = useState<any[]>([]);
+    
+    useEffect(() => {
+        const loadBudget = async () => {
+            if (!churchId) return;
+            const currentYear = new Date().getFullYear();
+            
+            const [
+                { data: deptData },
+                { data: budgetData }
+            ] = await Promise.all([
+                supabase.from('departments').select('*').eq('church_id', churchId),
+                supabase.from('budgets').select('*').eq('church_id', churchId).eq('year', currentYear).maybeSingle()
+            ]);
+            
+            if (!deptData) return;
+            
+            const allocations = budgetData?.allocations || [];
+            
+            const deptsWithStats = deptData.map(d => {
+                const alloc = allocations.find((a: any) => a.deptId === d.id);
+                const budget = alloc ? alloc.amount : 0;
+                
+                const spent = Math.abs(ledger.filter(tx => {
+                    const txYear = new Date(tx.date || tx.created_at).getFullYear();
+                    return txYear === currentYear && 
+                           (tx.type === 'out' || tx.type === 'expense') && 
+                           (tx.department === d.name || tx.dept === d.name || tx.department_id === d.id);
+                }).reduce((s, tx) => s + (tx.amount || 0), 0));
+                
+                return { name: d.name, budget, spent };
+            }).sort((a, b) => b.budget - a.budget).slice(0, 3); // top 3
+            
+            setDepartments(deptsWithStats);
+        };
+        loadBudget();
+    }, [churchId, ledger]);
+    
     return (
         <div className="glass-card" style={{ padding: '1.5rem', flex: 1, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -641,7 +673,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
 
             {/* Advanced Analytics Widgets */}
             <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
-                <BudgetBurnDownWidget />
+                <BudgetBurnDownWidget churchId={churchId} ledger={ledger} />
                 <GivingAnalyticsWidget />
                 <CampaignProgressWidget />
             </div>
