@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { calculatePayroll } from '../lib/payrollUtils';
-import { generatePayStub } from '../lib/taxPdfGenerator';
+import { generatePayStub, generateW2FromTotals, generate1099NECFromTotals } from '../lib/taxPdfGenerator';
 
 interface PayrollProps {
     churchId: string;
@@ -112,7 +112,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
     }, [history, dateFilter]);
 
     const reportData = useMemo(() => {
-        const staffTotals: Record<string, { name: string, gross: number, net: number, federal: number, state: number, fica: number }> = {};
+        const staffTotals: Record<string, { name: string, gross: number, net: number, federal: number, state: number, fica: number, type: string, role: string }> = {};
         let totalGross = 0;
         let totalNet = 0;
         let totalFed = 0;
@@ -122,7 +122,12 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
         filteredHistory.forEach(h => {
             if (!h.staff_name) return;
             if (!staffTotals[h.staff_id]) {
-                staffTotals[h.staff_id] = { name: h.staff_name, gross: 0, net: 0, federal: 0, state: 0, fica: 0 };
+                const sObj = staff.find(st => st.id === h.staff_id);
+                staffTotals[h.staff_id] = { 
+                    name: h.staff_name, gross: 0, net: 0, federal: 0, state: 0, fica: 0,
+                    type: sObj?.type || 'Full-time',
+                    role: sObj?.role || 'Staff'
+                };
             }
             const s = staffTotals[h.staff_id];
             
@@ -749,6 +754,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                                 <th style={{ padding: '1rem', color: '#94a3b8', fontWeight: 600 }}>State Tax</th>
                                                 <th style={{ padding: '1rem', color: '#94a3b8', fontWeight: 600 }}>FICA</th>
                                                 <th style={{ padding: '1rem', color: '#94a3b8', fontWeight: 600 }}>Net Pay</th>
+                                                <th style={{ padding: '1rem', color: '#94a3b8', fontWeight: 600 }}>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -760,6 +766,17 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                                     <td style={{ padding: '1rem', color: '#f59e0b' }}>{fmt(s.state)}</td>
                                                     <td style={{ padding: '1rem', color: '#a855f7' }}>{fmt(s.fica)}</td>
                                                     <td style={{ padding: '1rem', color: '#10b981', fontWeight: 600 }}>{fmt(s.net)}</td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        <button onClick={() => {
+                                                            if (s.type === 'Contractor') {
+                                                                generate1099NECFromTotals({ name: s.name, role: s.role }, { gross: s.gross }, { name: 'Church Finance', ein: 'XX-XXXXXXX' });
+                                                            } else {
+                                                                generateW2FromTotals({ name: s.name, role: s.role }, { gross: s.gross, net: s.net, federal: s.federal, state: s.state, fica: s.fica }, { name: 'Church Finance', ein: 'XX-XXXXXXX' });
+                                                            }
+                                                        }} style={{ padding: '0.5rem 1rem', background: 'rgba(168,85,247,0.1)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)', borderRadius: '8px', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                            Generate {s.type === 'Contractor' ? '1099' : 'W-2'}
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>

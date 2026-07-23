@@ -132,8 +132,13 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const [orderedItems, setOrderedItems] = React.useState<string[]>(() => {
     const saved = localStorage.getItem('sidebar_menu_order');
-    if (saved) return JSON.parse(saved);
-    return ['dashboard', 'accounting', 'departments', 'expenses', 'reimbursements', 'events', 'members', 'payroll', 'budget', 'reports', 'pricing'];
+    let items = ['dashboard', 'accounting', 'departments', 'expenses', 'reimbursements', 'events', 'members', 'payroll', 'tax', 'budget', 'reports', 'pricing'];
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        if (!parsed.includes('tax')) parsed.splice(parsed.indexOf('payroll') + 1, 0, 'tax');
+        items = parsed;
+    }
+    return items;
   });
 
   React.useEffect(() => {
@@ -149,6 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     events: { icon: Calendar, label: 'Events' },
     members: { icon: Users, label: t('members') },
     payroll: { icon: CreditCard, label: t('payroll') },
+    tax: { icon: ShieldCheck, label: 'Tax & Compliance' },
     budget: { icon: PieChart, label: t('budget') },
     reports: { icon: FileText, label: t('reports') },
     pricing: { icon: Zap, label: t('plansPricing') },

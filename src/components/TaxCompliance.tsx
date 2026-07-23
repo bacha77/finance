@@ -7,11 +7,11 @@ import {
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import {
-    generateW2,
-    generate1099NEC,
     generate941,
     generateW3,
     generate990Summary,
+    generateW2FromTotals,
+    generate1099NECFromTotals,
 } from '../lib/taxPdfGenerator';
 
 interface TaxComplianceProps {
@@ -153,6 +153,7 @@ function FormRow({
 const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propChurchName, churchId, userRole = 'viewer' }) => {
     const isTreasurer = userRole.includes('admin') || userRole.includes('assistant');
     const [staff, setStaff] = useState<any[]>([]);
+    const [payrollHistory, setPayrollHistory] = useState<any[]>([]);
     const [churchInfo, setChurchInfo] = useState({ name: propChurchName || 'Your Church', ein: 'XX-XXXXXXX', address: '', logo_url: '' });
     const [stats, setStats] = useState({ income: 0, expenses: 0, balance: 0, members: 0 });
     const [dlStatus, setDlStatus] = useState<Record<string, 'idle' | 'loading' | 'done'>>({});
@@ -165,13 +166,18 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
         const load = async () => {
             setLoading(true);
             try {
-                const [{ data: staffData }, { data: ledger }, { data: funds }, { data: members }, { data: church }] = await Promise.all([
+                const [{ data: staffData }, { data: ledger }, { data: funds }, { data: members }, { data: church }, { data: pHistory }] = await Promise.all([
                     supabase.from('staff').select('*').eq('church_id', churchId),
                     supabase.from('ledger').select('*').eq('church_id', churchId),
                     supabase.from('funds').select('*').eq('church_id', churchId),
                     supabase.from('members').select('id').eq('church_id', churchId),
                     churchId ? supabase.from('churches').select('*').eq('id', churchId).single() : { data: null },
+                    supabase.from('payroll_history').select('*').eq('church_id', churchId)
                 ]);
+
+                if (pHistory) {
+                    setPayrollHistory(pHistory);
+                }
 
                 if (staffData && staffData.length > 0) {
                     setStaff(staffData.map((s: any) => ({
@@ -222,7 +228,7 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
     };
 
     const church = { name: churchInfo.name, ein: churchInfo.ein, address: churchInfo.address, logo_url: churchInfo.logo_url };
-    const employees = staff.filter(s => s.type === 'Full-time' || s.type === 'Part-time');
+    const employees = staff.filter(s => s.type === 'Full-time' || s.type === 'Part-time' || s.type === 'Hourly');
     const contractors = staff.filter(s => s.type === 'Contractor');
 
     const ytdWithholding = employees.reduce((sum, s) => {
@@ -234,6 +240,18 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
     }, 0);
 
     const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+    const getTotals = (staffId: string) => {
+        const history = payrollHistory.filter(h => h.staff_id === staffId);
+        return history.reduce((acc, h) => {
+            acc.gross += h.gross_pay || 0;
+            acc.net += h.net_pay || 0;
+            acc.federal += h.federal_tax || 0;
+            acc.state += h.state_tax || 0;
+            acc.fica += (h.social_security || 0) + (h.medicare || 0);
+            return acc;
+        }, { gross: 0, net: 0, federal: 0, state: 0, fica: 0 });
+    };
 
     if (loading) {
         return (
@@ -350,15 +368,10 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                             year={TAX_YEAR}
                             status={dlStatus[`w2_${i}`] || 'idle'}
                             isTreasurer={isTreasurer}
-                            onDownload={() => handleDownload(`w2_${i}`, () => generateW2({
+                            onDownload={() => handleDownload(`w2_${i}`, () => generateW2FromTotals({
                                 name: emp.name, 
                                 role: emp.role,
-                                salary: emp.salary,
-                                housingAllowance: emp.housingAllowance,
-                                stateResidence: emp.stateResidence,
-                                filingStatus: emp.filingStatus,
-                                dependents: emp.dependents
-                            }, church))}
+                            }, { ...getTotals(emp.id), housingAllowance: emp.housingAllowance }, church))}
                         />
                     ))}
                     {employees.length > 0 && (
@@ -395,7 +408,9 @@ const TaxCompliance: React.FC<TaxComplianceProps> = ({ onBack, churchName: propC
                             year={TAX_YEAR}
                             status={dlStatus[`1099_${i}`] || 'idle'}
                             isTreasurer={isTreasurer}
-                            onDownload={() => handleDownload(`1099_${i}`, () => generate1099NEC(con, church))}
+                            onDownload={() => handleDownload(`1099_${i}`, () => generate1099NECFromTotals({
+                                name: con.name, role: con.role
+                            }, getTotals(con.id), church))}
                         />
                     ))}
                 </div>

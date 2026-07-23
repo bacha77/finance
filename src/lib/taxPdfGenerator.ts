@@ -439,3 +439,141 @@ Pay Date: ${entry.date}`);
     footer(doc, 'Keep this record for your tax files.');
     doc.save(`PayStub_${entry.staff_name.replace(/ /g, '_')}_${entry.date}.pdf`);
 }
+
+
+// ── W-2 Generator (From Totals) ──────────────────────────────────────────────
+export function generateW2FromTotals(employee: { name: string; role: string }, totals: { gross: number; net: number; federal: number; state: number; fica: number; housingAllowance?: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
+    const { doc, churchName, ein } = baseDoc(church.name, church.ein);
+    const addr = church.address || '123 Church Street, City, ST 00000';
+
+    pageHeader(doc, 'Form W-2', 'Wage and Tax Statement', TAX_YEAR, church.logo_url);
+
+    let y = 65;
+    doc.setFontSize(9); doc.setTextColor(30, 30, 30); doc.setFont('helvetica', 'bold');
+    doc.text('EMPLOYER INFORMATION', 40, y); doc.setFont('helvetica', 'normal');
+
+    y += 12;
+    drawBox(doc, 40, y, 250, 38, 'a  Employer EIN', ein);
+    drawBox(doc, 295, y, 270, 38, 'b  Employer Name', churchName);
+    y += 44;
+    drawBox(doc, 40, y, 525, 30, 'c  Employer Address', addr);
+
+    y += 40;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    doc.text('EMPLOYEE INFORMATION', 40, y); doc.setFont('helvetica', 'normal');
+
+    y += 12;
+    drawBox(doc, 40, y, 250, 38, 'e  Employee Name', employee.name);
+    drawBox(doc, 295, y, 270, 38, 'f  Employee Role', employee.role);
+    y += 50;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    doc.text('WAGE & TAX INFORMATION', 40, y); doc.setFont('helvetica', 'normal');
+    y += 12;
+
+    const boxes: [string, string][] = [
+        ['1  Wages, Tips, Other Comp', fmt(totals.gross)],
+        ['2  Federal Income Tax Withheld', fmt(totals.federal)],
+        ['3  Social Security Wages', fmt(totals.gross)],
+        ['4  Social Security Tax Withheld', fmt(totals.fica / 2)],
+        ['5  Medicare Wages and Tips', fmt(totals.gross)],
+        ['6  Medicare Tax Withheld', fmt(totals.fica / 2)],
+        ['12 See Instructions for Box 12', ''],
+        ['16 State Wages, Tips, etc.', fmt(totals.gross)],
+        ['17 State Income Tax', fmt(totals.state)],
+        ['18 Local Wages', fmt(totals.gross)],
+    ];
+
+    let col = 0;
+    boxes.forEach(([label, value], i) => {
+        const x = 40 + (col % 2) * 265;
+        if (i > 0 && i % 2 === 0) y += 48;
+        drawBox(doc, x, y, 258, 42, label, value);
+        col++;
+    });
+
+    y += 55;
+
+    doc.setFillColor(245, 247, 250);
+    doc.rect(40, y, 525, 70, 'F');
+    doc.setDrawColor(200, 200, 200);
+    doc.rect(40, y, 525, 70);
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(10, 36, 90);
+    doc.text('ANNUAL COMPENSATION SUMMARY', 52, y + 17);
+    
+    if (totals.housingAllowance) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+        doc.text(`(Includes ${fmt(totals.housingAllowance)} Ministerial Housing Allowance)`, 235, y + 17);
+    }
+    
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(40, 40, 40);
+
+    const totalWithheld = totals.federal + totals.state + totals.fica;
+    const sumItems = [
+        ['Gross Annual Wages:', fmt(totals.gross)],
+        ['Total Withholding:', fmt(totalWithheld)],
+        ['Net Pay (Actual):', fmt(totals.net)],
+    ];
+    sumItems.forEach(([label, val], i) => {
+        doc.text(label, 52 + i * 170, y + 38);
+        doc.setFont('helvetica', 'bold');
+        doc.text(val, 52 + i * 170, y + 52);
+        doc.setFont('helvetica', 'normal');
+    });
+
+    footer(doc, 'Required by the IRS by Jan 31 each year.');
+    doc.save(`W2_${TAX_YEAR}_${employee.name.replace(/\s+/g, '_')}.pdf`);
+}
+
+// ── 1099-NEC Generator (From Totals) ─────────────────────────────────────────
+export function generate1099NECFromTotals(contractor: { name: string; role: string }, totals: { gross: number }, church: { name: string; ein: string; address?: string; logo_url?: string }) {
+    const { doc, churchName, ein } = baseDoc(church.name, church.ein);
+    const addr = church.address || '123 Church Street, City, ST 00000';
+
+    pageHeader(doc, 'Form 1099-NEC', 'Nonemployee Compensation', TAX_YEAR, church.logo_url);
+
+    let y = 70;
+    drawBox(doc, 40, y, 525, 35, 'PAYER (Church) — Name, Address, Phone', `${churchName} | ${addr}`);
+    y += 42;
+    drawBox(doc, 40, y, 260, 32, "PAYER'S EIN", ein);
+    drawBox(doc, 305, y, 260, 32, "RECIPIENT'S TIN", 'XXX-XX-XXXX');
+    y += 40;
+    drawBox(doc, 40, y, 525, 32, "RECIPIENT'S Name", contractor.name);
+    y += 40;
+    drawBox(doc, 40, y, 525, 32, 'Street Address', '—');
+    y += 40;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(10, 36, 90);
+    doc.text('COMPENSATION DETAIL', 40, y + 10);
+    y += 18;
+
+    const rows = [
+        ['Box 1  Nonemployee Compensation', fmt(totals.gross), 'Total paid this tax year'],
+        ['Box 4  Federal Tax Withheld', '$0.00', 'Contractors are responsible for self-employment tax'],
+        ['Box 5  State Tax Withheld', '$0.00', 'File with state revenue authority as applicable'],
+    ];
+
+    rows.forEach(([label, value, note]) => {
+        drawBox(doc, 40, y, 525, 44, label, value, 7, 13);
+        doc.setFontSize(7); doc.setTextColor(120, 120, 120);
+        doc.text(note, 48, y + 38);
+        doc.setTextColor(0, 0, 0);
+        y += 52;
+    });
+
+    y += 8;
+    doc.setFillColor(255, 248, 230);
+    doc.rect(40, y, 525, 55, 'F');
+    doc.setDrawColor(245, 158, 11);
+    doc.rect(40, y, 525, 55);
+    doc.setFontSize(8); doc.setTextColor(120, 80, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.text('⚠  IMPORTANT — Contractor Tax Obligation', 52, y + 14);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${contractor.name} is responsible for self-employment tax (15.3%) on compensation exceeding $400.`, 52, y + 27);
+    doc.text(`The contractor should file Schedule SE with their Form 1040. This form must be sent by January 31.`, 52, y + 40);
+
+    footer(doc, 'Must be issued to contractor and filed with IRS by Jan 31.');
+    doc.save(`1099-NEC_${TAX_YEAR}_${contractor.name.replace(/\s+/g, '_')}.pdf`);
+}
