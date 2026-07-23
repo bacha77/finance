@@ -473,10 +473,10 @@ const Reports: React.FC<ReportsProps> = ({ churchId, userRole = 'viewer' }) => {
                     <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
                             {[
-                                { label: 'Operating Margin', val: metrics.net, up: metrics.net >= 0, icon: TrendingUp },
-                                { label: 'Liquid Position', val: metrics.totalAssets, up: true, icon: Landmark },
-                                { label: 'Period Revenue', val: metrics.income, up: true, icon: ArrowUpRight },
-                                { label: 'Operating Burn', val: metrics.expenses, up: false, icon: ArrowDownRight }
+                                { label: 'Net Income', val: metrics.net, up: metrics.net >= 0, icon: TrendingUp },
+                                { label: 'Total Funds', val: metrics.totalAssets, up: true, icon: Landmark },
+                                { label: 'Total Income', val: metrics.income, up: true, icon: ArrowUpRight },
+                                { label: 'Total Expenses', val: metrics.expenses, up: false, icon: ArrowDownRight }
                             ].map((c, i) => (
                                 <div key={i} className="glass-card" style={{ padding: '2rem', borderTop: `4px solid ${c.up ? '#10b981' : '#ef4444'}`, maxWidth: '100%' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
