@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
     Users, Plus, ArrowRight,
     ShieldCheck, Zap,
-    CheckCircle2, Loader2, Check, Activity, DollarSign
+    CheckCircle2, Loader2, Check, Activity, DollarSign, Edit2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -14,6 +14,14 @@ interface PayrollProps {
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
 
+const US_STATES = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+];
+
 const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
     const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'run'>('overview');
     const [staff, setStaff] = useState<any[]>([]);
@@ -21,6 +29,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
     
     // Hire Modal
     const [showHireModal, setShowHireModal] = useState(false);
+    const [editId, setEditId] = useState<string | null>(null);
     const [hireForm, setHireForm] = useState({
         name: '', role: '', type: 'Full-time', salary: '', 
         housing_allowance: '0', dependents: 0, filing_status: 'Single',
@@ -62,6 +71,23 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
         fetchStaff();
     }, [churchId]);
 
+    const handleEditClick = (s: any) => {
+        setEditId(s.id);
+        setHireForm({
+            name: s.name,
+            role: s.role,
+            type: s.type,
+            salary: s.salary.toString(),
+            housing_allowance: s.housingAllowance.toString(),
+            dependents: s.dependents,
+            filing_status: s.filingStatus,
+            state_residence: s.stateResidence,
+            recurring: s.recurring,
+            frequency: s.frequency
+        });
+        setShowHireModal(true);
+    };
+
     const handleHire = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -76,19 +102,28 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                 last_paid: 'Never'
             };
 
-            let { error } = await supabase.from('staff').insert([newStaff]);
+            let error;
+            if (editId) {
+                const { error: updateError } = await supabase.from('staff').update({
+                    name: newStaff.name,
+                    role: newStaff.role,
+                    type: newStaff.type,
+                    salary: newStaff.salary,
+                    housing_allowance: newStaff.housing_allowance,
+                    dependents: newStaff.dependents,
+                    filing_status: newStaff.filing_status,
+                    state_residence: newStaff.state_residence
+                }).eq('id', editId);
+                error = updateError;
+            } else {
+                const { error: insertError } = await supabase.from('staff').insert([newStaff]);
+                error = insertError;
+            }
             
             if (error && error.message?.includes('column')) {
-               const simpleStaff: any = { ...newStaff };
-               delete simpleStaff.housing_allowance;
-               delete simpleStaff.dependents;
-               delete simpleStaff.filing_status;
-               delete simpleStaff.state_residence;
-               delete simpleStaff.type;
-               delete simpleStaff.frequency;
-               delete simpleStaff.recurring;
-               const res = await supabase.from('staff').insert([simpleStaff]);
-               error = res.error;
+               alert('Database migration required! The new tax profile columns (dependents, filing_status) do not exist in your database. Please run the SQL migration script in your Supabase SQL editor.');
+               setIsLoading(false);
+               return;
             }
             if (error) throw error;
             
@@ -101,9 +136,10 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                 })));
             }
             setShowHireModal(false);
+            setEditId(null);
             setHireForm({ name: '', role: '', type: 'Full-time', salary: '', housing_allowance: '0', dependents: 0, filing_status: 'Single', state_residence: 'TX', recurring: true, frequency: 'Monthly' });
-        } catch (err) {
-            alert('Error saving staff');
+        } catch (err: any) {
+            alert('Error saving staff: ' + err.message);
         } finally {
             setIsLoading(false);
         }
@@ -184,7 +220,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     <p style={{ color: '#94a3b8', fontSize: '1rem', marginTop: '0.5rem' }}>Premium workforce management (Isolated from Main Ledger)</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button onClick={() => setShowHireModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>
+                    <button onClick={() => { setEditId(null); setHireForm({ name: '', role: '', type: 'Full-time', salary: '', housing_allowance: '0', dependents: 0, filing_status: 'Single', state_residence: 'TX', recurring: true, frequency: 'Monthly' }); setShowHireModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>
                         <Plus size={18} /> Add Team Member
                     </button>
                     <button onClick={() => { setActiveTab('run'); setWizardStep(1); setProcessComplete(null); }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', background: 'linear-gradient(135deg, #a855f7, #ec4899)', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 15px rgba(168, 85, 247, 0.3)', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}>
@@ -229,7 +265,10 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     <motion.div key="team" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
                             {staff.map(s => (
-                                <div key={s.id} className="glass-card" style={{ padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
+                                <div key={s.id} className="glass-card" style={{ padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', position: 'relative' }}>
+                                    <button onClick={() => handleEditClick(s)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', padding: '0.5rem', color: 'white', cursor: 'pointer' }}>
+                                        <Edit2 size={16} />
+                                    </button>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                                         <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.25rem', fontWeight: 800 }}>
                                             {s.name.charAt(0)}
@@ -381,7 +420,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowHireModal(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} />
                         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="glass-card" style={{ position: 'relative', width: '100%', maxWidth: '600px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '2rem', overflow: 'hidden' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>Add Team Member</h2>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{editId ? 'Edit Team Member' : 'Add Team Member'}</h2>
                             <form onSubmit={handleHire} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
                                     <div>
@@ -415,11 +454,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                         <div>
                                             <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>State</label>
                                             <select value={hireForm.state_residence} onChange={e => setHireForm({...hireForm, state_residence: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}>
-                                                <option value="TX">TX (No State Tax)</option>
-                                                <option value="FL">FL (No State Tax)</option>
-                                                <option value="NY">NY (High Tax)</option>
-                                                <option value="CA">CA (High Tax)</option>
-                                                <option value="OH">OH (Standard)</option>
+                                                {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                                             </select>
                                         </div>
                                         <div>
@@ -439,7 +474,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
 
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
                                     <button type="button" onClick={() => setShowHireModal(false)} style={{ padding: '0.75rem 1.5rem', background: 'transparent', border: 'none', color: '#94a3b8', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                                    <button type="submit" disabled={isLoading} style={{ padding: '0.75rem 1.5rem', background: '#a855f7', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 600, cursor: 'pointer' }}>{isLoading ? 'Saving...' : 'Add Member'}</button>
+                                    <button type="submit" disabled={isLoading} style={{ padding: '0.75rem 1.5rem', background: '#a855f7', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 600, cursor: 'pointer' }}>{isLoading ? 'Saving...' : editId ? 'Save Changes' : 'Add Member'}</button>
                                 </div>
                             </form>
                         </motion.div>

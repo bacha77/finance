@@ -72,10 +72,10 @@ export function calculatePayroll(
     federalTax = federalTax * statusMultiplier;
     
     // State Tax (Simulated by State)
-    const noTaxStates = ['TX', 'FL', 'NV', 'SD', 'WA', 'WY', 'AK'];
-    const highTaxStates = ['CA', 'NY', 'HI', 'NJ', 'OR'];
+    const noTaxStates = ['TX', 'FL', 'NV', 'SD', 'WA', 'WY', 'AK', 'TN', 'NH'];
+    const highTaxStates = ['CA', 'NY', 'HI', 'NJ', 'OR', 'MN', 'DC', 'VT', 'IA'];
     
-    let stateTaxRate = 0.05; // Default middle ground
+    let stateTaxRate = 0.05; // Default middle ground for the other 32 states
     if (noTaxStates.includes(stateResidence)) stateTaxRate = 0.0;
     else if (highTaxStates.includes(stateResidence)) stateTaxRate = 0.09;
     

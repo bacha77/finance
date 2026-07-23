@@ -33,7 +33,7 @@ export const useFinanceData = (churchId: string | null) => {
                 supabase.from('members').select('id').eq('church_id', churchId)
             ]);
 
-            setLedger(ledgerData || []);
+            setLedger(ledgerData ? ledgerData.filter((t: any) => t.category !== 'Payroll') : []);
             setFunds(fundsData || []);
             setMembers(membersData || []);
         } catch (err) {

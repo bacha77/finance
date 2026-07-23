@@ -95,6 +95,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                     .select('*')
                     .eq('church_id', churchId)
                     .neq('voided', true)
+                    .neq('category', 'Payroll')
                     .order('created_at', { ascending: false });
 
                 setLedger(ledgerData || []);
