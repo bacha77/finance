@@ -565,7 +565,7 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="glass-card" style={{ position: 'relative', width: '100%', maxWidth: '600px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '2rem', overflow: 'hidden' }}>
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem' }}>{editId ? 'Edit Team Member' : 'Add Team Member'}</h2>
                             <form onSubmit={handleHire} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem' }}>
                                     <div>
                                         <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Name</label>
                                         <input required value={hireForm.name} onChange={e => setHireForm({...hireForm, name: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
@@ -577,6 +577,17 @@ const Payroll: React.FC<PayrollProps> = ({ churchId }) => {
                                             <option value="Part-time">Part-time (W-2)</option>
                                             <option value="Contractor">Contractor (1099)</option>
                                             <option value="Hourly">Hourly</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Pay Freq</label>
+                                        <select value={hireForm.frequency} onChange={e => setHireForm({...hireForm, frequency: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}>
+                                            <option value="Weekly">Weekly</option>
+                                            <option value="Bi-weekly">Bi-weekly</option>
+                                            <option value="Semi-monthly">Semi-monthly</option>
+                                            <option value="Monthly">Monthly</option>
+                                            <option value="Quarterly">Quarterly</option>
+                                            <option value="Annually">Annually</option>
                                         </select>
                                     </div>
                                 </div>
