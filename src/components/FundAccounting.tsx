@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { logActivity } from '../lib/audit';
+import { generateFinancialStatement } from '../lib/financialPdfGenerator';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface Fund {
@@ -80,6 +81,8 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
 
     const [funds, setFunds] = useState<Fund[]>([]);
     const [showNewFundModal, setShowNewFundModal] = useState(false);
+    const [showTransferModal, setShowTransferModal] = useState(false);
+    const [transferData, setTransferData] = useState({ from: '', to: '', amount: '', notes: '' });
     const [ledger, setLedger] = useState<Transaction[]>([]);
     const [ledgerFilter, setLedgerFilter] = useState<'all' | 'income' | 'expense'>('all');
 
@@ -204,6 +207,74 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
     };
 
     const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+
+
+    const handleTransfer = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const amt = parseFloat(transferData.amount);
+        if (!transferData.from || !transferData.to || !amt || amt <= 0) return;
+        if (transferData.from === transferData.to) {
+            alert('Cannot transfer to the same fund');
+            return;
+        }
+
+        setIsSyncing(true);
+        try {
+            const transferTx = {
+                church_id: churchId,
+                date: new Date().toISOString().split('T')[0],
+                description: `Internal Transfer: ${transferData.notes || 'Fund Reallocation'}`,
+                category: 'Transfer',
+                department: 'Finance',
+                fund: funds.find(f => f.id === transferData.from)?.name || 'Unknown',
+                fund_id: transferData.from,
+                amount: -amt, // Negative for the source fund
+                type: 'transfer',
+                audit_trail: [{
+                    timestamp: new Date().toISOString(),
+                    user: userRole,
+                    action: 'CREATED_TRANSFER',
+                    details: `Transferred ${amt} to ${funds.find(f => f.id === transferData.to)?.name}`
+                }]
+            };
+
+            const receiveTx = {
+                ...transferTx,
+                fund: funds.find(f => f.id === transferData.to)?.name || 'Unknown',
+                fund_id: transferData.to,
+                amount: amt, // Positive for the destination fund
+                audit_trail: [{
+                    timestamp: new Date().toISOString(),
+                    user: userRole,
+                    action: 'RECEIVED_TRANSFER',
+                    details: `Received ${amt} from ${funds.find(f => f.id === transferData.from)?.name}`
+                }]
+            };
+
+            const { error: txErr } = await supabase.from('ledger').insert([transferTx, receiveTx]);
+            if (txErr) throw txErr;
+
+            // Update local state optimistically
+            setFunds(funds.map(f => {
+                if (f.id === transferData.from) return { ...f, balance: f.balance - amt };
+                if (f.id === transferData.to) return { ...f, balance: f.balance + amt };
+                return f;
+            }));
+
+            // Sync balance to DB
+            const fromFund = funds.find(f => f.id === transferData.from);
+            const toFund = funds.find(f => f.id === transferData.to);
+            if (fromFund) await supabase.from('funds').update({ balance: fromFund.balance - amt }).eq('id', fromFund.id);
+            if (toFund) await supabase.from('funds').update({ balance: toFund.balance + amt }).eq('id', toFund.id);
+
+            setShowTransferModal(false);
+            setTransferData({ from: '', to: '', amount: '', notes: '' });
+        } catch (err: any) {
+            alert('Transfer failed: ' + err.message);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     const handleEditTransaction = (tx: Transaction) => {
         setEditingTx(tx);
@@ -696,10 +767,17 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                         </button>
                     )}
                     {canManage && (
-                        <button className={`btn ${showReconcile ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setShowReconcile(!showReconcile)}>
-                            {isSyncing ? <RefreshCw size={18} className="spin" /> : <CheckCircle size={18} />}
-                            {showReconcile ? t('integratedLedger') : t('reconcileBank')}
-                        </button>
+                        <>
+                            <button className={`btn ${showReconcile ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setShowReconcile(!showReconcile)}>
+                                <Search size={18} /> {t('reconcile') || 'Bank Match'}
+                            </button>
+                            <button className="btn btn-ghost" onClick={() => setShowTransferModal(true)}>
+                                <RefreshCw size={18} /> Transfer
+                            </button>
+                            <button className="btn btn-ghost" onClick={() => generateFinancialStatement(t('churchName') || 'Our Church', ledger, funds)}>
+                                <Download size={18} /> Financial PDF
+                            </button>
+                        </>
                     )}
                     {canManage && (
                         <button className="btn btn-primary" onClick={() => setShowNewTxModal(true)}>
@@ -959,7 +1037,48 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
 
                 {createPortal(
                     <AnimatePresence>
-                        {showNewTxModal && (
+                        
+                {showTransferModal && (
+                    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowTransferModal(false)}>
+                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-card" style={{ width: '100%', maxWidth: '500px', borderRadius: '24px', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>Transfer Funds</h2>
+                                <button onClick={() => setShowTransferModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={24} /></button>
+                            </div>
+                            <form onSubmit={handleTransfer}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 600 }}>From Fund</label>
+                                        <select required value={transferData.from} onChange={e => setTransferData({...transferData, from: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', outline: 'none' }}>
+                                            <option value="">Select source fund</option>
+                                            {funds.map(f => <option key={f.id} value={f.id}>{f.name} (Bal: ${f.balance})</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 600 }}>To Fund</label>
+                                        <select required value={transferData.to} onChange={e => setTransferData({...transferData, to: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', outline: 'none' }}>
+                                            <option value="">Select destination fund</option>
+                                            {funds.map(f => <option key={f.id} value={f.id}>{f.name} (Bal: ${f.balance})</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 600 }}>Amount ($)</label>
+                                        <input type="number" step="0.01" min="0.01" required value={transferData.amount} onChange={e => setTransferData({...transferData, amount: e.target.value})} placeholder="0.00" style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', outline: 'none' }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 600 }}>Notes / Reason</label>
+                                        <input type="text" value={transferData.notes} onChange={e => setTransferData({...transferData, notes: e.target.value})} placeholder="e.g. Sweeping excess to reserves" style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', outline: 'none' }} />
+                                    </div>
+                                    <button type="submit" disabled={isSyncing} style={{ padding: '1rem', background: '#a855f7', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 600, cursor: 'pointer', marginTop: '1rem' }}>
+                                        {isSyncing ? 'Processing...' : 'Complete Transfer'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+
+                {showNewTxModal && (
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-backdrop" onClick={() => { setShowNewTxModal(false); setEditingTx(null); }}>
                                 <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 10, opacity: 0 }} className="glass-card" style={{ width: '520px', padding: '3rem' }} onClick={e => e.stopPropagation()}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
