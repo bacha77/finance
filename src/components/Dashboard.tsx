@@ -150,11 +150,11 @@ const StatCard: React.FC<StatCardProps> = ({
 
 // ── Advanced Financial Widgets ───────────────────────────────────────────
 const BudgetBurnDownWidget: React.FC = () => {
-    // Mock data for top 3 departments
+    // Mock data for top 3 departments (reset to 0 per request)
     const departments = [
-        { name: 'Youth Ministry', budget: 5000, spent: 4200 },
-        { name: 'Missions', budget: 12000, spent: 5000 },
-        { name: 'Operations', budget: 8000, spent: 7800 }
+        { name: 'Youth Ministry', budget: 0, spent: 0 },
+        { name: 'Missions', budget: 0, spent: 0 },
+        { name: 'Operations', budget: 0, spent: 0 }
     ];
     return (
         <div className="glass-card" style={{ padding: '1.5rem', flex: 1, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px' }}>
@@ -163,7 +163,7 @@ const BudgetBurnDownWidget: React.FC = () => {
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {departments.map((d, i) => {
-                    const pct = Math.min(100, (d.spent / d.budget) * 100);
+                    const pct = d.budget > 0 ? Math.min(100, (d.spent / d.budget) * 100) : 0;
                     const isDanger = pct > 90;
                     return (
                         <div key={i}>
@@ -195,27 +195,27 @@ const GivingAnalyticsWidget: React.FC = () => {
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', margin: '1rem 0' }}>
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>78%</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>0%</div>
                     <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Recurring</div>
                 </div>
                 <div style={{ width: '1px', height: '40px', background: 'rgba(255,255,255,0.1)' }} />
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>22%</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>0%</div>
                     <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>One-Time</div>
                 </div>
             </div>
             <div style={{ padding: '0.75rem', background: 'rgba(168, 85, 247, 0.05)', borderRadius: '8px', border: '1px solid rgba(168, 85, 247, 0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <BrainCircuit size={16} color="#a855f7" />
-                <span style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 600 }}>Projecting <strong style={{ color: 'white' }}>+12%</strong> growth this month</span>
+                <span style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 600 }}>Projecting <strong style={{ color: 'white' }}>+0%</strong> growth this month</span>
             </div>
         </div>
     );
 };
 
 const CampaignProgressWidget: React.FC = () => {
-    const goal = 5000;
-    const raised = 3250;
-    const pct = Math.min(100, (raised / goal) * 100);
+    const goal = 0;
+    const raised = 0;
+    const pct = goal > 0 ? Math.min(100, (raised / goal) * 100) : 0;
     return (
         <div className="glass-card" style={{ padding: '1.5rem', flex: 1, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', right: -20, top: -20, opacity: 0.05 }}><Target size={120} /></div>
