@@ -69,14 +69,14 @@ const Payroll: React.FC<PayrollProps> = ({ churchId, userRole = 'viewer' }) => {
                     id: s.id,
                     name: s.name,
                     role: s.role,
-                    type: s.type,
+                    type: s.type || 'Full-time',
                     salary: s.salary,
                     housingAllowance: s.housing_allowance || 0,
                     stateTaxRate: s.state_tax_rate || 0.05,
                     lastPaid: s.last_paid,
                     status: s.status,
-                    recurring: s.recurring,
-                    frequency: s.frequency
+                    recurring: s.recurring !== false, // default true
+                    frequency: s.frequency || 'Monthly'
                 })) : []);
             } catch (err) {
                 console.error('Error fetching staff:', err);
@@ -241,12 +241,15 @@ const Payroll: React.FC<PayrollProps> = ({ churchId, userRole = 'viewer' }) => {
 
             let { error } = await supabase.from('staff').insert([newStaff]);
             
-            // SECOND CHANCE: If columns are missing, try standard insert
+            // SECOND CHANCE: If columns are missing, try simple insert
             if (error && error.message?.includes('column')) {
                console.warn('New columns missing, trying simple insert.');
                const simpleStaff = { ...newStaff };
                delete simpleStaff.housing_allowance;
                delete simpleStaff.state_tax_rate;
+               delete simpleStaff.type;
+               delete simpleStaff.frequency;
+               delete simpleStaff.recurring;
                const result = await supabase.from('staff').insert([simpleStaff]);
                error = result.error;
             }
@@ -260,14 +263,14 @@ const Payroll: React.FC<PayrollProps> = ({ churchId, userRole = 'viewer' }) => {
                     id: s.id,
                     name: s.name,
                     role: s.role,
-                    type: s.type,
+                    type: s.type || 'Full-time',
                     salary: s.salary,
                     housingAllowance: s.housing_allowance || 0,
                     stateTaxRate: s.state_tax_rate || 0.05,
                     lastPaid: s.last_paid,
                     status: s.status,
-                    recurring: s.recurring,
-                    frequency: s.frequency
+                    recurring: s.recurring !== false,
+                    frequency: s.frequency || 'Monthly'
                 })));
             }
 

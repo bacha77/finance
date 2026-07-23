@@ -104,14 +104,19 @@ CREATE TABLE IF NOT EXISTS public.budgets (
 );
 
 CREATE TABLE IF NOT EXISTS public.staff (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        TEXT NOT NULL,
-    role        TEXT,
-    salary      NUMERIC DEFAULT 0,
-    status      TEXT DEFAULT 'active',
-    last_paid   TEXT,
-    church_id   UUID,
-    created_at  TIMESTAMPTZ DEFAULT now()
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name              TEXT NOT NULL,
+    role              TEXT,
+    type              TEXT DEFAULT 'Full-time',
+    salary            NUMERIC DEFAULT 0,
+    housing_allowance NUMERIC DEFAULT 0,
+    state_tax_rate    NUMERIC DEFAULT 0.05,
+    recurring         BOOLEAN DEFAULT true,
+    frequency         TEXT DEFAULT 'Monthly',
+    status            TEXT DEFAULT 'active',
+    last_paid         TEXT,
+    church_id         UUID,
+    created_at        TIMESTAMPTZ DEFAULT now()
 );
 
 -- ============================================================
