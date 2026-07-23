@@ -26,12 +26,7 @@ interface DashboardProps {
     userRole?: string;
 }
 
-interface Fund {
-    id: string;
-    name: string;
-    balance: number;
-    color?: string;
-}
+
 
 const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 const fmtShort = (v: number) => fmt(v); // Remove K-rounding to maintain precision sync
@@ -286,7 +281,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
 
     const today = new Date().toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    const { ledger, funds, stats: financeStats, isLoading: syncing } = useFinanceData(churchId);
+    const { ledger, stats: financeStats, isLoading: syncing } = useFinanceData(churchId);
 
     const insights = useMemo(() => {
         if (!ledger || ledger.length === 0) return [];
@@ -301,6 +296,27 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
         res.push({ text: "Fiscal integrity verified. All transactions synchronized with shard US-E1.", icon: Shield, color: "#a855f7" });
         return res;
     }, [ledger, financeStats]);
+
+    const incomeByDepartment = useMemo(() => {
+        const deptTotals: Record<string, number> = {};
+        let totalIncome = 0;
+        
+        ledger.forEach((tx: any) => {
+            if (tx.amount > 0) {
+                const deptName = tx.department || 'General Fund';
+                deptTotals[deptName] = (deptTotals[deptName] || 0) + tx.amount;
+                totalIncome += tx.amount;
+            }
+        });
+        
+        const data = Object.keys(deptTotals).map((name, i) => ({
+            name,
+            value: deptTotals[name],
+            color: COLORS[i % COLORS.length]
+        })).sort((a, b) => b.value - a.value);
+
+        return { data, total: totalIncome };
+    }, [ledger]);
 
 
     const generateAIInsights = () => {
@@ -683,33 +699,33 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
                         backdropFilter: 'blur(20px)'
                     }}
                 >
-                    <div style={{ fontSize: '0.875rem', fontWeight: 800, color: 'white', marginBottom: '1rem' }}>{t('fundDistribution')}</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 800, color: 'white', marginBottom: '1rem', textTransform: 'uppercase' }}>{t('incomeDistribution') || 'Income Distribution'}</div>
                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                          {financeStats.totalAssets > 0 ? (
+                          {incomeByDepartment.total > 0 ? (
                               <div style={{ height: '140px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <PieChart width={140} height={140}>
                                       <Pie 
-                                         data={funds.map((f: Fund) => ({ name: f.name, value: f.balance })).filter((f: any) => f.value > 0).slice(0, 5)} 
+                                         data={incomeByDepartment.data.slice(0, 5)} 
                                          innerRadius={40} 
                                          outerRadius={65} 
                                          paddingAngle={5} 
                                          dataKey="value"
                                       >
-                                          {funds.map((f: Fund, i: number) => (
-                                              <Cell key={i} fill={f.color || COLORS[i % COLORS.length]} />
+                                          {incomeByDepartment.data.slice(0, 5).map((f: any, i: number) => (
+                                              <Cell key={i} fill={f.color} />
                                           ))}
                                       </Pie>
                                   </PieChart>
                               </div>
                           ) : null}
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                               {funds.slice(0, 4).map((f: Fund, i: number) => (
+                               {incomeByDepartment.data.slice(0, 4).map((f: any, i: number) => (
                                    <div key={i} style={{ padding: '8px', background: `${f.color || '#2563eb'}10`, borderRadius: '8px', border: `1px solid ${f.color || '#2563eb'}20` }}>
-                                       <div style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>{f.name}</div>
+                                       <div style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                                           <div style={{ fontSize: '0.9rem', fontWeight: 900, color: 'white' }}>{fmt(f.balance)}</div>
+                                           <div style={{ fontSize: '0.9rem', fontWeight: 900, color: 'white' }}>{fmt(f.value)}</div>
                                            <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                                               ({financeStats.totalAssets > 0 ? Math.round((f.balance / financeStats.totalAssets) * 100) : 0}%)
+                                               ({incomeByDepartment.total > 0 ? Math.round((f.value / incomeByDepartment.total) * 100) : 0}%)
                                            </div>
                                        </div>
                                    </div>
