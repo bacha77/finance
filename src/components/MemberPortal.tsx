@@ -1,9 +1,10 @@
+import Papa from 'papaparse';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     Download, FileText, Mail, MoreVertical, Phone, 
     Trash2, UserPlus, X, Printer, ShieldCheck, 
     Check, Edit3, TrendingUp, Clock, Send, Search 
-} from 'lucide-react';
+, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import jsPDF from 'jspdf';
@@ -48,6 +49,9 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
     const canManage = isAdmin || isAssistant;
     const { t, language } = useLanguage();
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importing, setImporting] = useState(false);
+    const [importError, setImportError] = useState('');
     const [openMenuId, setOpenMenuId] = useState<number | null>(null);
     const [editingMember, setEditingMember] = useState<{ member: Member; idx: number } | null>(null);
     const [newMemberDistMethod, setNewMemberDistMethod] = useState<'automated' | 'manual'>('manual');
@@ -442,6 +446,72 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
         }
     };
 
+    
+    const handleDownloadTemplate = () => {
+        const headers = 'name,email,phone,role,join_date,status\n';
+        const sampleRow = 'Jane Doe,jane@example.com,555-1234,member,2024-01-01,active\n';
+        const blob = new Blob([headers + sampleRow], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'members_template.csv';
+        link.click();
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        setImporting(true);
+        setImportError('');
+        
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                try {
+                    const rows = results.data as any[];
+                    const validMembers = rows.map(row => ({
+                        name: row.name || 'Unknown',
+                        email: row.email || '',
+                        phone: row.phone || '',
+                        role: row.role || 'member',
+                        join_date: row.join_date || new Date().toISOString().split('T')[0],
+                        status: row.status || 'active',
+                        tithe_total: 0,
+                        church_id: churchId
+                    })).filter(m => m.name && m.email); // requires at least name and email
+                    
+                    if (validMembers.length === 0) {
+                        setImportError('No valid members found in CSV. Please ensure "name" and "email" columns exist and are filled.');
+                        setImporting(false);
+                        return;
+                    }
+                    
+                    // Supabase will automatically append these records
+                    const { error } = await supabase.from('members').insert(validMembers);
+                    if (error) throw error;
+                    
+                    setShowImportModal(false);
+                    
+                    // Refresh members
+                    const { data } = await supabase.from('members').select('*').eq('church_id', churchId).order('created_at', { ascending: false });
+                    if (data) setMembers(data);
+                } catch (err: any) {
+                    console.error('Import error:', err);
+                    setImportError(err.message || 'Failed to import members');
+                } finally {
+                    setImporting(false);
+                    if(e.target) e.target.value = ''; // reset file input
+                }
+            },
+            error: (err: any) => {
+                console.error(err);
+                setImportError('Failed to parse CSV file.');
+                setImporting(false);
+            }
+        });
+    };
+
     const handleAddMember = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newMemberName || !newMemberEmail) return;
@@ -574,14 +644,23 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
 
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                         {canManage && (
-                            <button
-                                className="btn btn-primary"
-                                onClick={() => setShowAddMemberModal(true)}
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button 
+                                    onClick={() => setShowImportModal(true)}
+                                    className="btn" 
+                                    style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}
+                                >
+                                    <Upload size={18} /> {t('import')} CSV
+                                </button>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => setShowAddMemberModal(true)}
                                 disabled={memberLimit !== null && memberLimit !== undefined && members.length >= memberLimit}
                                 style={{ opacity: (memberLimit !== null && memberLimit !== undefined && members.length >= memberLimit) ? 0.5 : 1 }}
                             >
                                 <UserPlus size={18} /> {t('addMember')}
                             </button>
+                            </div>
                         )}
                         {memberLimit !== null && memberLimit !== undefined && (
                             <span style={{ fontSize: '0.7rem', color: members.length >= memberLimit ? '#ef4444' : 'var(--text-muted)', fontWeight: 600 }}>
@@ -763,6 +842,85 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                 ))}
             </div>
 
+            <AnimatePresence>
+                {/* 📥 Import CSV Modal */}
+                {showImportModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            backdropFilter: 'blur(8px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 1000,
+                            padding: '1rem'
+                        }}
+                        onClick={() => setShowImportModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 10, opacity: 0 }}
+                            animate={{ scale: 1, y: 0, opacity: 1 }}
+                            exit={{ scale: 0.95, y: 10, opacity: 0 }}
+                            className="glass-card"
+                            style={{
+                                width: '100%',
+                                maxWidth: '460px',
+                                background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '24px',
+                                padding: window.innerWidth < 768 ? '1.25rem' : '1.75rem',
+                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.25rem', color: 'white', letterSpacing: '-0.03em' }}>Import Members via CSV</h2>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem', fontSize: '0.8rem', fontWeight: 500 }}>Upload a CSV file to add members in bulk.</p>
+                            
+                            {importError && (
+                                <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                                    {importError}
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ padding: '1.5rem', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: '12px', textAlign: 'center', background: 'rgba(255,255,255,0.02)' }}>
+                                    <input 
+                                        type="file" 
+                                        accept=".csv" 
+                                        onChange={handleFileUpload} 
+                                        disabled={importing}
+                                        style={{ display: 'none' }} 
+                                        id="csv-upload" 
+                                    />
+                                    <label htmlFor="csv-upload" style={{ cursor: importing ? 'not-allowed' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
+                                        <Upload size={32} color="var(--primary)" />
+                                        <span style={{ fontWeight: 600 }}>{importing ? 'Importing...' : 'Click to select CSV file'}</span>
+                                    </label>
+                                </div>
+
+                                <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+                                    <button 
+                                        type="button" 
+                                        onClick={handleDownloadTemplate} 
+                                        style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                                    >
+                                        Download CSV Template
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+                                <button type="button" className="btn" style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }} onClick={() => setShowImportModal(false)}>{t('cancel')}</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
             <AnimatePresence>
                 {showAddMemberModal && (
                     <motion.div
