@@ -10,7 +10,7 @@ import Expenses from './components/Expenses';
 import Reimbursements from './components/Reimbursements';
 import Events from './components/Events';
 import Budget from './components/Budget';
-import Auth from './components/Auth';
+import { useAuth, useUser, SignIn } from '@clerk/react';
 import Onboarding from './components/Onboarding';
 import Pricing from './components/Pricing';
 import PaymentWall from './components/PaymentWall';
@@ -21,7 +21,7 @@ import UpdatePassword from './components/UpdatePassword';
 import SupportModal from './components/SupportModal';
 import CookieConsent from './components/CookieConsent';
 import AISmartBoard from './components/AISmartBoard';
-import { supabase } from './lib/supabase';
+import { supabase, setClerkTokenFetcher } from './lib/supabase';
 import { getSubscriptionStatus } from './lib/subscriptionConfig';
 import { runMigrations } from './lib/migrations';
 import { applyThemeToDOM } from './lib/theme';
@@ -45,8 +45,9 @@ const profileMenuBtnStyle: React.CSSProperties = {
 
 function App() {
   const { t } = useLanguage();
+  const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
+  const { user } = useUser();
 
-  const [session, setSession] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = React.useState(true);
   const [showSignupSuccess, setShowSignupSuccess] = React.useState(false);
@@ -129,18 +130,22 @@ function App() {
     applyThemeToDOM(savedTheme, savedColor);
 
     runMigrations();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else setProfileLoading(false);
-    });
+  }, []);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else { setProfile(null); setProfileLoading(false); }
-    });
+  useEffect(() => {
+    setClerkTokenFetcher(() => getToken({ template: 'supabase' }));
+  }, [getToken]);
 
+  useEffect(() => {
+    if (isLoaded && isSignedIn && user?.id) {
+      fetchProfile(user.id);
+    } else if (isLoaded && !isSignedIn) {
+      setProfile(null);
+      setProfileLoading(false);
+    }
+  }, [isLoaded, isSignedIn, user?.id]);
+
+  useEffect(() => {
     if (window.location.hash.includes('type=signup')) {
       setShowSignupSuccess(true);
       window.history.replaceState(null, '', window.location.pathname);
@@ -150,9 +155,8 @@ function App() {
     if (window.location.hash.includes('type=recovery')) {
       setIsRecovery(true);
       window.history.replaceState(null, '', window.location.pathname);
+      window.history.replaceState(null, '', window.location.pathname);
     }
-
-    return () => subscription.unsubscribe();
   }, [t]);
 
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -209,7 +213,6 @@ function App() {
     localStorage.removeItem('sanctuary_budgets');
     localStorage.removeItem('sanctuary_expense_categories');
 
-    setSession({ user: { id: '00000000-0000-0000-0000-000000000000', email: 'dev@storehouse.org' } });
     setProfile({
       id: '00000000-0000-0000-0000-000000000000',
       full_name: 'Administrator',
@@ -233,7 +236,7 @@ function App() {
       setImpersonatedChurchId(churchId);
       // Create a mock profile attached to this church so the rest of the app functions
       setProfile({
-        id: session?.user?.id || '00000000-0000-0000-0000-000000000000',
+        id: user?.id || '00000000-0000-0000-0000-000000000000',
         full_name: 'Support Admin',
         churches: targetChurch
       });
@@ -335,8 +338,12 @@ function App() {
     return <UpdatePassword onComplete={() => setIsRecovery(false)} />;
   }
 
-  if (!session) return <Auth onBypass={handleBypass} />;
-
+  if (!isLoaded) return null;
+  if (!isSignedIn) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'hsl(var(--bg-main))' }}>
+      <SignIn routing="hash" />
+    </div>
+  );
 
   if (profileLoading || fetchError) {
     return (
@@ -349,7 +356,7 @@ function App() {
                 <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>The handshake with the secure shard is taking longer than usual. This may be due to temporary network congestion.</div>
               </div>
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button onClick={() => fetchProfile(session?.user?.id)} className="btn-ghost" style={{ padding: '0.5rem 1.5rem', borderRadius: '8px' }}>Retry Connection</button>
+                <button onClick={() => fetchProfile(user?.id!)} className="btn-ghost" style={{ padding: '0.5rem 1.5rem', borderRadius: '8px' }}>Retry Connection</button>
                 <button onClick={handleBypass} className="btn-ghost" style={{ padding: '0.5rem 1.5rem', borderRadius: '8px', opacity: 0.5 }}>Bypass (Dev)</button>
               </div>
             </>
@@ -367,11 +374,11 @@ function App() {
 
   if (isAdmin && viewingAdminPanel) {
     if (profile && !profile.working_hours) {
-      return <StaffSetup profile={profile} onComplete={() => fetchProfile(session.user.id)} />;
+      return <StaffSetup profile={profile} onComplete={() => fetchProfile(user?.id!)} />;
     }
     return <AdminPanel 
-      adminEmail={session.user.email!} 
-      onLogout={() => supabase.auth.signOut()} 
+      adminEmail={user?.primaryEmailAddress?.emailAddress!} 
+      onLogout={() => signOut()} 
       onSwitchToUser={() => setViewingAdminPanel(false)}
       onImpersonate={handleImpersonate}
     />;
@@ -386,14 +393,14 @@ function App() {
     
     return (
       <Onboarding
-        userId={session.user.id}
-        userEmail={session.user.email || ''}
-        initialName={session.user.user_metadata?.full_name || ''}
-        userMetadata={session.user.user_metadata}
-        onComplete={() => fetchProfile(session.user.id)}
+        userId={user?.id || ''}
+        userEmail={user?.primaryEmailAddress?.emailAddress || ''}
+        initialName={user?.fullName || ''}
+        userMetadata={user?.publicMetadata}
+        onComplete={() => fetchProfile(user?.id!)}
         onLogout={async () => {
-          await supabase.auth.signOut();
-          setSession(null);
+          await signOut();
+
           setProfile(null);
         }}
       />
@@ -402,7 +409,7 @@ function App() {
 
   // Bypass Payment Wall for Admins
   if (subStatus?.isBlocked && church && !isAdmin) {
-    return <PaymentWall churchId={church.id} churchName={church.name} subStatus={subStatus} onPaymentSuccess={() => fetchProfile(session.user.id)} />;
+    return <PaymentWall churchId={church.id} churchName={church.name} subStatus={subStatus} onPaymentSuccess={() => fetchProfile(user?.id!)} />;
   }
 
   if (church?.is_active === false || profile?.is_active === false) {
@@ -413,7 +420,7 @@ function App() {
           <h2 style={{ color: 'white', marginBottom: '0.75rem', fontSize: '1.5rem', fontWeight: 800 }}>Account Disabled</h2>
           <p style={{ color: 'hsl(var(--text-muted))', marginBottom: '2rem', fontSize: '0.9rem', lineHeight: 1.6 }}>Your account has been deactivated by the administrator. Please contact support to reactivate your account.</p>
           <button 
-            onClick={async () => { await supabase.auth.signOut(); setSession(null); setProfile(null); }} 
+            onClick={async () => { await signOut(); setProfile(null); }} 
             className="btn btn-primary"
             style={{ width: '100%', padding: '0.85rem' }}
           >
@@ -441,9 +448,8 @@ function App() {
         isMobile={isMobile}
         church={church}
         onLogout={async () => {
-          await supabase.auth.signOut();
+          await signOut();
           setProfile(null);
-          setSession(null);
         }}
         onOpenSupport={() => setSupportModalOpen(true)}
       />
@@ -661,7 +667,7 @@ function App() {
                         style={{ padding: '0.5rem 0.5rem 0.75rem', marginBottom: '0.5rem', borderBottom: '1px solid hsla(var(--text-main)/0.05)', cursor: 'pointer' }}
                       >
                         <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white' }}>{profile.full_name}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-muted))' }}>{session.user.email}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-muted))' }}>{user?.primaryEmailAddress?.emailAddress}</div>
                       </div>
 
                       <button
@@ -714,9 +720,9 @@ function App() {
 
                       <button
                         onClick={async () => {
-                          await supabase.auth.signOut();
+                          await signOut();
                           setProfile(null);
-                          setSession(null);
+
                         }}
                         style={{ ...profileMenuBtnStyle, color: '#ef4444' }}
                       >
@@ -754,7 +760,7 @@ function App() {
                     {activeTab === 'departments' && <Departments setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
                     {activeTab === 'expenses' && <Expenses setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
                     {activeTab === 'reimbursements' && <Reimbursements churchId={church.id} userRole={profile.role} userName={profile.full_name} />}
-                    {activeTab === 'events' && <Events churchId={church.id} userRole={profile.role} userName={profile.full_name} userEmail={session.user.email} />}
+                    {activeTab === 'events' && <Events churchId={church.id} userRole={profile.role} userName={profile.full_name} userEmail={user?.primaryEmailAddress?.emailAddress} />}
                     {activeTab === 'budget' && <Budget setActiveTab={setActiveTab} churchId={church.id} userRole={profile.role} />}
                     {activeTab === 'tax' && <TaxCompliance churchId={church.id} churchName={church.name} userRole={userRole} />}
                     {activeTab === 'settings' && <Settings churchData={church} onUpdateChurch={handleUpdateChurch} initialSection={settingsSection} profile={profile} />}

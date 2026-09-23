@@ -13,6 +13,7 @@
     "deploy": "(if exist docs rd /s /q docs) && xcopy /e /i /y dist docs && git add . && git commit -m \"deploy: update site and source\" && git push origin main"
   },
   "dependencies": {
+    "@clerk/react": "^6.17.0",
     "@paypal/react-paypal-js": "^9.0.1",
     "@sentry/node": "^10.67.0",
     "@sentry/react": "^10.67.0",
