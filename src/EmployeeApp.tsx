@@ -13,13 +13,34 @@ export default function EmployeeApp() {
     const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
-        if (isLoaded && isSignedIn && user?.id) {
-            fetchProfile(user.id);
-        } else if (isLoaded && !isSignedIn) {
-            setProfileLoading(false);
-            setIsAdmin(false);
-        }
-    }, [isLoaded, isSignedIn, user?.id]);
+        const syncUser = async () => {
+            if (isLoaded && isSignedIn && user) {
+                let supabaseId = user.unsafeMetadata?.supabase_uuid as string | undefined;
+                
+                if (!supabaseId) {
+                    supabaseId = crypto.randomUUID();
+                    try {
+                        await user.update({
+                            unsafeMetadata: { ...user.unsafeMetadata, supabase_uuid: supabaseId }
+                        });
+                        await user.reload();
+                        await getToken({ template: 'supabase', skipCache: true });
+                    } catch (e) {
+                        console.error('Failed to update Clerk user metadata', e);
+                        setProfileLoading(false);
+                        return;
+                    }
+                }
+                
+                fetchProfile(supabaseId);
+            } else if (isLoaded && !isSignedIn) {
+                setProfileLoading(false);
+                setIsAdmin(false);
+            }
+        };
+        
+        syncUser();
+    }, [isLoaded, isSignedIn, user]);
 
     const fetchProfile = async (userId: string) => {
         setProfileLoading(true);

@@ -47,6 +47,7 @@ function App() {
   const { t } = useLanguage();
   const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
   const { user } = useUser();
+  const supabaseId = (user?.unsafeMetadata?.supabase_uuid as string) || '';
 
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = React.useState(true);
@@ -137,13 +138,36 @@ function App() {
   }, [getToken]);
 
   useEffect(() => {
-    if (isLoaded && isSignedIn && user?.id) {
-      fetchProfile(user.id);
-    } else if (isLoaded && !isSignedIn) {
-      setProfile(null);
-      setProfileLoading(false);
-    }
-  }, [isLoaded, isSignedIn, user?.id]);
+    const syncUser = async () => {
+      if (isLoaded && isSignedIn && user) {
+        let supabaseId = user.unsafeMetadata?.supabase_uuid as string | undefined;
+        
+        if (!supabaseId) {
+          supabaseId = crypto.randomUUID();
+          try {
+            await user.update({
+              unsafeMetadata: { ...user.unsafeMetadata, supabase_uuid: supabaseId }
+            });
+            await user.reload();
+            // Force Clerk to fetch and cache a new token with the new UUID claim
+            await getToken({ template: 'supabase', skipCache: true });
+          } catch (e) {
+            console.error('Failed to update Clerk user metadata', e);
+            setFetchError('Failed to initialize user session.');
+            setProfileLoading(false);
+            return;
+          }
+        }
+        
+        fetchProfile(supabaseId);
+      } else if (isLoaded && !isSignedIn) {
+        setProfile(null);
+        setProfileLoading(false);
+      }
+    };
+
+    syncUser();
+  }, [isLoaded, isSignedIn, user]);
 
   useEffect(() => {
     if (window.location.hash.includes('type=signup')) {
@@ -356,7 +380,7 @@ function App() {
                 <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>The handshake with the secure shard is taking longer than usual. This may be due to temporary network congestion.</div>
               </div>
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button onClick={() => fetchProfile(user?.id!)} className="btn-ghost" style={{ padding: '0.5rem 1.5rem', borderRadius: '8px' }}>Retry Connection</button>
+                <button onClick={() => fetchProfile(supabaseId)} className="btn-ghost" style={{ padding: '0.5rem 1.5rem', borderRadius: '8px' }}>Retry Connection</button>
                 <button onClick={handleBypass} className="btn-ghost" style={{ padding: '0.5rem 1.5rem', borderRadius: '8px', opacity: 0.5 }}>Bypass (Dev)</button>
               </div>
             </>
@@ -374,7 +398,7 @@ function App() {
 
   if (isAdmin && viewingAdminPanel) {
     if (profile && !profile.working_hours) {
-      return <StaffSetup profile={profile} onComplete={() => fetchProfile(user?.id!)} />;
+      return <StaffSetup profile={profile} onComplete={() => fetchProfile(supabaseId)} />;
     }
     return <AdminPanel 
       adminEmail={user?.primaryEmailAddress?.emailAddress!} 
@@ -393,11 +417,11 @@ function App() {
     
     return (
       <Onboarding
-        userId={user?.id || ''}
+        userId={supabaseId}
         userEmail={user?.primaryEmailAddress?.emailAddress || ''}
         initialName={user?.fullName || ''}
         userMetadata={user?.publicMetadata}
-        onComplete={() => fetchProfile(user?.id!)}
+        onComplete={() => fetchProfile(supabaseId)}
         onLogout={async () => {
           await signOut();
 
@@ -409,7 +433,7 @@ function App() {
 
   // Bypass Payment Wall for Admins
   if (subStatus?.isBlocked && church && !isAdmin) {
-    return <PaymentWall churchId={church.id} churchName={church.name} subStatus={subStatus} onPaymentSuccess={() => fetchProfile(user?.id!)} />;
+    return <PaymentWall churchId={church.id} churchName={church.name} subStatus={subStatus} onPaymentSuccess={() => fetchProfile(supabaseId)} />;
   }
 
   if (church?.is_active === false || profile?.is_active === false) {

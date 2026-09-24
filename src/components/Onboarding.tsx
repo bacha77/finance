@@ -132,7 +132,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
     };
 
     const handleComplete = async () => {
-        if (!churchName || !adminName || !churchSize || !churchCity) {
+        if (!churchName || !adminName || !adminPhone || !churchSize || !denomination || !churchAddress || !churchCity || !churchState || !churchZip || !churchCountry || !treasurerName || !treasurerEmail || !treasurerPhone) {
             setError('Please fill in all required fields to continue.');
             return;
         }
@@ -153,7 +153,20 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
                 return;
             }
 
-            // 1. Create the church record
+            // 1. Create the profile first to satisfy churches.owner_id foreign key
+            const { error: profileError1 } = await supabase
+                .from('profiles')
+                .upsert({
+                    id: userId,
+                    email: userEmail,
+                    full_name: adminName,
+                    phone: adminPhone || null,
+                    role: userMetadata.role || 'admin',
+                });
+
+            if (profileError1) throw profileError1;
+
+            // 2. Create the church record
             const { data: church, error: churchError } = await supabase
                 .from('churches')
                 .insert({
@@ -192,19 +205,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
                 church_id: church.id
             });
 
-            // 2. Create the profile
-            const { error: profileError } = await supabase
+            // 3. Link the profile to the newly created church
+            const { error: profileError2 } = await supabase
                 .from('profiles')
-                .upsert({
-                    id: userId,
-                    email: userEmail,
-                    full_name: adminName,
-                    phone: adminPhone || null,
-                    church_id: church.id,
-                    role: userMetadata.role || 'admin',
-                });
+                .update({ church_id: church.id })
+                .eq('id', userId);
 
-            if (profileError) throw profileError;
+            if (profileError2) throw profileError2;
             onComplete();
         } catch (err: any) {
             setError(err.message || 'Setup failed. Please try again.');
@@ -306,13 +313,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
                             >
                                 <div style={{ marginBottom: '2.5rem' }}>
                                     <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--p))', textTransform: 'uppercase', marginBottom: '8px' }}>Personal Profile</div>
-                                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900 }}>Who are you within the ministry?</h2>
+                                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900 }}>Welcome! Let's set up your profile.</h2>
                                 </div>
                                 <OnboardingInput label="Full Name" value={adminName} onChange={setAdminName} icon={User} required placeholder="Your professional name" />
                                 <OnboardingInput label="Official Email" value={userEmail} onChange={() => {}} readOnly icon={Mail} />
-                                <OnboardingInput label="Phone Number" value={adminPhone} onChange={setAdminPhone} icon={Phone} placeholder="+1 (555) 000-0000" />
+                                <OnboardingInput label="Phone Number" value={adminPhone} onChange={setAdminPhone} icon={Phone} required placeholder="+1 (555) 000-0000" />
                                 
-                                <button onClick={() => setStep(2)} disabled={!adminName} className="btn btn-primary" style={{ width: '100%', marginTop: '2rem', height: '3.5rem', borderRadius: '16px', fontSize: '1rem' }}>
+                                <button onClick={() => setStep(2)} disabled={!adminName || !adminPhone} className="btn btn-primary" style={{ width: '100%', marginTop: '2rem', height: '3.5rem', borderRadius: '16px', fontSize: '1rem' }}>
                                     Continue to Church Mission <ArrowRight size={18} style={{ marginLeft: '8px' }} />
                                 </button>
                             </motion.div>
@@ -351,13 +358,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
                                     </div>
                                 </div>
 
-                                <OnboardingInput label="Denomination (Optional)" value={denomination} onChange={setDenomination} icon={Globe} placeholder="e.g. Pentecostal" />
+                                <OnboardingInput label="Denomination" value={denomination} onChange={setDenomination} icon={Globe} required placeholder="e.g. Pentecostal" />
 
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem' }}>
                                     <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: 'hsl(var(--text-muted))', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer' }}>
                                         Back
                                     </button>
-                                    <button onClick={() => setStep(3)} disabled={!churchName || !churchSize} className="btn btn-primary" style={{ flex: 1, height: '3.5rem', borderRadius: '16px' }}>
+                                    <button onClick={() => setStep(3)} disabled={!churchName || !churchSize || !denomination} className="btn btn-primary" style={{ flex: 1, height: '3.5rem', borderRadius: '16px' }}>
                                         Continue to Location <ArrowRight size={18} />
                                     </button>
                                 </div>
@@ -396,15 +403,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
                                     <OnboardingInput label="State / Province" value={churchState} onChange={setChurchState} required />
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <OnboardingInput label="Postal Code" value={churchZip} onChange={setChurchZip} />
-                                    <OnboardingInput label="Country" value={churchCountry} onChange={setChurchCountry} />
+                                    <OnboardingInput label="Postal Code" value={churchZip} onChange={setChurchZip} required />
+                                    <OnboardingInput label="Country" value={churchCountry} onChange={setChurchCountry} required />
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem' }}>
                                     <button onClick={() => setStep(2)} style={{ background: 'none', border: 'none', color: 'hsl(var(--text-muted))', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer' }}>
                                         Back
                                     </button>
-                                    <button onClick={() => setStep(4)} disabled={!churchCity || !churchAddress} className="btn btn-primary" style={{ flex: 1, height: '3.5rem', borderRadius: '16px' }}>
+                                    <button onClick={() => setStep(4)} disabled={!churchAddress || !churchCity || !churchState || !churchZip || !churchCountry} className="btn btn-primary" style={{ flex: 1, height: '3.5rem', borderRadius: '16px' }}>
                                         Finalize Setup <ArrowRight size={18} />
                                     </button>
                                 </div>
@@ -418,12 +425,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
                                 <div style={{ marginBottom: '2.5rem' }}>
                                     <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--p))', textTransform: 'uppercase', marginBottom: '8px' }}>Security & Audit</div>
                                     <h2 style={{ fontSize: '1.75rem', fontWeight: 900 }}>Who handles the treasury?</h2>
-                                    <p style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', marginTop: '8px' }}>Optional: Assigning a treasurer now simplifies financial audit trails later.</p>
+                                    <p style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', marginTop: '8px' }}>Mandatory: Assigning a treasurer is required to establish secure financial audit trails.</p>
                                 </div>
 
-                                <OnboardingInput label="Treasurer Name" value={treasurerName} onChange={setTreasurerName} icon={DollarSign} placeholder="Assign treasury contact..." />
-                                <OnboardingInput label="Treasurer Email" value={treasurerEmail} onChange={setTreasurerEmail} icon={Mail} />
-                                <OnboardingInput label="Treasurer Phone" value={treasurerPhone} onChange={setTreasurerPhone} icon={Phone} />
+                                <OnboardingInput label="Treasurer Name" value={treasurerName} onChange={setTreasurerName} icon={DollarSign} required placeholder="Assign treasury contact..." />
+                                <OnboardingInput label="Treasurer Email" value={treasurerEmail} onChange={setTreasurerEmail} icon={Mail} required />
+                                <OnboardingInput label="Treasurer Phone" value={treasurerPhone} onChange={setTreasurerPhone} icon={Phone} required />
                                 
                                 <div style={{ background: 'hsla(var(--p)/0.05)', border: '1px solid hsla(var(--p)/0.2)', padding: '1.25rem', borderRadius: '16px', marginTop: '2.5rem' }}>
                                     <div style={{ display: 'flex', gap: '12px' }}>
@@ -446,7 +453,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ userId, userEmail, initialName 
                                     </button>
                                     <button 
                                         onClick={handleComplete} 
-                                        disabled={isLoading}
+                                        disabled={isLoading || !treasurerName || !treasurerEmail || !treasurerPhone}
                                         className="btn btn-primary" 
                                         style={{ flex: 1, height: '3.5rem', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                     >
