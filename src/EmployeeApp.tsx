@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import AdminPanel from './components/AdminPanel';
 import { Loader2, ShieldAlert } from 'lucide-react';
-import { useLanguage } from './contexts/LanguageContext';
 import { useAuth, useUser, SignIn } from '@clerk/react';
 
 export default function EmployeeApp() {
-    const { t } = useLanguage();
-    const { isLoaded, isSignedIn, signOut } = useAuth();
+    // const { t } = useLanguage();
+    const { isLoaded, isSignedIn, signOut, getToken } = useAuth();
     const { user } = useUser();
     const [profileLoading, setProfileLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);

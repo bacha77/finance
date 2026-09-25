@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Storehouse Finance — Church Financial Management, Reimagined</title>
+    <meta name="description"
+        content="The all-in-one financial operating system for modern churches. Manage funds, payroll, members, budgets, and giving — all in one beautifully simple platform." />
+        
+    <!-- OpenGraph / Social Media Meta Tags -->
+    <meta property="og:title" content="Storehouse Finance — Church Financial Management, Reimagined" />
+    <meta property="og:description" content="The all-in-one financial operating system for modern churches." />
+    <meta property="og:image" content="https://storehousefinance.net/dashboard-real.png" />
+    <meta property="og:url" content="https://storehousefinance.net" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Storehouse Finance" />
+    <meta name="twitter:description" content="The all-in-one financial operating system for modern churches." />
+    <meta name="twitter:image" content="https://storehousefinance.net/dashboard-real.png" />
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GMXXKKE38F"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+    
+      gtag('config', 'G-GMXXKKE38F');
+    </script>
+    
+    <!-- Sentry Error Monitoring (Placeholder) -->
+    <!-- TODO: Replace YOUR_SENTRY_DSN with your actual Sentry DSN -->
+    <script
+        src="https://browser.sentry-cdn.com/7.108.0/bundle.tracing.min.js"
+        integrity="sha384-XXXXX"
+        crossorigin="anonymous"
+    ></script>
+    <script>
+        // Uncomment and initialize once you have your DSN
+        /*
+        Sentry.init({
+            dsn: "YOUR_SENTRY_DSN",
+            integrations: [new Sentry.BrowserTracing()],
+            tracesSampleRate: 1.0,
+        });
+        */
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+
+    <script type="text/javascript">
+        // SPA Redirect Handler
+        (function() {
+            var p = new URLSearchParams(window.location.search).get('p');
+            if (p) {
+                // If the path starts with finance/, redirect to the finance app
+                if (p.startsWith('finance/')) {
+                    var subPath = p.replace('finance/', '');
+                    window.location.replace('/finance/' + (subPath ? '?p=' + subPath : ''));
+                }
+            }
+        })();
+    </script>
+
+    <style>
+        :root {
+            --primary: #7c3aed;
+            --primary-light: #a78bfa;
+            --primary-glow: rgba(124, 58, 237, 0.3);
+            --gold: #f59e0b;
+            --gold-light: #fbbf24;
+            --accent: #06b6d4;
+            --bg-dark: #020617;
+            --bg-card: #0f172a;
+            --bg-card-hover: #1e293b;
+            --border: rgba(255, 255, 255, 0.07);
+            --text-main: #f1f5f9;
+            --text-muted: #64748b;
+            --text-secondary: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --radius: 16px;
+            --radius-lg: 24px;
+            --radius-xl: 32px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ============ NAVBAR ============ */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 1rem 4rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .nav-logo img {
+            height: 60px;
+            width: auto;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2.5rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: white;
+        }
+
+        .nav-ctas {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s;
+            text-decoration: none;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover {
+            border-color: rgba(255, 255, 255, 0.25);
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            color: white;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 35px var(--primary-glow);
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold), #d97706);
+            color: #1a0a00;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 35px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn-large {
+            padding: 1rem 2.5rem;
+            font-size: 1.05rem;
+            border-radius: 14px;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* ============ HERO ============ */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 9rem 2rem 6rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 50% -10%, rgba(124, 58, 237, 0.22) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 40% at 80% 100%, rgba(245, 158, 11, 0.06) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            border-radius: 100px;
+            padding: 0.4rem 1.2rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--gold-light);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+            animation: fadeSlideDown 0.6s ease both;
+        }
+
+        .hero-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(1.4);
+            }
+        }
+
+        .hero h1 {
+            font-size: clamp(2.8rem, 7vw, 5.5rem);
+            font-weight: 900;
+            letter-spacing: -0.04em;
+            line-height: 1.05;
+            margin-bottom: 1.5rem;
+            animation: fadeSlideDown 0.7s ease 0.1s both;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--gold-light) 0%, var(--primary-light) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .gradient-text-purple {
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            color: var(--text-secondary);
+            max-width: 620px;
+            margin: 0 auto 2.5rem;
+            line-height: 1.75;
+            animation: fadeSlideDown 0.7s ease 0.2s both;
+        }
+
+        .hero-ctas {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeSlideDown 0.7s ease 0.3s both;
+            margin-bottom: 4rem;
+        }
+
+        .hero-proof {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            animation: fadeSlideDown 0.7s ease 0.4s both;
+        }
+
+        .hero-proof-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .hero-proof-item .check {
+            color: var(--success);
+        }
+
+        .hero-logo-display {
+            margin-bottom: 2rem;
+            animation: fadeSlideDown 0.6s ease 0.05s both;
+        }
+
+        .hero-logo-display img {
+            height: 130px;
+            width: auto;
+            filter: drop-shadow(0 0 24px rgba(124, 58, 237, 0.4));
+        }
+
+        @keyframes fadeSlideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-mockup {
+            margin-top: 5rem;
+            position: relative;
+            animation: fadeSlideUp 0.8s ease 0.5s both;
+        }
+
+        .hero-mockup img {
+            width: 100%;
+            max-width: 980px;
+            border-radius: var(--radius-xl);
+            border: 1px solid rgba(124, 58, 237, 0.15);
+            box-shadow:
+                0 0 0 1px rgba(245, 158, 11, 0.05),
+                0 50px 100px -20px rgba(0, 0, 0, 0.8),
+                0 0 80px -20px rgba(124, 58, 237, 0.25);
+        }
+
+        .mockup-glow {
+            position: absolute;
+            inset: -30px;
+            background: radial-gradient(ellipse at center, rgba(124, 58, 237, 0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* ============ SECTIONS ============ */
+        section {
+            padding: 7rem 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-label {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--gold-light);
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            margin-bottom: 1.25rem;
+            line-height: 1.15;
+        }
+
+        .section-subtitle {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            max-width: 560px;
+            line-height: 1.75;
+        }
+
+        .section-header {
+            margin-bottom: 4rem;
+        }
+
+        .section-header.centered {
+            text-align: center;
+        }
+
+        .section-header.centered .section-subtitle {
+            margin: 0 auto;
+        }
+
+        /* ============ LOGOS STRIP ============ */
+        .logos-strip {
+            background: rgba(255, 255, 255, 0.02);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 4rem 2rem;
+        }
+
+        .logos-strip p {
+            text-align: center;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+
+        .logos-row {
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .church-logo {
+            color: rgba(255, 255, 255, 0.18);
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        /* ============ FEATURES ============ */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(245, 158, 11, 0.2);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 30px rgba(245, 158, 11, 0.06);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.15rem;
+            font-weight: 800;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.75;
+        }
+
+        /* ============ STATS ============ */
+        .stats-section {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.07) 0%, rgba(245, 158, 11, 0.04) 100%);
+            border-top: 1px solid rgba(245, 158, 11, 0.08);
+            border-bottom: 1px solid rgba(245, 158, 11, 0.08);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--gold-light), var(--primary-light));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            font-weight: 500;
+        }
+
+        /* ============ PRICING ============ */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 450px));
+            justify-content: center;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .pricing-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .pricing-card.popular {
+            border-color: var(--gold);
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, var(--bg-card) 100%);
+            box-shadow: 0 0 50px rgba(245, 158, 11, 0.1);
+            transform: scale(1.04);
+        }
+
+        .popular-badge {
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--gold), #d97706);
+            color: #1a0a00;
+            font-size: 0.7rem;
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 0.3rem 1rem;
+            border-radius: 100px;
+            white-space: nowrap;
+        }
+
+        .pricing-plan {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .pricing-price {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-price .amount {
+            font-size: 3.5rem;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+            line-height: 1;
+        }
+
+        .pricing-price .currency {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-price .period {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-desc {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 2rem;
+            line-height: 1.65;
+        }
+
+        .pricing-divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+
+        .pricing-features {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            margin-bottom: 2rem;
+        }
+
+        .pricing-features li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .pricing-features li .check {
+            color: var(--success);
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .pricing-features li .cross {
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        /* ============ TESTIMONIALS ============ */
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .testimonial-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+
+        .testimonial-card:hover {
+            border-color: rgba(245, 158, 11, 0.2);
+            transform: translateY(-4px);
+        }
+
+        .stars {
+            color: var(--gold);
+            font-size: 0.95rem;
+            margin-bottom: 1.25rem;
+            letter-spacing: 2px;
+        }
+
+        .testimonial-text {
+            font-size: 0.875rem;
+            line-height: 1.75;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            font-style: italic;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .author-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.85rem;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .author-name {
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+
+        .author-role {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* ============ FAQ ============ */
+        .faq-list {
+            max-width: 720px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .faq-q {
+            width: 100%;
+            background: none;
+            border: none;
+            color: white;
+            padding: 1.5rem;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            transition: background 0.2s;
+        }
+
+        .faq-q:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .faq-q .arrow {
+            transition: transform 0.3s;
+            font-size: 1rem;
+            color: var(--gold-light);
+        }
+
+        .faq-item.open .faq-q .arrow {
+            transform: rotate(180deg);
+        }
+
+        .faq-a {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease, padding 0.3s ease;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.75;
+        }
+
+        .faq-item.open .faq-a {
+            max-height: 300px;
+            padding: 0 1.5rem 1.5rem;
+        }
+
+        /* ============ CTA ============ */
+        .cta-section {
+            padding: 7rem 2rem;
+        }
+
+        .cta-card {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(245, 158, 11, 0.06) 50%, rgba(6, 182, 212, 0.05) 100%);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+            border-radius: var(--radius-xl);
+            padding: 5rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% -30%, rgba(124, 58, 237, 0.2) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .cta-card h2 {
+            font-size: clamp(2rem, 4vw, 3.5rem);
+            font-weight: 900;
+            letter-spacing: -0.04em;
+            margin-bottom: 1.25rem;
+        }
+
+        .cta-card p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 2.5rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* ============ FOOTER ============ */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 3rem 4rem;
+        }
+
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .footer-logo img {
+            height: 36px;
+            width: auto;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: white;
+        }
+
+        .footer-copy {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            margin-top: 0.4rem;
+        }
+
+        /* ============ RESPONSIVE ============ */
+        .nav-ctas {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .lang-switch {
+            display: flex;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 2px;
+            margin-right: 0.5rem;
+        }
+
+        .lang-btn {
+            padding: 2px 4px;
+            border: none;
+            background: none;
+            color: var(--text-muted);
+            font-size: 0.55rem;
+            font-weight: 800;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .lang-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        @media (max-width: 900px) {
+            nav {
+                padding: 1rem 1.5rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-card.popular {
+                transform: none;
+            }
+
+            .testimonials-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-card {
+                padding: 3rem 2rem;
+            }
+
+            footer {
+                padding: 2rem 1.5rem;
+            }
+
+            .footer-inner {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <nav>
+        <a href="#" class="nav-logo">
+            <img src="logo.png" alt="Storehouse Finance Logo" />
+        </a>
+        <ul class="nav-links">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#testimonials">Testimonials</a></li>
+            <li><a href="#faq">FAQ</a></li>
+        </ul>
+        <div class="nav-ctas">
+            <div class="lang-switch">
+                <button class="lang-btn active" onclick="setLang('en')">EN</button>
+                <button class="lang-btn" onclick="setLang('es')">ES</button>
+            </div>
+            <a href="/finance/" class="btn btn-ghost" data-en="Sign In" data-es="Iniciar Sesión">Sign In</a>
+            <a href="/finance/" class="btn btn-gold" data-en="Start Free Trial" data-es="Prueba Gratis">Start Free Trial</a>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+
+        <div class="hero-logo-display">
+            <img src="logo.png" alt="Storehouse Finance" />
+        </div>
+
+        <div class="hero-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 6px;"><path d="m12 22-8-4.5v-7.5l8-4.5 8 4.5v7.5z"/><path d="m9 12 2 2 4-4"/></svg>
+            <span data-en="Professional Church Financial Management" data-es="Gestión Financiera Profesional de la Iglesia">Professional Church Financial Management</span>
+        </div>
+
+        <h1>
+            <span data-en="Manage Church Finances" data-es="Administre las Finanzas de la Iglesia">Manage Church Finances</span><br />
+            <span style="color: #60A5FA" data-en="with Total Confidence." data-es="con Total Confianza.">with Total Confidence.</span>
+        </h1>
+
+        <p data-en="A comprehensive, secure, and transparent system designed specifically for modern churches. Track tithes, manage expenses, and generate professional reports effortlessly." 
+           data-es="Un sistema integral, seguro y transparente diseñado específicamente para iglesias modernas. Rastree diezmos, gestione gastos y genere informes profesionales sin esfuerzo.">
+           A comprehensive, secure, and transparent system designed specifically for modern churches. Track tithes, manage expenses, and generate professional reports effortlessly.
+        </p>
+
+        <div class="hero-ctas">
+            <a href="/finance/" class="btn btn-primary btn-large" data-en="Access System &rsaquo;" data-es="Acceder al Sistema &rsaquo;">Access System &rsaquo;</a>
+            <a href="#features" class="btn btn-outline btn-large" data-en="Explore Features" data-es="Explorar Características">Explore Features</a>
+        </div>
+
+        <div class="hero-proof">
+            <div class="hero-proof-item"><span class="check">✓</span> No credit card required</div>
+            <div class="hero-proof-item"><span class="check">✓</span> Setup in under 10 minutes</div>
+            <div class="hero-proof-item"><span class="check">✓</span> Cancel anytime</div>
+        </div>
+
+        <div class="hero-mockup">
+            <div class="mockup-glow"></div>
+            <img src="/assets/dashboard-real-D9sG5uNP.png"
+                alt="Storehouse Finance Dashboard Preview" loading="lazy" />
+        </div>
+    </section>
+
+    <!-- AI SHOWCASE -->
+    <section class="ai-showcase" style="background: linear-gradient(180deg, rgba(124, 58, 237, 0.03) 0%, transparent 100%); border-top: 1px solid rgba(124,58,237,0.15); border-bottom: 1px solid rgba(124,58,237,0.05);">
+        <div class="container">
+            <div class="section-header centered" style="margin-bottom: 2rem;">
+                <div class="section-label" style="color: #c084fc; display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(124,58,237,0.15); padding: 0.35rem 0.85rem; border-radius: 100px; border: 1px solid rgba(124,58,237,0.3);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    Industry First
+                </div>
+                <h2 class="section-title" style="margin-top: 1.5rem;">Meet the <span style="background: linear-gradient(to right, #c084fc, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">AI Smartboard</span></h2>
+                <p class="section-subtitle">No other church management software has this. Get instant answers to your complex financial questions, generate reports with natural language, and let AI do the heavy lifting.</p>
+            </div>
+            
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 24px; padding: 3rem; text-align: center; max-width: 900px; margin: 0 auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(124,58,237,0.2); position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at center, rgba(124,58,237,0.08) 0%, transparent 50%); pointer-events: none;"></div>
+                
+                <div style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2.5rem; position: relative; z-index: 1;">
+                    <div style="background: rgba(255,255,255,0.03); padding: 1.25rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); text-align: left; max-width: 380px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #a78bfa; font-weight: 800; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            You Ask
+                        </div>
+                        <div style="font-size: 1rem; color: #e2e8f0; font-weight: 500; font-style: italic;">"Who gave over $5,000 to the building fund last year?"</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.03); padding: 1.25rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); text-align: left; max-width: 380px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #a78bfa; font-weight: 800; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            You Ask
+                        </div>
+                        <div style="font-size: 1rem; color: #e2e8f0; font-weight: 500; font-style: italic;">"Are we over budget for youth ministry this month?"</div>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 1rem; position: relative; z-index: 1;">Your Data, Instantly Understood.</h3>
+                <p style="color: var(--text-secondary); line-height: 1.7; position: relative; z-index: 1; max-width: 700px; margin: 0 auto; font-size: 1.05rem;">While legacy competitors force you to dig through complex menus and build custom reports manually, Storehouse Finance includes an embedded AI assistant. Just type your question in plain English, and the AI Smartboard instantly analyzes your ledgers, giving history, and budgets to provide the exact data you need in seconds.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features">
+        <div class="container">
+            <div class="section-header centered">
+                <div class="section-label">Everything You Need</div>
+                <h2 class="section-title">One platform. Every financial<br /><span class="gradient-text-purple">need
+                        your church has.</span></h2>
+                <p class="section-subtitle">Stop juggling spreadsheets and disconnected tools. Storehouse Finance brings
+                    your entire ministry's finances into one beautifully simple system.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(124,58,237,0.1); color: var(--primary-light);">💰
+                    </div>
+                    <h3>Fund Stewardship</h3>
+                    <p>Track every fund independently — tithes, building fund, and missions. Now with <b>Smart Bank Reconciliation</b> and automated ledger matching for total transparency.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(16,185,129,0.1); color: #34d399;">👥</div>
+                    <h3>Member Portal & Taxes</h3>
+                    <p>Track contributions and automatically generate <b>One-Click End-of-Year Donor Tax Statements</b>. Connect deeper with your stewardship community.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(245,158,11,0.1); color: var(--gold-light);">📋
+                    </div>
+                    <h3>Payroll & Clergy Compliance</h3>
+                    <p>Pay your staff with speed. Includes <b>Built-in Clergy Payroll & Housing Allowances</b>, federal tax withholding, and automated <b>W-2 / 1099 staging</b>.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(239,68,68,0.1); color: #f87171;">🧾</div>
+                    <h3>Expense Tracking</h3>
+                    <p>Log, categorize, and approve every expense. Attach receipts by photo and access a full audit
+                        trail for complete accountability to your congregation.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(6,182,212,0.1); color: #22d3ee;">📊</div>
+                    <h3>Budget Planning</h3>
+                    <p>Set annual budgets by department, visualize actuals vs. targets, and get ahead of financial
+                        surprises before they impact your ministry.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(245,158,11,0.1); color: var(--gold-light);">📈
+                    </div>
+                    <h3>Automated GAAP Reports</h3>
+                    <p>Generate GAAP-Compliant <b>Statements of Financial Position</b> and <b>Activities</b> on demand. Export to
+                        PDF in one click for board meetings and audits.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRICING -->
+    <section id="pricing" style="background: rgba(255,255,255,0.01);">
+        <div class="container">
+            <div class="section-header centered">
+                <div class="section-label">Transparent Pricing</div>
+                <h2 class="section-title">Simple plans for every<br /><span class="gradient-text">size of
+                        congregation</span></h2>
+                <p class="section-subtitle">No hidden fees. No surprise charges. Just powerful tools at a fair monthly
+                    price. Start free for 30 days.</p>
+            </div>
+            <div class="pricing-grid">
+                <!-- Starter -->
+                <div class="pricing-card">
+                    <div class="pricing-plan">Starter</div>
+                    <div class="pricing-price">
+                        <span class="currency">$</span>
+                        <span class="amount">199</span>
+                        <span class="period">.99&nbsp;/ month</span>
+                    </div>
+                    <p class="pricing-desc">Perfect for small congregations just getting started with digital finance
+                        management.</p>
+                    <hr class="pricing-divider" />
+                    <ul class="pricing-features">
+                        <li><span class="check">✓</span> Up to 200 members</li>
+                        <li><span class="check">✓</span> Fund accounting</li>
+                        <li><span class="check">✓</span> Expense tracking</li>
+                        <li><span class="check">✓</span> Basic giving reports</li>
+                        <li><span class="check">✓</span> Email & chat support</li>
+                        <li><span class="check">✓</span> Monthly reports</li>
+                        <li><span class="cross" style="color:var(--text-muted)">✗</span> <span
+                                style="color:var(--text-muted)">Payroll automation</span></li>
+                        <li><span class="cross" style="color:var(--text-muted)">✗</span> <span
+                                style="color:var(--text-muted)">Custom domain</span></li>
+                    </ul>
+                    <a href="/finance/" class="btn btn-outline" style="width:100%; justify-content:center;">Get Started →</a>
+                </div>
+
+                <!-- Growth (Popular) -->
+                <div class="pricing-card popular">
+                    <div class="popular-badge">⭐ Most Popular</div>
+                    <div class="pricing-plan">Growth</div>
+                    <div class="pricing-price">
+                        <span class="currency">$</span>
+                        <span class="amount"
+                            style="background: linear-gradient(135deg, var(--gold-light), var(--primary-light)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;">399</span>
+                        <span class="period">.99&nbsp;/ month</span>
+                    </div>
+                    <p class="pricing-desc">For growing churches that need the complete system including payroll and
+                        neural strategic projections.</p>
+                    <hr class="pricing-divider" />
+                    <ul class="pricing-features">
+                        <li><span class="check">✓</span> Up to 500 members</li>
+                        <li><span class="check">✓</span> Everything in Starter</li>
+                        <li><span class="check">✓</span> Full payroll automation</li>
+                        <li><span class="check">✓</span> Neural Projections</li>
+                        <li><span class="check">✓</span> Budget planning</li>
+                        <li><span class="check">✓</span> Advanced analytics</li>
+                        <li><span class="check">✓</span> Priority support</li>
+                        <li><span class="check">✓</span> Custom departments</li>
+                    </ul>
+                    <a href="/finance/" class="btn btn-gold" style="width:100%; justify-content:center;">Start Free Trial →</a>
+                </div>
+
+
+            </div>
+        </div>
+    </section>
+
+
+
+    <!-- FAQ -->
+    <section id="faq" style="background: rgba(255,255,255,0.01);">
+        <div class="container">
+            <div class="section-header centered">
+                <div class="section-label">FAQ</div>
+                <h2 class="section-title">Common Questions</h2>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-q" onclick="toggleFaq(this)">
+                        Do I need technical knowledge to set up Storehouse Finance?
+                        <span class="arrow">▾</span>
+                    </button>
+                    <div class="faq-a">Absolutely not. Storehouse Finance is designed for pastors and church
+                        administrators — not IT professionals. You can be fully up and running in under 10 minutes with
+                        our guided setup wizard.</div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="toggleFaq(this)">
+                        Can I migrate data from QuickBooks or spreadsheets?
+                        <span class="arrow">▾</span>
+                    </button>
+                    <div class="faq-a">Yes! We provide a simple CSV import tool for your existing data. Enterprise plan
+                        subscribers also get a hands-on onboarding call where our team migrates your data for you at no
+                        extra charge.</div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="toggleFaq(this)">
+                        Is our church's financial data secure?
+                        <span class="arrow">▾</span>
+                    </button>
+                    <div class="faq-a">Security is our top priority. Storehouse Finance uses bank-grade AES-256
+                        encryption, is hosted on SOC 2 compliant infrastructure, and provides role-based access so only
+                        authorized individuals see sensitive data.</div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="toggleFaq(this)">
+                        What happens if we grow and need to upgrade our plan?
+                        <span class="arrow">▾</span>
+                    </button>
+                    <div class="faq-a">You can upgrade your plan at any time directly from your dashboard. The change
+                        takes effect immediately and you'll only be billed the prorated difference for the current
+                        billing period.</div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" onclick="toggleFaq(this)">
+                        Can we cancel at any time?
+                        <span class="arrow">▾</span>
+                    </button>
+                    <div class="faq-a">Yes — no contracts, no cancellation fees. Cancel your subscription at any time
+                        from the settings page. Your data remains available to export for 30 days after cancellation.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-card">
+                <div class="section-label" style="margin-bottom:1rem;">Limited Time Offer</div>
+                <h2>Ready to transform your<br /><span class="gradient-text">church's finances?</span></h2>
+                <p>Join hundreds of churches who have made the switch to Storehouse Finance. Start your free 30-day
+                    trial today — no credit card required.</p>
+                <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
+                    <a href="#pricing" class="btn btn-gold btn-large">🚀 Start Free Trial</a>
+                    <a href="mailto:hello@storehousefinance.com" class="btn btn-outline btn-large">💬 Talk to Sales</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-inner">
+            <div class="footer-logo-area">
+                <img src="logo.png" alt="Storehouse Finance" class="footer-logo" style="height:36px;" />
+                <p class="footer-copy" style="margin-top:0.5rem;">© 2026 Storehouse Finance. All rights reserved.</p>
+            </div>
+            <ul class="footer-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><a href="javascript:void(0)" onclick="showLegal('privacy')" data-en="Privacy Policy" data-es="Política de Privacidad">Privacy Policy</a></li>
+                <li><a href="javascript:void(0)" onclick="showLegal('terms')" data-en="Terms of Service" data-es="Términos de Servicio">Terms of Service</a></li>
+                <li><a href="mailto:hello@storehousefinance.com">Contact</a></li>
+            </ul>
+        </div>
+    </footer>
+
+    <script>
+        function toggleFaq(btn) {
+            const item = btn.closest('.faq-item');
+            const isOpen = item.classList.contains('open');
+            document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+            if (!isOpen) item.classList.add('open');
+        }
+
+        // Animate elements on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0) scale(1)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.feature-card, .pricing-card, .testimonial-card, .stat-number').forEach((el, i) => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(24px)';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease, border-color 0.3s, box-shadow 0.3s';
+            // Stagger only if they are not stats, or use a smaller stagger for stats
+            if (el.classList.contains('stat-number')) {
+                el.style.transitionDelay = `${i * 0.1}s`;
+            }
+            observer.observe(el);
+        });
+    </script>
+    <script>
+        function setLang(lang) {
+            // Update buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.innerText.toLowerCase() === lang);
+            });
+
+            // Update elements
+            document.querySelectorAll('[data-en]').forEach(el => {
+                const text = el.getAttribute('data-' + lang);
+                if (text) {
+                    if (el.tagName === 'INPUT') {
+                        el.placeholder = text;
+                    } else {
+                        el.innerHTML = text;
+                    }
+                }
+            });
+
+            // Persist
+            localStorage.setItem('language', lang);
+            document.documentElement.lang = lang;
+        }
+
+        // Initialize from storage
+        const savedLang = localStorage.getItem('language') || 'en';
+        if (savedLang === 'es') setLang('es');
+
+        const legalData = {
+          en: {
+            termsTitle: "Professional Terms of Service",
+            privacyTitle: "Comprehensive Privacy & Security Policy",
+            close: "Close Agreement",
+            lastUpdated: "Last Formal Update",
+            t1: "1. Strategic Service Scope & Authorized Ecclesiastical Use", 
+            c1: "Storehouse Finance delivers a highly specialized, cloud-native financial stewardship environment engineered specifically for the distinct operational requirements of ecclesiastical organizations. By accessing this platform, you certify that you represent an authorized church body and will maintain the integrity of its financial records. Our services provide unified fund accounting, automated payroll distribution, and precision budgeting tools designed to support your organization’s mission with absolute transparency.",
+            t2: "2. Account Stewardship & Advanced Security Protocols", 
+            c2: "Primary church administrators and financial officers bear the sole responsibility for the vigilant protection of their access credentials. This includes the secure management of passwords and the active use of Multi-Factor Authentication (MFA) where available. You must immediately notify our technical response team of any suspected security irregularities. The user organization remains strictly accountable for all activities conducted within its encrypted workspace.",
+            t3: "3. Sovereign Data Stewardship & Irrevocable Ownership", 
+            c3: "Your ecclesiastical organization retains absolute, perpetual sovereignty over all financial data, member registries, and recorded transactions stored within our infrastructure. Storehouse Finance serves as a secure, technical steward, utilizing geographically redundant systems and real-time synchronization to ensure your records are always accessible. We solemnly commit to never utilizing your sensitive organizational data for any secondary purposes without explicit authorization.",
+            t4: "4. Global Regulatory Compliance & Temporal Financial Governance", 
+            c4: "The managing organization is solely responsible for ensuring that its use of Storehouse Finance aligns with all applicable local, regional, and national tax regulations, including 501(c)(3) status compliance in the United States or equivalent charitable governance frameworks globally. While we provide the technical infrastructure for accurate stewardship, the final responsibility for legal tax filing and ecclesiastical transparency lies with your church administration.",
+            p1: "1. Financial Data Integrity & Military-Grade 256-Bit Protection", 
+            pc1: "We utilize advanced bank-grade, 256-bit AES encryption for all data at rest and in transit. Your sanctuary’s tithes, restricted offerings, and confidential payroll records are shielded by multi-layered cryptographic defenses. We maintain a zero-tolerance policy regarding unauthorized data access, ensuring that the sacred trust between your congregation and its financial records remains impeccably protected from third-party interference.",
+            p2: "2. Personal Privacy & Confidential Ministerial Data Usage", 
+            pc2: "Member profiles, contact information, and specific donation histories are classified as highly sensitive ministerial records. This data is utilized exclusively for generating tax-compliant documentation and facilitating internal ministry engagement. We implement 'Secret-Access' logic, ensuring that sensitive donor information is only viewable by staff members who have been specifically cleared by your church’s primary administrator.",
+            p3: "3. redundant Infrastructure & Immutable Audit Tracking", 
+            pc3: "Your data is mirrored across multiple high-security data centers featuring 24/7 physical monitoring and predictive threat detection. We maintain comprehensive, unalterable system logs of every administrative action and access request to provide a transparent audit trail. Our infrastructure is engineered for 99.99% reliability, ensuring that your financial leadership has constant access to the critical insights required for mission success.",
+            p4: "4. Absolute Transparency & Immediate Data Portability", 
+            pc4: "We are committed to total transparency in our role as your technical steward. You have the inherent right to export your congregation’s complete history in industry-standard spreadsheet or PDF formats at any time. We believe that your church should never be locked into a platform; you maintain total control over your records, ensuring that your financial legacy is portable and permanent, regardless of future technology shifts."
+          },
+          es: {
+            termsTitle: "Términos Profesionales de Servicio",
+            privacyTitle: "Política Integral de Privacidad y Seguridad",
+            close: "Cerrar Contrato",
+            lastUpdated: "Última Actualización Formal",
+            t1: "1. Alcance Estratégico y Uso Eclesiástico Autorizado", 
+            c1: "Storehouse Finance ofrece un entorno de mayordomía financiera especializado, diseñado específicamente para los requisitos operativos de las organizaciones eclesiásticas. Al acceder a esta plataforma, usted certifica que representa a un cuerpo eclesiástico autorizado y que mantendrá la integridad de sus registros financieros. Nuestros servicios proporcionan contabilidad unificada, distribución automatizada de nómina y herramientas de presupuesto de precisión para apoyar su misión.",
+            t2: "2. Mayordomía de Cuentas y Protocolos de Seguridad Avanzada", 
+            c2: "Los administradores principales y los oficiales financieros de la iglesia tienen la responsabilidad única de la protección vigilante de sus credenciales de acceso. Esto incluye la gestión segura de contraseñas y el uso activo de la autenticación de múltiples factores. Debe notificar inmediatamente a nuestro equipo de respuesta técnica sobre cualquier irregularidad de seguridad sospechosa. La organización sigue siendo estrictamente responsable de todas las actividades.",
+            t3: "3. Mayordomía Soberana de Datos y Propiedad Irrevocable", 
+            c3: "Su organización eclesiástica conserva la soberanía absoluta y perpetua sobre todos los datos financieros y registros de miembros almacenados en nuestra infraestructura. Storehouse Finance actúa como un administrador técnico seguro, utilizando sistemas redundantes y sincronización en tiempo real para garantizar que sus registros estén siempre accesibles. Nos comprometemos solemnemente a nunca utilizar sus datos organizativos para fines secundarios.",
+            t4: "4. Cumplimiento Regulatorio Global y Gobernanza Financiera Temporal", 
+            c4: "La organización gestora es la única responsable de garantizar que el uso de Storehouse Finance se alinee con todas las regulaciones fiscales locales, regionales y nacionales aplicables, incluyendo el estatus 501(c)(3) en los Estados Unidos o marcos equivalentes. Aunque proporcionamos la infraestructura técnica, la responsabilidad final de la transparencia eclesiástica recae en la administración de su iglesia.",
+            p1: "1. Integridad de Datos y Protección de Grado Militar de 256 bits", 
+            pc1: "Utilizamos cifrado avanzado AES de 256 bits para todos los datos. Los diezmos, las ofrendas restringidas y los registros de nómina confidenciales de su santuario están protegidos por defensas criptográficas de múltiples capas. Mantenemos una política de tolerancia cero con respecto al acceso no autorizado a los datos, asegurando que la confianza sagrada entre su congregación y sus registros permanezca impecablemente protegida.",
+            p2: "2. Privacidad Personal y Uso de Datos Ministeriales Confidenciales", 
+            pc2: "Los perfiles de los miembros y los historiales de donaciones se clasifican como registros ministeriales altamente sensibles. Estos datos se utilizan exclusivamente para generar documentación que cumple con los impuestos y facilitar el compromiso ministerial interno. Implementamos una lógica de 'Acceso Secreto', asegurando que la información sensible de los donantes solo sea visible para el personal autorizado por el administrador.",
+            p3: "3. Infraestructura Redundante y Seguimiento de Auditoría Inmutable", 
+            pc3: "Sus datos se reflejan en múltiples centros de datos de alta seguridad con monitoreo físico las 24 horas y detección predictiva de amenazas. Mantenemos registros de sistema completos e inalterables de cada acción administrativa para proporcionar una pista de auditoría transparente. Nuestra infraestructura está diseñada para una confiabilidad del 99.99%, asegurando que su liderazgo financiero tenga acceso constante.",
+            p4: "4. Transparencia Absoluta y Portabilidad Inmediata de Datos", 
+            pc4: "Estamos comprometidos con la transparencia total en nuestra función como su administrador técnico. Usted tiene el derecho inherente de exportar el historial completo de su congregación en formatos de hoja de cálculo o PDF estándar en cualquier momento. Creemos que su iglesia nunca debería estar bloqueada en una plataforma; usted mantiene el control total sobre sus registros, asegurando que su legado financiero sea portátil y permanente."
+          }
+        };
+
+        function showLegal(type) {
+          const lang = localStorage.getItem('language') || 'en';
+          const data = legalData[lang] || legalData['en'];
+          const isTerms = type === 'terms';
+          
+          const title = isTerms ? data.termsTitle : data.privacyTitle;
+          const section1 = isTerms ? data.t1 : data.p1;
+          const content1 = isTerms ? data.c1 : data.pc1;
+          const section2 = isTerms ? data.t2 : data.p2;
+          const content2 = isTerms ? data.c2 : data.pc2;
+          const section3 = isTerms ? data.t3 : data.p3;
+          const content3 = isTerms ? data.c3 : data.pc3;
+          const section4 = isTerms ? data.t4 : data.p4;
+          const content4 = isTerms ? data.c4 : data.pc4;
+
+          const modal = document.createElement('div');
+          modal.style = "position:fixed; inset:0; z-index:10000; background:rgba(2,6,23,0.95); backdrop-filter:blur(16px); display:flex; align-items:center; justify-content:center; padding:1rem;";
+          modal.id = "legal-modal";
+          modal.innerHTML = `
+            <div style="width:95%; max-width:640px; max-height:85vh; background:#0f172a; border:1px solid rgba(255,255,255,0.1); border-radius:24px; box-shadow:0 30px 60px -12px rgba(0,0,0,0.7); overflow:hidden; display:flex; flex-direction:column; animation: modalFadeIn 0.3s ease-out;">
+              <style>
+                @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+                .legal-content::-webkit-scrollbar { width: 6px; }
+                .legal-content::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+                .legal-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+              </style>
+              <div style="padding:2rem; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+                <div>
+                  <h2 style="color:white; font-size:1.5rem; font-weight:900; letter-spacing:-0.02em; margin:0;">${title}</h2>
+                  <p style="color:#64748b; font-size:0.85rem; font-weight:500; margin-top:4px; margin-bottom:0;">${data.lastUpdated}: March 2026</p>
+                </div>
+                <button onclick="document.getElementById('legal-modal').remove()" style="width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.04); border:none; color:#94a3b8; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.2rem;">&times;</button>
+              </div>
+              <div class="legal-content" style="padding:2rem; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:2rem;">
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🛡️</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section1}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content1}</p></div>
+                </div>
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🔒</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section2}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content2}</p></div>
+                </div>
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">📜</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section3}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content3}</p></div>
+                </div>
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🏢</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section4}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content4}</p></div>
+                </div>
+              </div>
+              <div style="padding:1.5rem 2rem; border-top:1px solid rgba(255,255,255,0.05); text-align:right; flex-shrink:0; background: rgba(255,255,255,0.02);">
+                <button onclick="document.getElementById('legal-modal').remove()" style="padding:0.8rem 2.5rem; border-radius:14px; background:linear-gradient(135deg, #2563eb, #1d4ed8); color:white; border:none; font-weight:800; font-family:'Inter', sans-serif; cursor:pointer; font-size:0.9rem; letter-spacing:0.02em; box-shadow:0 8px 20px -4px rgba(37,99,235,0.4);">
+                  ${data.close}
+                </button>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(modal);
+        }
+    </script>
+</body>
+
+</html>

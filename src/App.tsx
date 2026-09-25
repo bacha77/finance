@@ -784,7 +784,7 @@ function App() {
                     {activeTab === 'departments' && <Departments setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
                     {activeTab === 'expenses' && <Expenses setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
                     {activeTab === 'reimbursements' && <Reimbursements churchId={church.id} userRole={profile.role} userName={profile.full_name} />}
-                    {activeTab === 'events' && <Events churchId={church.id} userRole={profile.role} userName={profile.full_name} userEmail={user?.primaryEmailAddress?.emailAddress} />}
+                    {activeTab === 'events' && <Events churchId={church.id} userRole={profile.role} userName={profile.full_name} userEmail={user?.primaryEmailAddress?.emailAddress || ''} />}
                     {activeTab === 'budget' && <Budget setActiveTab={setActiveTab} churchId={church.id} userRole={profile.role} />}
                     {activeTab === 'tax' && <TaxCompliance churchId={church.id} churchName={church.name} userRole={userRole} />}
                     {activeTab === 'settings' && <Settings churchData={church} onUpdateChurch={handleUpdateChurch} initialSection={settingsSection} profile={profile} />}
