@@ -471,6 +471,8 @@ function App() {
         setOpen={setSidebarOpen}
         isMobile={isMobile}
         church={church}
+        role={profile?.role}
+        isAdmin={isAdmin}
         onLogout={async () => {
           await signOut();
           setProfile(null);

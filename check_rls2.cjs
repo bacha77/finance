@@ -1,0 +1,1 @@
+const { Client } = require('pg'); require('dotenv').config(); async function run() { const c = new Client({ connectionString: process.env.DIRECT_URL }); await c.connect(); const res = await c.query(`SELECT tablename, policyname, qual, with_check FROM pg_policies WHERE qual ILIKE '%auth.uid()%' OR with_check ILIKE '%auth.uid()%'`); console.log(res.rows); await c.end(); } run();

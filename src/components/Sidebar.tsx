@@ -123,20 +123,31 @@ interface SidebarProps {
   isMobile: boolean;
   church?: any;
   onOpenSupport?: () => void;
+  role?: string;
+  isAdmin?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-  activeTab, setActiveTab, onLogout, open, setOpen, isMobile, church, onOpenSupport
+  activeTab, setActiveTab, onLogout, open, setOpen, isMobile, church, onOpenSupport, role, isAdmin
 }) => {
   const { language, setLanguage, t } = useLanguage();
 
   const [orderedItems, setOrderedItems] = React.useState<string[]>(() => {
     const saved = localStorage.getItem('sidebar_menu_order');
     let items = ['dashboard', 'accounting', 'departments', 'expenses', 'reimbursements', 'events', 'members', 'payroll', 'tax', 'budget', 'reports', 'pricing'];
+    
+    // Role-based filtering
+    const isTreasurer = role === 'admin' || role === 'assistant' || isAdmin;
+    if (!isTreasurer) {
+      items = items.filter(i => !['payroll', 'tax', 'accounting', 'expenses'].includes(i));
+    }
+
     if (saved) {
         const parsed = JSON.parse(saved);
         if (!parsed.includes('tax')) parsed.splice(parsed.indexOf('payroll') + 1, 0, 'tax');
-        items = parsed;
+        
+        // Merge saved order but keep role constraints
+        items = parsed.filter((i: string) => items.includes(i));
     }
     return items;
   });

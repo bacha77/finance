@@ -1,0 +1,1 @@
+const { Client } = require('pg'); require('dotenv').config(); async function run() { const c = new Client({ connectionString: process.env.DIRECT_URL }); await c.connect(); const res = await c.query(`SELECT proname, prosrc FROM pg_proc WHERE prosrc ILIKE '%auth.uid()%' OR prosrc ILIKE '%user_id%' OR prosrc ILIKE '%auth.jwt()%'`); console.log(res.rows); await c.end(); } run();

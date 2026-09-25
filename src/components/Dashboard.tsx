@@ -12,7 +12,7 @@ import {
 import { getTrialStatus } from '../lib/trialConfig';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { predictNextMonth, detectAnomalies } from '../lib/intelligence';
@@ -869,6 +869,46 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
                                 <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" name="Expenses" />
                             </AreaChart>
                         </ResponsiveContainer>
+                    </div>
+                </motion.div>
+
+                {/* NEW: Budget Utilization Bar Chart */}
+                <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.22 }}
+                    style={{
+                        background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: '24px', padding: '2rem', backdropFilter: 'blur(12px)',
+                        height: '380px', display: 'flex', flexDirection: 'column',
+                        boxShadow: '0 20px 40px -20px rgba(0,0,0,0.5)'
+                    }}
+                >
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <div style={{ fontSize: '1.125rem', fontWeight: 900, color: 'white' }}>Budget vs Actuals</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Current fund utilization tracking</div>
+                    </div>
+                    <div style={{ flex: 1, minHeight: 0 }}>
+                        {financeStats?.budgetUtilization && financeStats.budgetUtilization.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={financeStats.budgetUtilization.slice(0, 6)} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                                    <XAxis dataKey="name" stroke="#475569" fontSize={11} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#475569" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
+                                    <Tooltip
+                                        cursor={{fill: 'rgba(255,255,255,0.02)'}}
+                                        contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', fontSize: '12px' }}
+                                    />
+                                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', marginTop: '10px' }} />
+                                    <Bar dataKey="budget" name="Budget" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
+                                    <Bar dataKey="spent" name="Spent" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'hsl(var(--text-muted))', fontSize: '0.9rem' }}>
+                                No budget data available
+                            </div>
+                        )}
                     </div>
                 </motion.div>
 
