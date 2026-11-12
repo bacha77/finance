@@ -23,13 +23,16 @@ import {
   AlertTriangle,
   RotateCcw,
   FileJson,
-  Users
+  Users,
+  Download
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import TeamManagement from './TeamManagement';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSubscriptionStatus } from '../lib/subscriptionConfig';
-import { PLANS } from '../lib/trialConfig';
+import { getPlanById } from '../lib/trialConfig';
 import Pricing from './Pricing';
 import { useLanguage } from '../contexts/LanguageContext';
 import { applyThemeToDOM } from '../lib/theme';
@@ -55,6 +58,28 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
   const [resetCountdown, setResetCountdown] = useState(0);
   const [newPassword, setNewPassword] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [memberCount, setMemberCount] = useState<number>(0);
+  const [billingHistory, setBillingHistory] = useState<any[]>([]);
+  const [showInvoices, setShowInvoices] = useState(false);
+
+  React.useEffect(() => {
+    if (!churchData?.id) return;
+    supabase
+      .from('members')
+      .select('id', { count: 'exact', head: true })
+      .eq('church_id', churchData.id)
+      .then(({ count }: { count?: number | null }) => {
+        if (typeof count === 'number') setMemberCount(count);
+      });
+    supabase
+      .from('admin_payments')
+      .select('*')
+      .eq('church_id', churchData.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }: { data?: any }) => {
+        if (data) setBillingHistory(data);
+      });
+  }, [churchData?.id]);
 
   React.useEffect(() => {
     if (initialSection) setActiveSection(initialSection);
@@ -288,6 +313,90 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
     } catch (err) {
       console.error('Undo cancel error:', err);
     }
+  };
+
+  const handleDownloadReceiptPDF = (inv: {
+    id?: string;
+    created_at?: string;
+    amount?: number;
+    payment_method?: string;
+    notes?: string;
+  }) => {
+    const subStatus = churchData ? getSubscriptionStatus(churchData) : null;
+    const currentPlan = getPlanById(subStatus?.currentPlan || 'trial');
+    const doc = new jsPDF();
+    const invoiceDate = inv.created_at ? new Date(inv.created_at).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }) : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const receiptNo = (inv.id || churchData?.paypal_order_id || `SH-${Date.now()}`).toString().slice(0, 14).toUpperCase();
+    const amountPaid = Number(inv.amount ?? currentPlan.price ?? 0);
+
+    // Header Banner
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 42, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('STOREHOUSE FINANCE', 16, 20);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text('Official Subscription Receipt & Tax Invoice', 16, 28);
+
+    // Paid Badge
+    doc.setFillColor(16, 185, 129);
+    doc.roundedRect(160, 14, 34, 12, 3, 3, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PAID', 177, 22, { align: 'center' });
+
+    // Metadata
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Billed To:', 16, 56);
+    doc.setFont('helvetica', 'normal');
+    doc.text(churchData?.name || 'Church Organization', 16, 63);
+    if (churchData?.address) doc.text(String(churchData.address), 16, 69);
+    if (churchData?.tax_id) doc.text(`EIN / Tax ID: ${churchData.tax_id}`, 16, 75);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Receipt Details:', 125, 56);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Receipt #: ${receiptNo}`, 125, 63);
+    doc.text(`Date Paid: ${invoiceDate}`, 125, 69);
+    doc.text(`Payment Method: ${inv.payment_method || 'PayPal'}`, 125, 75);
+
+    autoTable(doc, {
+      startY: 88,
+      head: [['Description', 'Plan Tier', 'Status', 'Amount (USD)']],
+      body: [[
+        inv.notes || `Storehouse Finance — ${currentPlan.name} Plan Subscription`,
+        currentPlan.name,
+        'Paid in Full',
+        `$${amountPaid.toFixed(2)}`,
+      ]],
+      foot: [['', '', 'Total Paid', `$${amountPaid.toFixed(2)}`]],
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+      styles: { fontSize: 10, cellPadding: 5 },
+    });
+
+    const finalY = (doc as any).lastAutoTable?.finalY || 135;
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      'Thank you for partnering with Storehouse Finance. Keep this receipt for your church board & audit records.',
+      16,
+      finalY + 16
+    );
+    doc.text('Questions? Contact billing@storehousefinance.net', 16, finalY + 22);
+
+    doc.save(`Storehouse_Receipt_${receiptNo}.pdf`);
   };
 
   const userRole = profile?.role?.toLowerCase() || 'viewer';
@@ -691,7 +800,10 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
 
   const renderBilling = () => {
     const subStatus = churchData ? getSubscriptionStatus(churchData) : null;
-    const currentPlan = PLANS.find(p => p.id === (subStatus?.currentPlan || 'trial'));
+    const currentPlan = getPlanById(subStatus?.currentPlan || 'trial');
+    const usagePercent = currentPlan?.memberLimit
+      ? Math.min(100, Math.round((memberCount / currentPlan.memberLimit) * 100))
+      : 100;
 
     return (
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
@@ -705,7 +817,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ color: 'white', fontWeight: 800, fontSize: '0.95rem' }}>Subscription Expired</div>
-                <div style={{ color: 'rgba(239, 68, 68, 0.8)', fontSize: '0.85rem' }}>Your trial has ended. Please upgrade to a paid plan to regain full access to all features.</div>
+                <div style={{ color: 'rgba(239, 68, 68, 0.8)', fontSize: '0.85rem' }}>Your trial or subscription has ended. Please upgrade to a paid plan to regain full access to all features.</div>
               </div>
               <button 
                 className="btn btn-primary" 
@@ -725,7 +837,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
               <div style={{ flex: 1 }}>
                 <div style={{ color: 'white', fontWeight: 800, fontSize: '1rem' }}>Cancellation Pending</div>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                  Your subscription will remain active until <strong>{subStatus.subscriptionEndDate?.toLocaleDateString()}</strong>. After this date, your account will be downgraded to the free plan.
+                  Your subscription will remain active until <strong>{subStatus.subscriptionEndDate?.toLocaleDateString() || 'the end of your billing cycle'}</strong>. After this date, your account will be downgraded.
                 </div>
               </div>
               <button 
@@ -741,16 +853,20 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
           <div style={{ 
             background: `linear-gradient(135deg, ${currentPlan?.color}26 0%, rgba(15, 23, 42, 0.6) 100%)`, 
             padding: '2rem', borderRadius: '1.5rem', border: `1px solid ${currentPlan?.color}33`,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem'
           }}>
             <div>
               <div style={{ fontSize: '0.75rem', fontWeight: 800, color: currentPlan?.color, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>Current Plan</div>
               <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white', textTransform: 'capitalize' }}>{currentPlan?.name}</div>
               <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
                 {subStatus?.accessStatus === 'active_trial' || subStatus?.accessStatus === 'trial_warning' 
-                  ? `Free trial ends in ${subStatus.daysRemaining} days (${subStatus.subscriptionEndDate?.toLocaleDateString()})`
+                  ? `Free trial ends in ${subStatus.daysRemaining} day${subStatus.daysRemaining === 1 ? '' : 's'} (${subStatus.subscriptionEndDate?.toLocaleDateString()})`
+                  : subStatus?.accessStatus === 'paid_expiring'
+                  ? `Renews in ${subStatus.daysRemaining} day${subStatus.daysRemaining === 1 ? '' : 's'} on ${subStatus.subscriptionEndDate?.toLocaleDateString()}`
                   : subStatus?.accessStatus === 'paid_active'
-                  ? `Subscription active — Renews on ${subStatus.subscriptionEndDate?.toLocaleDateString()}`
+                  ? subStatus.subscriptionEndDate
+                    ? `Subscription active — Renews on ${subStatus.subscriptionEndDate.toLocaleDateString()}`
+                    : 'Subscription active — Full institutional access'
                   : `Subscription ${subStatus?.accessStatus.replace('_', ' ')}`}
               </div>
             </div>
@@ -760,7 +876,7 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
                 style={{ background: currentPlan?.color, boxShadow: `0 8px 24px -6px ${currentPlan?.color}80` }}
                 onClick={() => setActiveSection('pricing')}
               >
-                Upgrade Plan
+                {subStatus?.currentPlan === 'trial' ? 'Upgrade Plan' : 'Change / Renew Plan'}
               </button>
             )}
           </div>
@@ -772,21 +888,91 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
                   <div style={{ width: '40px', height: '24px', background: '#003087', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                      <span style={{ fontSize: '0.6rem', color: 'white', fontWeight: 900 }}>PayPal</span>
                   </div>
-                  <div style={{ fontSize: '0.9rem', color: 'white', fontWeight: 600 }}>Connected (Default)</div>
+                  <div style={{ fontSize: '0.9rem', color: 'white', fontWeight: 600 }}>
+                    {churchData?.paypal_order_id ? `PayPal (${churchData.paypal_order_id})` : 'PayPal / Card Checkout'}
+                  </div>
                </div>
             </div>
             <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
                <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1rem' }}>{t('usageHistory')}</h4>
                 <button 
-                  onClick={() => alert(t('success'))}
+                  onClick={() => setShowInvoices(prev => !prev)}
                   style={{ background: 'none', border: 'none', color: 'var(--primary-light)', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
                 >
-                  {t('viewAllInvoices')} →
+                  {showInvoices ? 'Hide Invoices ↑' : `${t('viewAllInvoices')} →`}
                 </button>
             </div>
           </div>
 
-          {!subStatus?.isCancelled && (
+          {showInvoices && (
+            <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white', marginBottom: '1rem' }}>Billing & Invoice History</h4>
+              {billingHistory.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {billingHistory.map((inv, idx) => (
+                    <div key={inv.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>
+                          {inv.notes || `${currentPlan.name} Plan Subscription`}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {new Date(inv.created_at).toLocaleDateString()} · {inv.payment_method || 'PayPal'}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#10b981' }}>
+                          ${Number(inv.amount || 0).toFixed(2)}
+                        </div>
+                        <button
+                          onClick={() => handleDownloadReceiptPDF(inv)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            padding: '0.4rem 0.75rem', borderRadius: '8px',
+                            background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)',
+                            color: 'var(--primary-light)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+                          }}
+                        >
+                          <Download size={13} /> PDF Receipt
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : churchData?.paypal_order_id ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>{currentPlan.name} Plan</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Order ID: {churchData.paypal_order_id}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#10b981' }}>Paid</div>
+                    <button
+                      onClick={() => handleDownloadReceiptPDF({
+                        id: churchData.paypal_order_id,
+                        amount: currentPlan.price || 0,
+                        payment_method: 'PayPal',
+                        notes: `${currentPlan.name} Plan — Order #${churchData.paypal_order_id}`,
+                      })}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        padding: '0.4rem 0.75rem', borderRadius: '8px',
+                        background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)',
+                        color: 'var(--primary-light)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+                      }}
+                    >
+                      <Download size={13} /> PDF Receipt
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  No billing invoices have been generated for this workspace yet.
+                </div>
+              )}
+            </div>
+          )}
+
+          {!subStatus?.isCancelled && subStatus?.currentPlan !== 'trial' && (
             <div style={{ marginTop: '0.5rem', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid hsla(var(--error)/0.1)', background: 'hsla(var(--error)/0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>Cancel Subscription</div>
@@ -810,10 +996,10 @@ const Settings: React.FC<SettingsProps> = ({ churchData, onUpdateChurch, initial
                 <span style={{ color: 'white', fontWeight: 700 }}>{currentPlan?.memberLimit ? `${currentPlan.memberLimit} members` : 'Unlimited'}</span>
               </div>
               <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{ width: '15%', height: '100%', background: currentPlan?.color, borderRadius: '3px' }} />
+                <div style={{ width: `${usagePercent}%`, height: '100%', background: usagePercent >= 100 ? '#ef4444' : currentPlan?.color, borderRadius: '3px', transition: 'width 0.3s ease' }} />
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                You are currently using 15 of {currentPlan?.memberLimit || '∞'} allowed members.
+                You are currently using <strong>{memberCount}</strong> of {currentPlan?.memberLimit || '∞'} allowed members.
               </div>
             </div>
           </div>

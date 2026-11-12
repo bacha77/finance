@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS public.support_tickets (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    church_id UUID REFERENCES public.churches(id) NOT NULL,
     church_name TEXT NOT NULL,
     contact_email TEXT NOT NULL,
     issue_title TEXT NOT NULL,
@@ -13,13 +14,23 @@ CREATE TABLE IF NOT EXISTS public.support_tickets (
 -- RLS Policies
 ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins can read all support tickets"
+CREATE POLICY "Users can read support tickets for their church or if super admin"
     ON public.support_tickets FOR SELECT
-    USING (EXISTS (SELECT 1 FROM admins WHERE admins.user_id = auth.uid()));
+    USING (
+        church_id IN (
+            SELECT church_id FROM profiles WHERE id = auth.uid()
+        )
+        OR EXISTS (SELECT 1 FROM admins WHERE admins.user_id = auth.uid())
+    );
 
-CREATE POLICY "Admins can insert support tickets"
+CREATE POLICY "Users can insert support tickets for their church"
     ON public.support_tickets FOR INSERT
-    WITH CHECK (EXISTS (SELECT 1 FROM admins WHERE admins.user_id = auth.uid()));
+    WITH CHECK (
+        church_id IN (
+            SELECT church_id FROM profiles WHERE id = auth.uid()
+        )
+        OR EXISTS (SELECT 1 FROM admins WHERE admins.user_id = auth.uid())
+    );
 
 CREATE POLICY "Admins can update support tickets"
     ON public.support_tickets FOR UPDATE

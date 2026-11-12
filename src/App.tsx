@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
-import Dashboard from './components/Dashboard';
-import FundAccounting from './components/FundAccounting';
-import MemberPortal from './components/MemberPortal';
-import Payroll from './components/Payroll';
-import Reports from './components/Reports';
-import Departments from './components/Departments';
-import Expenses from './components/Expenses';
-import Reimbursements from './components/Reimbursements';
-import Events from './components/Events';
-import Budget from './components/Budget';
 import { useAuth, useUser, SignIn } from '@clerk/react';
+import React, { Suspense } from 'react';
+
+const Dashboard = React.lazy(() => import('./components/Dashboard'));
+const FundAccounting = React.lazy(() => import('./components/FundAccounting'));
+const MemberPortal = React.lazy(() => import('./components/MemberPortal'));
+const Payroll = React.lazy(() => import('./components/Payroll'));
+const Reports = React.lazy(() => import('./components/Reports'));
+const Departments = React.lazy(() => import('./components/Departments'));
+const Expenses = React.lazy(() => import('./components/Expenses'));
+const Reimbursements = React.lazy(() => import('./components/Reimbursements'));
+const Events = React.lazy(() => import('./components/Events'));
+const Budget = React.lazy(() => import('./components/Budget'));
 import Onboarding from './components/Onboarding';
 import Pricing from './components/Pricing';
 import PaymentWall from './components/PaymentWall';
@@ -22,7 +24,7 @@ import SupportModal from './components/SupportModal';
 import CookieConsent from './components/CookieConsent';
 import AISmartBoard from './components/AISmartBoard';
 import { supabase, setClerkTokenFetcher } from './lib/supabase';
-import { getSubscriptionStatus } from './lib/subscriptionConfig';
+import { getSubscriptionStatus, getMsUntilMidnight } from './lib/subscriptionConfig';
 import { runMigrations } from './lib/migrations';
 import { applyThemeToDOM } from './lib/theme';
 import type { SubscriptionStatus } from './lib/subscriptionConfig';
@@ -33,8 +35,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from './contexts/LanguageContext';
-import React from 'react';
-
 const profileMenuBtnStyle: React.CSSProperties = {
   width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px',
   display: 'flex', alignItems: 'center', gap: '0.75rem',
@@ -322,27 +322,36 @@ function App() {
       );
 
       // Update local state without reload
+      const updatedChurch = {
+        ...church,
+        ...newData,
+        fiscal_year_start: newData.fiscalYearStart ?? church.fiscal_year_start,
+        logo_url: newData.logo_url ?? church.logo_url,
+        tax_exempt: newData.taxExempt ?? church.tax_exempt,
+        auto_receipts: newData.autoReceipts ?? church.auto_receipts,
+        mfa_enabled: newData.mfaEnabled ?? church.mfa_enabled,
+        notifications: newData.notifications ?? church.notifications
+      };
       setProfile({
         ...profile,
         full_name: newData.full_name || profile.full_name,
-        churches: {
-          ...church,
-          ...newData,
-          // Map snake_case from DB back to the camelCase local if needed, 
-          // or just ensure church object reflects standard naming
-          fiscal_year_start: newData.fiscalYearStart,
-          logo_url: newData.logo_url,
-          tax_exempt: newData.taxExempt,
-          auto_receipts: newData.autoReceipts,
-          mfa_enabled: newData.mfaEnabled,
-          notifications: newData.notifications
-        }
+        churches: updatedChurch
       });
+      setSubStatus(getSubscriptionStatus(updatedChurch));
     } catch (err) {
       console.error('Update failed:', err);
       alert('Failed to save changes to database.');
     }
   };
+
+  // Re-evaluate subscription status at midnight local time
+  React.useEffect(() => {
+    if (!church) return;
+    const timer = setTimeout(() => {
+      setSubStatus(getSubscriptionStatus(church));
+    }, getMsUntilMidnight());
+    return () => clearTimeout(timer);
+  }, [church]);
 
   // ── KEYBOARD SHORTCUTS ──
   React.useEffect(() => {
@@ -433,7 +442,22 @@ function App() {
 
   // Bypass Payment Wall for Admins
   if (subStatus?.isBlocked && church && !isAdmin) {
-    return <PaymentWall churchId={church.id} churchName={church.name} subStatus={subStatus} onPaymentSuccess={() => fetchProfile(supabaseId)} />;
+    return (
+      <>
+        <SupportModal isOpen={supportModalOpen} onClose={() => setSupportModalOpen(false)} />
+        <PaymentWall
+          churchId={church.id}
+          churchName={church.name}
+          subStatus={subStatus}
+          onPaymentSuccess={() => fetchProfile(supabaseId)}
+          onLogout={async () => {
+            await signOut();
+            setProfile(null);
+          }}
+          onOpenSupport={() => setSupportModalOpen(true)}
+        />
+      </>
+    );
   }
 
   if (church?.is_active === false || profile?.is_active === false) {
@@ -522,6 +546,36 @@ function App() {
               }}
             >
               Manage / Undo
+            </button>
+          </motion.div>
+        )}
+
+        {!subStatus?.isCancelled && (subStatus?.accessStatus === 'trial_warning' || subStatus?.accessStatus === 'paid_expiring') && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            style={{
+              background: 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)',
+              color: '#0f172a', padding: '0.55rem 2rem', fontSize: '0.8rem', fontWeight: 800,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem',
+              zIndex: 60, position: 'sticky', top: 0
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Bell size={14} />
+              {subStatus.accessStatus === 'trial_warning'
+                ? `Your free trial ends in ${subStatus.daysRemaining} day${subStatus.daysRemaining === 1 ? '' : 's'} (${subStatus.subscriptionEndDate?.toLocaleDateString()}).`
+                : `Your subscription expires in ${subStatus.daysRemaining} day${subStatus.daysRemaining === 1 ? '' : 's'} (${subStatus.subscriptionEndDate?.toLocaleDateString()}).`}
+            </span>
+            <button
+              onClick={() => setActiveTab('pricing')}
+              style={{
+                background: '#0f172a', border: 'none', color: 'white',
+                padding: '0.25rem 0.85rem', borderRadius: '6px', cursor: 'pointer',
+                fontSize: '0.75rem', fontWeight: 800
+              }}
+            >
+              {subStatus.accessStatus === 'trial_warning' ? 'Upgrade Now' : 'Renew Now'}
             </button>
           </motion.div>
         )}
@@ -777,10 +831,10 @@ function App() {
               {(() => {
                 const userRole = profile?.role || 'viewer';
                 return (
-                  <>
+                  <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}><div className="spin" style={{ width: 24, height: 24, border: '2px solid var(--primary)', borderRadius: '50%', borderTopColor: 'transparent' }} /></div>}>
                     {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
                     {activeTab === 'accounting' && <FundAccounting churchId={church.id} userRole={userRole} />}
-                    {activeTab === 'members' && <MemberPortal churchId={church.id} userRole={userRole} />}
+                    {activeTab === 'members' && <MemberPortal churchId={church.id} userRole={userRole} memberLimit={subStatus?.memberLimit} />}
                     {activeTab === 'payroll' && <Payroll churchId={church.id} />}
                     {activeTab === 'reports' && <Reports churchId={church.id} userRole={userRole} />}
                     {activeTab === 'departments' && <Departments setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
@@ -790,8 +844,8 @@ function App() {
                     {activeTab === 'budget' && <Budget setActiveTab={setActiveTab} churchId={church.id} userRole={profile.role} />}
                     {activeTab === 'tax' && <TaxCompliance churchId={church.id} churchName={church.name} userRole={userRole} />}
                     {activeTab === 'settings' && <Settings churchData={church} onUpdateChurch={handleUpdateChurch} initialSection={settingsSection} profile={profile} />}
-                    {activeTab === 'pricing' && <Pricing currentPlan={church.plan} churchId={church.id} />}
-                  </>
+                    {activeTab === 'pricing' && <Pricing currentPlan={church.plan} churchId={church.id} onUpgradeSuccess={() => fetchProfile(supabaseId)} />}
+                  </Suspense>
                 );
               })()}
             </motion.div>

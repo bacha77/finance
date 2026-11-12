@@ -588,6 +588,21 @@ const translations = {
     'Twice Daily': 'Twice Daily',
     'Weekly': 'Weekly',
     initializingWorkspace: 'Initializing your workspace...',
+    // Subscription & PaymentWall
+    trialEnded: 'Free Trial Ended',
+    subscriptionExpiredWall: 'Subscription Expired',
+    choosePlanBelow: 'Select a plan below to restore full access to your church workspace, ledger, and donor records.',
+    mostPopular: 'Most Popular',
+    payWithPaypalCard: 'Pay with PayPal, Credit, or Debit Card',
+    secureCheckoutPlan: '{plan} Plan — ${price}',
+    billedEvery30Days: 'Billed every 30 days',
+    billedAnnually: 'Billed annually (Save 20%)',
+    sslEncrypted: '256-Bit SSL Encrypted',
+    securedByPaypal: 'Secured by PayPal',
+    cancelAnytime: 'Cancel Anytime',
+    dataSafePreserved: 'All financial records and donor history for {churchName} are safely preserved and encrypted.',
+    paymentSuccessful: 'Payment Successful! 🎉',
+    welcomeToPlan: 'Welcome to the {plan} plan. Redirecting to your workspace...',
   },
   es: {
     dashboard: 'Panel de Control',
@@ -1163,6 +1178,21 @@ const translations = {
     'Twice Daily': 'Dos veces al día',
     'Weekly': 'Semanal',
     initializingWorkspace: 'Inicializando su espacio de trabajo...',
+    // Subscription & PaymentWall
+    trialEnded: 'Prueba Gratuita Finalizada',
+    subscriptionExpiredWall: 'Suscripción Expirada',
+    choosePlanBelow: 'Seleccione un plan a continuación para restaurar el acceso completo a su espacio de trabajo, libro mayor y registros de donantes.',
+    mostPopular: 'Más Popular',
+    payWithPaypalCard: 'Pagar con PayPal, Tarjeta de Crédito o Débito',
+    secureCheckoutPlan: 'Plan {plan} — ${price}',
+    billedEvery30Days: 'Facturado cada 30 días',
+    billedAnnually: 'Facturado anualmente (Ahorre 20%)',
+    sslEncrypted: 'Cifrado SSL de 256 bits',
+    securedByPaypal: 'Protegido por PayPal',
+    cancelAnytime: 'Cancele cuando quiera',
+    dataSafePreserved: 'Todos los registros financieros y el historial de donantes de {churchName} están protegidos y cifrados de forma segura.',
+    paymentSuccessful: '¡Pago Exitoso! 🎉',
+    welcomeToPlan: 'Bienvenido al plan {plan}. Redirigiendo a su espacio de trabajo...',
   }
 };
 
@@ -1188,6 +1218,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
   if (!context) throw new Error('useLanguage must be used within LanguageProvider');

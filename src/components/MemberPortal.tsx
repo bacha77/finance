@@ -486,6 +486,13 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                         setImporting(false);
                         return;
                     }
+
+                    if (memberLimit !== null && memberLimit !== undefined && members.length + validMembers.length > memberLimit) {
+                        const remaining = Math.max(0, memberLimit - members.length);
+                        setImportError(`Import exceeds your current plan's limit of ${memberLimit} members (${remaining} slots remaining). Please upgrade your plan to import ${validMembers.length} members.`);
+                        setImporting(false);
+                        return;
+                    }
                     
                     // Supabase will automatically append these records
                     const { error } = await supabase.from('members').insert(validMembers);
@@ -516,9 +523,9 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
         e.preventDefault();
         if (!newMemberName || !newMemberEmail) return;
 
-        // Enforce member limit for trial plan
+        // Enforce member limit for current plan
         if (memberLimit !== null && memberLimit !== undefined && members.length >= memberLimit) {
-            alert(`Your free trial is limited to ${memberLimit} members. Please upgrade your plan to add more.`);
+            alert(`Your current plan is limited to ${memberLimit} members. Please upgrade your plan to add more.`);
             return;
         }
         const newMember = {

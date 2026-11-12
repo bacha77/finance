@@ -5,7 +5,7 @@ import { PLANS } from '../lib/trialConfig';
 import { PAYPAL_CLIENT_ID, getNextBillingDate } from '../lib/subscriptionConfig';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { SubscriptionStatus } from '../lib/subscriptionConfig';
-import { Shield, Check, Star, Zap, Crown, CreditCard, Lock } from 'lucide-react';
+import { Shield, Check, Star, Zap, Crown, CreditCard, Lock, LogOut, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface PaymentWallProps {
@@ -13,6 +13,8 @@ interface PaymentWallProps {
   churchName: string;
   subStatus: SubscriptionStatus;
   onPaymentSuccess: () => void;
+  onLogout?: () => void;
+  onOpenSupport?: () => void;
 }
 
 const PAID_PLANS = PLANS.filter(p => p.id !== 'trial');
@@ -27,17 +29,22 @@ const PLAN_ICONS: Record<string, React.ElementType> = {
 function PayPalButtonsWrapper({
   plan,
   churchId,
-  isAutoPay,
+  isAnnual,
+  useSubscriptionSdk,
   onSuccess,
   onError,
 }: {
   plan: typeof PAID_PLANS[0];
   churchId: string;
-  isAutoPay: boolean;
+  isAnnual: boolean;
+  useSubscriptionSdk: boolean;
   onSuccess: () => void;
   onError: (msg: string) => void;
 }) {
   const [{ isPending }] = usePayPalScriptReducer();
+
+  const totalAmount = isAnnual ? (plan.price! * 12 * 0.8).toFixed(2) : plan.price!.toFixed(2);
+  const periodLabel = isAnnual ? '1 Year (Annual - 20% Off)' : '30 days';
 
   const createOrder = useCallback(
     (_data: unknown, actions: any) => {
@@ -45,16 +52,17 @@ function PayPalButtonsWrapper({
         intent: 'CAPTURE',
         purchase_units: [
           {
-            description: `Storehouse Finance — ${plan.name} Plan (30 days)`,
+            description: `Storehouse Finance — ${plan.name} Plan (${periodLabel})`,
+            custom_id: JSON.stringify({ churchId, planId: plan.id, isAnnual }),
             amount: {
               currency_code: 'USD',
-              value: plan.price!.toFixed(2),
+              value: totalAmount,
             },
           },
         ],
       });
     },
-    [plan]
+    [plan.name, plan.id, churchId, isAnnual, periodLabel, totalAmount]
   );
 
   const onApprove = useCallback(
@@ -62,25 +70,51 @@ function PayPalButtonsWrapper({
       try {
         const order = await actions.order.capture();
         const orderId = order.id;
-        const nextBilling = getNextBillingDate();
+        const nextBilling = getNextBillingDate(isAnnual);
+        const paymentMethod = `PayPal (${isAnnual ? 'Annual' : 'Monthly'})`;
+        const paymentNotes = `${plan.name} Plan — Order #${orderId}`;
 
-        // Update church record in Supabase
-        const { error } = await supabase
-          .from('churches')
-          .update({
-            plan: plan.id,
-            subscription_end_date: nextBilling,
-            paypal_order_id: orderId,
-          })
-          .eq('id', churchId);
+        const { error: rpcError } = await supabase.rpc('record_subscription_payment', {
+          p_church_id: churchId,
+          p_plan: plan.id,
+          p_end_date: nextBilling,
+          p_order_id: orderId,
+          p_amount: parseFloat(totalAmount),
+          p_method: paymentMethod,
+          p_notes: paymentNotes,
+        });
 
-        if (error) throw new Error(error.message);
+        if (rpcError) {
+          const { error } = await supabase
+            .from('churches')
+            .update({
+              plan: plan.id,
+              subscription_end_date: nextBilling,
+              paypal_order_id: orderId,
+              cancel_at_period_end: false,
+            })
+            .eq('id', churchId);
+
+          if (error) throw new Error(error.message);
+
+          try {
+            await supabase.from('admin_payments').insert({
+              church_id: churchId,
+              amount: parseFloat(totalAmount),
+              payment_method: paymentMethod,
+              notes: paymentNotes,
+            });
+          } catch {
+            // Non-blocking if RLS restricts client insert
+          }
+        }
+
         onSuccess();
       } catch (err: any) {
         onError(err.message || 'Payment failed. Please try again.');
       }
     },
-    [plan, churchId, onSuccess, onError]
+    [plan, churchId, isAnnual, totalAmount, onSuccess, onError]
   );
 
   if (isPending) {
@@ -91,53 +125,69 @@ function PayPalButtonsWrapper({
     );
   }
 
-  return isAutoPay ? (
+  return useSubscriptionSdk ? (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <PayPalButtons
         fundingSource={FUNDING.CARD}
         style={{ layout: 'vertical', color: 'black', shape: 'rect', label: 'subscribe', height: 45 }}
         createSubscription={(_data, actions) => {
-          if (!plan.paypalPlanId) {
-            const err = 'PayPal Plan ID not configured for Auto-Pay.';
-            onError(err);
-            throw new Error(err);
-          }
-          return actions.subscription.create({ plan_id: plan.paypalPlanId });
+          return actions.subscription.create({
+            plan_id: plan.paypalPlanId!,
+            custom_id: JSON.stringify({ churchId, planId: plan.id, isAnnual: false }),
+          });
         }}
         onApprove={async (data, _actions) => {
           try {
             const subscriptionId = data.subscriptionID;
-            const nextBilling = getNextBillingDate();
-            const { error } = await supabase.from('churches').update({ plan: plan.id, subscription_end_date: nextBilling, paypal_order_id: `sub_${subscriptionId}` }).eq('id', churchId);
+            const nextBilling = getNextBillingDate(isAnnual);
+            const { error } = await supabase
+              .from('churches')
+              .update({
+                plan: plan.id,
+                subscription_end_date: nextBilling,
+                paypal_order_id: `sub_${subscriptionId}`,
+                cancel_at_period_end: false,
+              })
+              .eq('id', churchId);
             if (error) throw new Error(error.message);
             onSuccess();
-          } catch (err: any) { onError(err.message || 'Payment failed. Please try again.'); }
+          } catch (err: any) {
+            onError(err.message || 'Payment failed. Please try again.');
+          }
         }}
         onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
-        forceReRender={[plan.id, isAutoPay]}
+        forceReRender={[plan.id, useSubscriptionSdk, isAnnual]}
       />
       <PayPalButtons
         fundingSource={FUNDING.PAYPAL}
         style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'subscribe', height: 45 }}
         createSubscription={(_data, actions) => {
-          if (!plan.paypalPlanId) {
-            const err = 'PayPal Plan ID not configured for Auto-Pay.';
-            onError(err);
-            throw new Error(err);
-          }
-          return actions.subscription.create({ plan_id: plan.paypalPlanId });
+          return actions.subscription.create({
+            plan_id: plan.paypalPlanId!,
+            custom_id: JSON.stringify({ churchId, planId: plan.id, isAnnual: false }),
+          });
         }}
         onApprove={async (data, _actions) => {
           try {
             const subscriptionId = data.subscriptionID;
-            const nextBilling = getNextBillingDate();
-            const { error } = await supabase.from('churches').update({ plan: plan.id, subscription_end_date: nextBilling, paypal_order_id: `sub_${subscriptionId}` }).eq('id', churchId);
+            const nextBilling = getNextBillingDate(isAnnual);
+            const { error } = await supabase
+              .from('churches')
+              .update({
+                plan: plan.id,
+                subscription_end_date: nextBilling,
+                paypal_order_id: `sub_${subscriptionId}`,
+                cancel_at_period_end: false,
+              })
+              .eq('id', churchId);
             if (error) throw new Error(error.message);
             onSuccess();
-          } catch (err: any) { onError(err.message || 'Payment failed. Please try again.'); }
+          } catch (err: any) {
+            onError(err.message || 'Payment failed. Please try again.');
+          }
         }}
         onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
-        forceReRender={[plan.id, isAutoPay]}
+        forceReRender={[plan.id, useSubscriptionSdk, isAnnual]}
       />
     </div>
   ) : (
@@ -148,7 +198,7 @@ function PayPalButtonsWrapper({
         createOrder={createOrder}
         onApprove={onApprove}
         onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
-        forceReRender={[plan.id, isAutoPay]}
+        forceReRender={[plan.id, useSubscriptionSdk, isAnnual, totalAmount]}
       />
       <PayPalButtons
         fundingSource={FUNDING.PAYPAL}
@@ -156,7 +206,7 @@ function PayPalButtonsWrapper({
         createOrder={createOrder}
         onApprove={onApprove}
         onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
-        forceReRender={[plan.id, isAutoPay]}
+        forceReRender={[plan.id, useSubscriptionSdk, isAnnual, totalAmount]}
       />
       <PayPalButtons
         fundingSource={FUNDING.VENMO}
@@ -164,7 +214,7 @@ function PayPalButtonsWrapper({
         createOrder={createOrder}
         onApprove={onApprove}
         onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
-        forceReRender={[plan.id, isAutoPay]}
+        forceReRender={[plan.id, useSubscriptionSdk, isAnnual, totalAmount]}
       />
       <PayPalButtons
         fundingSource={FUNDING.PAYLATER}
@@ -172,7 +222,7 @@ function PayPalButtonsWrapper({
         createOrder={createOrder}
         onApprove={onApprove}
         onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
-        forceReRender={[plan.id, isAutoPay]}
+        forceReRender={[plan.id, useSubscriptionSdk, isAnnual, totalAmount]}
       />
     </div>
   );
@@ -184,16 +234,27 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
   churchName,
   subStatus,
   onPaymentSuccess,
+  onLogout,
+  onOpenSupport,
 }) => {
   const { t } = useLanguage();
-  const [selectedPlanId, setSelectedPlanId] = useState<string>('growth');
-  const [isAutoPay, setIsAutoPay] = useState<boolean>(true);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>(
+    subStatus.currentPlan !== 'trial' && PAID_PLANS.some(p => p.id === subStatus.currentPlan)
+      ? subStatus.currentPlan
+      : 'growth'
+  );
+  const [isAnnual, setIsAnnual] = useState<boolean>(false);
+  const [isAutoPay, setIsAutoPay] = useState<boolean>(false);
   const [payError, setPayError] = useState<string | null>(null);
   const [paySuccess, setPaySuccess] = useState(false);
 
-  const selectedPlan = PAID_PLANS.find(p => p.id === selectedPlanId)!;
+  const selectedPlan = PAID_PLANS.find(p => p.id === selectedPlanId) || PAID_PLANS[0];
+  const hasPaypalPlanId = Boolean(selectedPlan.paypalPlanId);
+  const useSubscriptionSdk = isAutoPay && hasPaypalPlanId && !isAnnual;
 
   const isTrialExpired = subStatus.accessStatus === 'trial_expired';
+  const displayMonthlyPrice = isAnnual ? (selectedPlan.price! * 0.8) : selectedPlan.price!;
+  const checkoutTotal = isAnnual ? (selectedPlan.price! * 12 * 0.8).toFixed(2) : selectedPlan.price!.toFixed(2);
 
   const handleSuccess = () => {
     setPaySuccess(true);
@@ -207,7 +268,7 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          style={{ textAlign: 'center' }}
+          style={{ textAlign: 'center', marginTop: '15vh' }}
         >
           <div style={{
             width: '80px', height: '80px', borderRadius: '50%',
@@ -230,14 +291,14 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
 
   return (
     <PayPalScriptProvider
+      key={useSubscriptionSdk ? 'paypal-sub' : 'paypal-capture'}
       options={{
         clientId: PAYPAL_CLIENT_ID,
         currency: 'USD',
-        intent: isAutoPay ? 'capture' : 'capture',
-        vault: isAutoPay ? true : false,
+        intent: useSubscriptionSdk ? 'subscription' : 'capture',
+        vault: useSubscriptionSdk,
         components: 'buttons',
-        disableFunding: '',
-        enableFunding: 'card',
+        enableFunding: 'card,venmo,paylater',
       }}
     >
       <div style={wallStyle}>
@@ -246,6 +307,62 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
           position: 'fixed', inset: 0, pointerEvents: 'none',
           background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,0.2) 0%, transparent 70%)',
         }} />
+
+        {/* Top Bar for Account & Support Access */}
+        <div style={{
+          maxWidth: '900px', margin: '0 auto 2rem', position: 'relative', zIndex: 2,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{
+              padding: '0.4rem 0.9rem', borderRadius: '10px',
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+              fontSize: '0.8rem', fontWeight: 700, color: 'white',
+            }}>
+              🏛️ {churchName}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {onOpenSupport ? (
+              <button
+                onClick={onOpenSupport}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '0.5rem 1rem', borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                <HelpCircle size={15} /> Billing Support
+              </button>
+            ) : (
+              <a
+                href="mailto:sales@storehousefinance.net?subject=Subscription%20Assistance"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '0.5rem 1rem', borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'none',
+                }}
+              >
+                <HelpCircle size={15} /> Contact Support
+              </a>
+            )}
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '0.5rem 1rem', borderRadius: '10px',
+                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
+                  color: '#ef4444', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                <LogOut size={15} /> Sign Out
+              </button>
+            )}
+          </div>
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -270,34 +387,63 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
                 ? t('trialEnded')
                 : t('subscriptionExpiredWall')}
             </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '500px', margin: '0 auto' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '540px', margin: '0 auto' }}>
               {t('choosePlanBelow')}
             </p>
 
-            {/* Toggle AutoPay */}
-            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center' }}>
-              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0.4rem', display: 'inline-flex', gap: '0.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+            {/* Billing Cycle & AutoPay Toggles */}
+            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0.35rem', display: 'inline-flex', gap: '0.4rem', border: '1px solid rgba(255,255,255,0.1)' }}>
                 <button
-                  onClick={() => setIsAutoPay(false)}
+                  onClick={() => setIsAnnual(false)}
                   style={{
-                    padding: '0.5rem 1.25rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', transition: 'all 0.2s',
-                    background: !isAutoPay ? '#4f46e5' : 'transparent',
-                    color: !isAutoPay ? 'white' : '#64748b'
+                    padding: '0.5rem 1.15rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s',
+                    background: !isAnnual ? 'white' : 'transparent',
+                    color: !isAnnual ? 'black' : '#94a3b8'
                   }}
                 >
-                  One-time Manual
+                  Monthly
                 </button>
                 <button
-                  onClick={() => setIsAutoPay(true)}
+                  onClick={() => setIsAnnual(true)}
                   style={{
-                    padding: '0.5rem 1.25rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', transition: 'all 0.2s',
-                    background: isAutoPay ? '#10b981' : 'transparent',
-                    color: isAutoPay ? 'white' : '#64748b'
+                    padding: '0.5rem 1.15rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem', transition: 'all 0.2s',
+                    background: isAnnual ? '#6366f1' : 'transparent',
+                    color: isAnnual ? 'white' : '#94a3b8',
+                    display: 'flex', alignItems: 'center', gap: '6px'
                   }}
                 >
-                  Auto-Pay Subscription
+                  Yearly
+                  <span style={{ background: '#34d399', color: 'black', padding: '1px 6px', borderRadius: '4px', fontSize: '0.62rem', fontWeight: 900 }}>
+                    SAVE 20%
+                  </span>
                 </button>
               </div>
+
+              {hasPaypalPlanId && !isAnnual && (
+                <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0.35rem', display: 'inline-flex', gap: '0.4rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <button
+                    onClick={() => setIsAutoPay(false)}
+                    style={{
+                      padding: '0.5rem 1.15rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem', transition: 'all 0.2s',
+                      background: !isAutoPay ? '#4f46e5' : 'transparent',
+                      color: !isAutoPay ? 'white' : '#64748b'
+                    }}
+                  >
+                    One-time Manual
+                  </button>
+                  <button
+                    onClick={() => setIsAutoPay(true)}
+                    style={{
+                      padding: '0.5rem 1.15rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem', transition: 'all 0.2s',
+                      background: isAutoPay ? '#10b981' : 'transparent',
+                      color: isAutoPay ? 'white' : '#64748b'
+                    }}
+                  >
+                    Auto-Pay Subscription
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -312,11 +458,15 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
               const PlanIcon = PLAN_ICONS[plan.id] || Zap;
               const isSelected = plan.id === selectedPlanId;
               const isPopular = plan.id === 'growth';
+              const cardMonthlyPrice = isAnnual ? (plan.price! * 0.8) : plan.price!;
 
               return (
                 <motion.button
                   key={plan.id}
-                  onClick={() => setSelectedPlanId(plan.id)}
+                  onClick={() => {
+                    setSelectedPlanId(plan.id);
+                    setPayError(null);
+                  }}
                   whileHover={{ translateY: -4 }}
                   whileTap={{ scale: 0.98 }}
                   style={{
@@ -358,12 +508,17 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
                     {plan.name}
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', marginBottom: '0.4rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', marginBottom: '0.25rem' }}>
                     <span style={{ fontSize: '2.25rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>
-                      ${plan.price! % 1 === 0 ? plan.price : plan.price!.toFixed(2).replace('.', '.')}
+                      ${cardMonthlyPrice.toFixed(2)}
                     </span>
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '4px' }}>/mo</span>
                   </div>
+                  {isAnnual && (
+                    <div style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 700, marginBottom: '0.5rem' }}>
+                      Billed ${(plan.price! * 12 * 0.8).toFixed(2)} yearly
+                    </div>
+                  )}
 
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
                     {plan.description}
@@ -412,7 +567,8 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                   {t('secureCheckoutPlan')
                     .replace('{plan}', selectedPlan.name)
-                    .replace('${price}', selectedPlan.price!.toFixed(2))} · {t('billedEvery30Days')}
+                    .replace('${price}', `$${checkoutTotal}`)
+                    .replace('{price}', checkoutTotal)} · {isAnnual ? t('billedAnnually') : `${displayMonthlyPrice.toFixed(2)}/mo · ${t('billedEvery30Days')}`}
                 </div>
               </div>
             </div>
@@ -429,7 +585,7 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
 
             <AnimatePresence mode="wait">
               <motion.div
-                key={selectedPlanId}
+                key={`${selectedPlanId}-${isAnnual}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -437,7 +593,8 @@ const PaymentWall: React.FC<PaymentWallProps> = ({
                 <PayPalButtonsWrapper 
                   plan={selectedPlan} 
                   churchId={churchId} 
-                  isAutoPay={isAutoPay}
+                  isAnnual={isAnnual}
+                  useSubscriptionSdk={useSubscriptionSdk}
                   onSuccess={handleSuccess} 
                   onError={(err) => setPayError(err)} 
                 />
@@ -479,9 +636,9 @@ const wallStyle: React.CSSProperties = {
   inset: 0,
   zIndex: 9999,
   background: 'var(--bg-dark)',
-  padding: '4rem 1.5rem',
+  padding: '2.5rem 1.5rem 4rem',
   overflowY: 'auto',
-  display: 'block', // Changed from flex/center to block to prevent cutoff on small screens
+  display: 'block',
 };
 
 export default PaymentWall;

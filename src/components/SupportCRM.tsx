@@ -24,6 +24,7 @@ export default function SupportCRM() {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line
         fetchTickets();
     }, []);
 

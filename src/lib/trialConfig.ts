@@ -81,27 +81,60 @@ export const PLANS: Plan[] = [
     }
 ];
 
+export const ENTERPRISE_PLAN: Plan = {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: 399.99,
+    priceLabel: '$399.99',
+    period: 'per month',
+    memberLimit: null,
+    description: 'Custom multi-campus & enterprise stewardship suite.',
+    badge: 'Enterprise',
+    color: '#10b981',
+    features: [
+        'Unlimited members & campuses',
+        'Everything in Growth',
+        'Dedicated account manager',
+        'Custom integrations & SLA',
+        'Priority 24/7 phone support',
+    ],
+    paypalPlanId: import.meta.env.VITE_PAYPAL_PLAN_ENTERPRISE || import.meta.env.VITE_PAYPAL_PLAN_GROWTH || '',
+};
+
+export function getPlanById(planId?: string | null): Plan {
+    if (planId === 'enterprise') return ENTERPRISE_PLAN;
+    return PLANS.find(p => p.id === planId) || PLANS[0];
+}
+
 /**
- * Given a church record with plan + created_at, return whether the trial
- * is still active and how many days remain.
+ * Given a church record with plan + created_at (+ optional subscription_end_date),
+ * return whether the trial is still active and how many days remain.
  */
-export function getTrialStatus(church: { plan?: PlanId; created_at: string }) {
+export function getTrialStatus(church: { plan?: PlanId; created_at: string; subscription_end_date?: string | null }) {
     // Treat as trial if explicitly labeled 'trial' OR if plan is missing (legacy support)
     const isTrialCandidate = !church.plan || church.plan === 'trial';
-    
-    const created = new Date(church.created_at);
-    const now = new Date();
-    const msElapsed = now.getTime() - created.getTime();
-    const daysElapsed = Math.floor(msElapsed / (1000 * 60 * 60 * 24));
-    const daysRemaining = Math.max(0, TRIAL_CONFIG.TRIAL_DAYS - daysElapsed);
-    const isExpired = daysRemaining === 0;
 
-    // Only show trial status if they are actually a trial candidate and not expired (or just expired)
-    return { 
-        isTrialActive: isTrialCandidate && !isExpired, 
-        daysRemaining, 
+    const created = new Date(church.created_at || Date.now());
+    let trialEndDate = new Date(created.getTime() + TRIAL_CONFIG.TRIAL_DAYS * 24 * 60 * 60 * 1000);
+
+    // Respect manual admin trial extensions via subscription_end_date
+    if (church.subscription_end_date) {
+        const overrideDate = new Date(church.subscription_end_date);
+        if (!isNaN(overrideDate.getTime()) && overrideDate > trialEndDate) {
+            trialEndDate = overrideDate;
+        }
+    }
+
+    const now = new Date();
+    const daysRemaining = Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    const isExpired = now > trialEndDate;
+
+    return {
+        isTrialActive: isTrialCandidate && !isExpired,
+        daysRemaining,
         isExpired: isTrialCandidate && isExpired,
-        isTrialMember: isTrialCandidate 
+        isTrialMember: isTrialCandidate,
+        trialEndDate,
     };
 }
 
@@ -109,7 +142,7 @@ export function getTrialStatus(church: { plan?: PlanId; created_at: string }) {
  * Returns whether the church can add more members based on plan limits.
  */
 export function canAddMember(plan: PlanId, currentMemberCount: number): boolean {
-    const planConfig = PLANS.find(p => p.id === plan);
+    const planConfig = getPlanById(plan);
     if (!planConfig || planConfig.memberLimit === null) return true;
     return currentMemberCount < planConfig.memberLimit;
 }

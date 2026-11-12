@@ -45,6 +45,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
 
     const { t, language } = useLanguage();
     const [budgets, setBudgets] = useState<BudgetYear[]>([]);
+    const [budgetLogs, setBudgetLogs] = useState<any[]>([]);
     
     // We will initialize it with the default calendar year, but update it in a useEffect once we load the church
     const [activeYear, setActiveYear] = useState(new Date().getFullYear());
@@ -190,6 +191,13 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
                 }
             }
 
+            // Write an audit log for the budget save
+            await supabase.from('system_logs').insert({
+                church_id: churchId,
+                action_type: 'BUDGET_UPDATE',
+                description: `Updated budget for fiscal year ${activeYear} (Total: $${currentBudget.totalBudget.toLocaleString()})`
+            });
+
             alert(language === 'es' ? `¡Presupuesto para el año ${activeYear} guardado!` : `Budget for fiscal year ${activeYear} saved successfully!`);
         } catch (err) {
             console.error('Error saving budget:', err);
@@ -210,6 +218,20 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
     };
 
 
+    useEffect(() => {
+        if (showHistoryModal && churchId) {
+            supabase
+                .from('system_logs')
+                .select('*')
+                .eq('church_id', churchId)
+                .eq('action_type', 'BUDGET_UPDATE')
+                .order('created_at', { ascending: false })
+                .limit(20)
+                .then(({ data }) => {
+                    if (data) setBudgetLogs(data);
+                });
+        }
+    }, [showHistoryModal, churchId]);
 
     const HistoryModal = () => (
         <AnimatePresence>
@@ -232,18 +254,16 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
                             </button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            {[
-                                { date: 'Mar 08, 2026', type: 'ALLOCATION_ADJUSTMENT', details: 'Youth Ministry budget increased by 15%', user: 'Admin' },
-                                { date: 'Mar 05, 2026', type: 'YEARLY_PLAN_INIT', details: 'Initialized budget framework for FY 2027', user: 'Finance Committee' },
-                                { date: 'Feb 12, 2026', type: 'CAPITAL_RESERVE', details: 'Allocated $50k to Building Fund reserve', user: 'Admin' },
-                            ].map((h, i) => (
+                            {budgetLogs.length === 0 ? (
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No budget history logs found.</p>
+                            ) : budgetLogs.map((log, i) => (
                                 <div key={i} style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid var(--border)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                        <p style={{ fontWeight: 800, color: 'var(--primary-light)', fontSize: '0.7rem', textTransform: 'uppercase' }}>{h.type}</p>
-                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{h.date}</p>
+                                        <p style={{ fontWeight: 800, color: 'var(--primary-light)', fontSize: '0.7rem', textTransform: 'uppercase' }}>{log.action_type}</p>
+                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.created_at).toLocaleDateString()}</p>
                                     </div>
-                                    <p style={{ color: 'white', fontWeight: 600, fontSize: '0.95rem', marginBottom: '8px' }}>{h.details}</p>
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('actionedBy')}: <span style={{ color: 'white' }}>{h.user}</span></p>
+                                    <p style={{ color: 'white', fontWeight: 600, fontSize: '0.95rem', marginBottom: '8px' }}>{log.description}</p>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('actionedBy')}: <span style={{ color: 'white' }}>{log.user_id || 'System'}</span></p>
                                 </div>
                             ))}
                         </div>

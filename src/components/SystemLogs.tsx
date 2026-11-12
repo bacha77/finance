@@ -29,6 +29,7 @@ export default function SystemLogs() {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line
         fetchLogs();
     }, []);
 

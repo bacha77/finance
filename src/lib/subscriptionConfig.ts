@@ -2,7 +2,7 @@
 // Complete access-control logic for trial + paid subscriptions.
 
 import type { PlanId } from './trialConfig';
-import { PLANS, TRIAL_CONFIG } from './trialConfig';
+import { getPlanById, TRIAL_CONFIG } from './trialConfig';
 
 // ── PayPal ────────────────────────────────────────────────────────────────
 export const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID || 'sb';
@@ -11,8 +11,8 @@ export const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID || 'sb';
 export interface ChurchRecord {
   id: string;
   name: string;
-  plan: PlanId;
-  created_at: string;
+  plan?: PlanId;
+  created_at?: string;
   subscription_end_date?: string | null;
   paypal_order_id?: string | null;
   cancel_at_period_end?: boolean;
@@ -44,24 +44,40 @@ export interface SubscriptionStatus {
  */
 export function getSubscriptionStatus(church: ChurchRecord): SubscriptionStatus {
   const now = new Date();
-  const plan = church.plan as PlanId;
+  const plan: PlanId = (church.plan as PlanId) || 'trial';
 
   // ── PAID SUBSCRIPTION ──────────────────────────────────────────────────
-  if (plan !== 'trial' && church.subscription_end_date) {
-    const endDate = new Date(church.subscription_end_date);
-    const msRemaining = endDate.getTime() - now.getTime();
-    const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
-    const isExpired = now > endDate;
-    const isExpiring = !isExpired && daysRemaining <= 7;
-
-    const planConfig = PLANS.find(p => p.id === plan);
+  if (plan !== 'trial') {
+    const planConfig = getPlanById(plan);
     const memberLimit = planConfig?.memberLimit ?? null;
 
+    if (church.subscription_end_date) {
+      const endDate = new Date(church.subscription_end_date);
+      if (!isNaN(endDate.getTime())) {
+        const msRemaining = endDate.getTime() - now.getTime();
+        const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+        const isExpired = now > endDate;
+        const isExpiring = !isExpired && daysRemaining <= 7;
+
+        return {
+          accessStatus: isExpired ? 'paid_expired' : isExpiring ? 'paid_expiring' : 'paid_active',
+          isBlocked: isExpired,
+          daysRemaining,
+          subscriptionEndDate: endDate,
+          canAddMembers: !isExpired,
+          memberLimit,
+          currentPlan: plan,
+          isCancelled: !!church.cancel_at_period_end,
+        };
+      }
+    }
+
+    // Paid plan without an explicit end date (e.g., admin-granted or lifetime/enterprise)
     return {
-      accessStatus: isExpired ? 'paid_expired' : isExpiring ? 'paid_expiring' : 'paid_active',
-      isBlocked: isExpired,
-      daysRemaining,
-      subscriptionEndDate: endDate,
+      accessStatus: 'paid_active',
+      isBlocked: false,
+      daysRemaining: 365,
+      subscriptionEndDate: null,
       canAddMembers: true,
       memberLimit,
       currentPlan: plan,
@@ -70,13 +86,14 @@ export function getSubscriptionStatus(church: ChurchRecord): SubscriptionStatus 
   }
 
   // ── FREE TRIAL ─────────────────────────────────────────────────────────
-  const created = new Date(church.created_at);
-  let trialEndDate = new Date(created.getTime() + TRIAL_CONFIG.TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  const created = church.created_at ? new Date(church.created_at) : now;
+  const safeCreated = isNaN(created.getTime()) ? now : created;
+  let trialEndDate = new Date(safeCreated.getTime() + TRIAL_CONFIG.TRIAL_DAYS * 24 * 60 * 60 * 1000);
   
   // If admin manually extended the trial via subscription_end_date
   if (church.subscription_end_date) {
     const overrideDate = new Date(church.subscription_end_date);
-    if (overrideDate > trialEndDate) {
+    if (!isNaN(overrideDate.getTime()) && overrideDate > trialEndDate) {
       trialEndDate = overrideDate;
     }
   }
@@ -90,7 +107,7 @@ export function getSubscriptionStatus(church: ChurchRecord): SubscriptionStatus 
     isBlocked: isExpired,
     daysRemaining,
     subscriptionEndDate: trialEndDate,
-    canAddMembers: true,
+    canAddMembers: !isExpired,
     memberLimit: TRIAL_CONFIG.TRIAL_MEMBER_LIMIT,
     currentPlan: 'trial',
     isCancelled: false,
@@ -98,13 +115,21 @@ export function getSubscriptionStatus(church: ChurchRecord): SubscriptionStatus 
 }
 
 /**
- * Calculates the next subscription end date (30 days from now).
+ * Calculates the next subscription end date (30 days for monthly, 365 days for annual).
+ * If currentEndDate is in the future, extends from that date so remaining days aren't lost.
  */
-export function getNextBillingDate(): string {
+export function getNextBillingDate(isAnnual = false, currentEndDate?: string | null): string {
   const now = new Date();
-  const next = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-  // Set to midnight UTC
-  next.setUTCHours(0, 0, 0, 0);
+  let baseDate = now;
+  if (currentEndDate) {
+    const parsed = new Date(currentEndDate);
+    if (!isNaN(parsed.getTime()) && parsed > now) {
+      baseDate = parsed;
+    }
+  }
+  const daysToAdd = isAnnual ? 365 : 30;
+  const next = new Date(baseDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+  next.setUTCHours(23, 59, 59, 999);
   return next.toISOString();
 }
 

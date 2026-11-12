@@ -45,27 +45,59 @@ function CheckoutButtons({
                 intent: 'CAPTURE',
                 purchase_units: [{
                     description,
+                    custom_id: JSON.stringify({ churchId, planId: plan.id, isAnnual }),
                     amount: { currency_code: 'USD', value: amount },
                 }],
             }),
-        [amount, description]
+        [amount, description, churchId, plan.id, isAnnual]
     );
 
     const onApprove = useCallback(
         async (_data: unknown, actions: any) => {
             try {
                 const order = await actions.order.capture();
-                await supabase.from('churches').update({
-                    plan: plan.id,
-                    subscription_end_date: getNextBillingDate(),
-                    paypal_order_id: order.id,
-                }).eq('id', churchId);
+                const nextBillingDate = getNextBillingDate(isAnnual);
+                const paymentMethod = `PayPal (${isAnnual ? 'Annual' : 'Monthly'})`;
+                const paymentNotes = `${plan.name} Plan — Order #${order.id}`;
+
+                const { error: rpcError } = await supabase.rpc('record_subscription_payment', {
+                    p_church_id: churchId,
+                    p_plan: plan.id,
+                    p_end_date: nextBillingDate,
+                    p_order_id: order.id,
+                    p_amount: parseFloat(amount),
+                    p_method: paymentMethod,
+                    p_notes: paymentNotes,
+                });
+
+                if (rpcError) {
+                    const { error } = await supabase.from('churches').update({
+                        plan: plan.id,
+                        subscription_end_date: nextBillingDate,
+                        paypal_order_id: order.id,
+                        cancel_at_period_end: false,
+                    }).eq('id', churchId);
+
+                    if (error) throw new Error(error.message);
+
+                    try {
+                        await supabase.from('admin_payments').insert({
+                            church_id: churchId,
+                            amount: parseFloat(amount),
+                            payment_method: paymentMethod,
+                            notes: paymentNotes,
+                        });
+                    } catch {
+                        // Non-blocking if RLS restricts client insert on admin_payments
+                    }
+                }
+
                 onSuccess();
             } catch (err: any) {
                 onError(err.message || 'Payment capture failed. Please try again.');
             }
         },
-        [plan, churchId, onSuccess, onError]
+        [plan, churchId, isAnnual, amount, onSuccess, onError]
     );
 
     if (isPending) {
@@ -84,7 +116,7 @@ function CheckoutButtons({
                 createOrder={createOrder}
                 onApprove={onApprove}
                 onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
-                forceReRender={[plan.id]}
+                forceReRender={[plan.id, isAnnual, amount]}
             />
             <PayPalButtons
                 fundingSource={FUNDING.PAYPAL}
@@ -92,7 +124,7 @@ function CheckoutButtons({
                 createOrder={createOrder}
                 onApprove={onApprove}
                 onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
-                forceReRender={[plan.id]}
+                forceReRender={[plan.id, isAnnual, amount]}
             />
             <PayPalButtons
                 fundingSource={FUNDING.VENMO}
@@ -100,7 +132,7 @@ function CheckoutButtons({
                 createOrder={createOrder}
                 onApprove={onApprove}
                 onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
-                forceReRender={[plan.id]}
+                forceReRender={[plan.id, isAnnual, amount]}
             />
             <PayPalButtons
                 fundingSource={FUNDING.PAYLATER}
@@ -108,7 +140,7 @@ function CheckoutButtons({
                 createOrder={createOrder}
                 onApprove={onApprove}
                 onError={(err: any) => onError(err?.message || 'PayPal error. Please try again.')}
-                forceReRender={[plan.id]}
+                forceReRender={[plan.id, isAnnual, amount]}
             />
         </div>
     );
@@ -244,7 +276,7 @@ function CheckoutModal({
                             currency: 'USD',
                             intent: 'capture',
                             components: 'buttons',
-                            enableFunding: 'card,venmo',
+                            enableFunding: 'card,venmo,paylater',
                         }}>
                             <CheckoutButtons
                                 plan={plan}
@@ -268,17 +300,26 @@ function CheckoutModal({
     );
 }
 
+const PLAN_RANK: Record<string, number> = {
+    trial: 0,
+    starter: 1,
+    growth: 2,
+    enterprise: 3,
+};
+
 // ── Single Plan Card ───────────────────────────────────────────────────────
 const PricingCard: React.FC<{
     plan: Plan;
     current: boolean;
+    currentPlanId: string;
     onSelect: () => void;
     index: number;
     hasChurchId: boolean;
     isAnnual: boolean;
-}> = ({ plan, current, onSelect, index, hasChurchId, isAnnual }) => {
+}> = ({ plan, current, currentPlanId, onSelect, index, hasChurchId, isAnnual }) => {
     const isPopular = plan.badge === 'Most Popular';
     const isFree = plan.price === null;
+    const isDowngrade = (PLAN_RANK[plan.id] ?? 0) < (PLAN_RANK[currentPlanId] ?? 0);
 
     return (
         <motion.div
@@ -381,8 +422,10 @@ const PricingCard: React.FC<{
                 {current
                     ? '✓ Active Plan'
                     : isFree
-                        ? 'Current Free Trial'
-                        : `⚡ Upgrade to ${plan.name}`
+                        ? 'Included in Trial'
+                        : isDowngrade
+                            ? `Switch to ${plan.name}`
+                            : `⚡ Upgrade to ${plan.name}`
                 }
             </button>
         </motion.div>
@@ -456,15 +499,13 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan = 'trial', churchId, onUp
                         }}
                     >
                         Yearly
-                        {isAnnual && (
-                             <div style={{ 
-                                position: 'absolute', top: '-12px', right: '-12px', 
-                                background: '#34d399', color: 'black', padding: '2px 8px', 
-                                borderRadius: '6px', fontSize: '0.6rem', fontWeight: 900 
-                            }}>
-                                SAVE 20%
-                            </div>
-                        )}
+                        <span style={{ 
+                            marginLeft: '8px',
+                            background: '#34d399', color: 'black', padding: '2px 8px', 
+                            borderRadius: '6px', fontSize: '0.6rem', fontWeight: 900 
+                        }}>
+                            SAVE 20%
+                        </span>
                     </button>
                 </div>
                 
@@ -486,6 +527,7 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan = 'trial', churchId, onUp
                         plan={plan}
                         index={i}
                         current={plan.id === currentPlan}
+                        currentPlanId={currentPlan}
                         onSelect={() => handleSelect(plan)}
                         hasChurchId={!!churchId}
                         isAnnual={isAnnual}
@@ -493,9 +535,78 @@ const Pricing: React.FC<PricingProps> = ({ currentPlan = 'trial', churchId, onUp
                 ))}
             </div>
 
+            {/* Feature Comparison & Enterprise Banner */}
+            <div style={{ maxWidth: '1100px', margin: '4rem auto 0', display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+                <div style={{
+                    background: 'var(--bg-card)', border: '1px solid var(--border)',
+                    borderRadius: '24px', padding: '2rem', overflowX: 'auto',
+                }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '1.5rem' }}>
+                        Compare Plan Capabilities
+                    </h3>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: '540px' }}>
+                        <thead>
+                            <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left', color: 'var(--text-muted)' }}>
+                                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700 }}>Feature</th>
+                                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#10b981' }}>Free Trial</th>
+                                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#6366f1' }}>Starter</th>
+                                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#a855f7' }}>Growth</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {[
+                                { label: 'Congregation Member Limit', trial: 'Up to 15', starter: 'Up to 200', growth: 'Unlimited' },
+                                { label: 'Fund Accounting & General Ledger', trial: '✓', starter: '✓', growth: '✓' },
+                                { label: 'Smart Giving & Donor Portal', trial: '✓', starter: '✓', growth: '✓' },
+                                { label: 'Staff Payroll & IRS Tax Compliance (941 / W-2 / 1099)', trial: '✓', starter: '✓', growth: '✓' },
+                                { label: 'Department Budgets & Expense Approvals', trial: 'Basic', starter: 'Standard', growth: 'Unlimited Custom' },
+                                { label: 'Bulk Annual Tax Contribution Statements', trial: '—', starter: 'Monthly', growth: 'Unlimited Bulk Dispatch' },
+                                { label: 'AI Financial Forecasting & Board Reports (GAAP)', trial: 'Preview', starter: 'Standard', growth: 'Full Suite + Custom' },
+                                { label: 'Dedicated Account Manager & Priority Support', trial: 'Email', starter: 'Email & Chat', growth: 'Dedicated Manager' },
+                            ].map((row, idx) => (
+                                <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                    <td style={{ padding: '0.85rem 0.5rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{row.label}</td>
+                                    <td style={{ padding: '0.85rem 0.5rem', color: 'var(--text-muted)' }}>{row.trial}</td>
+                                    <td style={{ padding: '0.85rem 0.5rem', color: 'var(--text-main)', fontWeight: 600 }}>{row.starter}</td>
+                                    <td style={{ padding: '0.85rem 0.5rem', color: '#c084fc', fontWeight: 700 }}>{row.growth}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Multi-Campus / Check & Wire Payment Info */}
+                <div style={{
+                    background: 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(16,185,129,0.06) 100%)',
+                    border: '1px solid rgba(99,102,241,0.25)',
+                    borderRadius: '20px', padding: '1.75rem 2rem',
+                    display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
+                }}>
+                    <div>
+                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.25rem' }}>
+                            Paying by Church Check, ACH Wire, or Zelle?
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            We support traditional church check and bank wire billing for board-approved annual or monthly subscriptions.
+                        </div>
+                    </div>
+                    <a
+                        href="mailto:sales@storehousefinance.net?subject=Church%20Subscription%20Invoice%20Request"
+                        style={{
+                            padding: '0.75rem 1.4rem', borderRadius: '12px',
+                            background: 'var(--primary)', color: 'white',
+                            textDecoration: 'none', fontWeight: 800, fontSize: '0.85rem',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        Request Official Invoice →
+                    </a>
+                </div>
+            </div>
+
             <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.825rem', marginTop: '3rem', fontWeight: 500 }}>
                 <Shield size={13} style={{ display: 'inline', marginRight: '5px', verticalAlign: 'middle' }} />
-                All payments secured by PayPal · All plans billed monthly ·{' '}
+                All payments secured by PayPal · {isAnnual ? 'Annual billing (20% discount applied)' : 'Monthly billing, cancel anytime'} ·{' '}
                 <a href="mailto:sales@storehousefinance.net" style={{ color: 'var(--primary-light)', textDecoration: 'none', fontWeight: 700 }}>
                     Contact support
                 </a>
