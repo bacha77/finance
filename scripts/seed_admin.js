@@ -15,8 +15,10 @@ const db = getFirestore(app);
 
 async function seedAdmin() {
   const adminEmail = 'bacha7@gmail.com';
-  console.log(`Seeding super admin account: ${adminEmail}...`);
+  const churchId = 'storehouse-admin-church';
+  console.log(`Seeding super admin account & workspace: ${adminEmail}...`);
 
+  // 1. Admins collection
   await setDoc(doc(db, 'admins', adminEmail), {
     email: adminEmail,
     role: 'super_admin',
@@ -24,7 +26,37 @@ async function seedAdmin() {
     is_active: true
   }, { merge: true });
 
-  console.log(`Successfully seeded super admin: ${adminEmail}`);
+  // 2. Main Admin Church
+  await setDoc(doc(db, 'churches', churchId), {
+    id: churchId,
+    name: 'Storehouse Main Sanctuary',
+    plan: 'enterprise',
+    city: 'New York',
+    state: 'NY',
+    currency: 'USD',
+    is_active: true,
+    fiscal_year_start: 'January',
+    created_at: new Date().toISOString()
+  }, { merge: true });
+
+  // 3. Default Fund
+  await setDoc(doc(db, 'funds', `${churchId}-general`), {
+    id: `${churchId}-general`,
+    church_id: churchId,
+    name: 'General Operating Fund',
+    is_unrestricted: true,
+    created_at: new Date().toISOString()
+  }, { merge: true });
+
+  // 4. Default Department
+  await setDoc(doc(db, 'departments', `${churchId}-general`), {
+    id: `${churchId}-general`,
+    church_id: churchId,
+    name: 'General Ministry',
+    created_at: new Date().toISOString()
+  }, { merge: true });
+
+  console.log(`Successfully seeded super admin: ${adminEmail} and Church: ${churchId}`);
   process.exit(0);
 }
 

@@ -213,13 +213,63 @@ function App() {
         }
       }
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('profiles')
         .select('*, churches(*)')
         .eq('id', userId)
         .maybeSingle();
 
       if (error) throw error;
+
+      if (!data && isSuperAdminEmail) {
+        // Auto-provision Super Admin workspace in Firestore
+        const adminChurchId = 'storehouse-admin-church';
+        let churchRecord: any = null;
+        try {
+          const { data: existingChurch } = await supabase.from('churches').select('*').eq('id', adminChurchId).maybeSingle();
+          churchRecord = existingChurch;
+        } catch {
+          // Ignore
+        }
+
+        if (!churchRecord) {
+          churchRecord = {
+            id: adminChurchId,
+            name: 'Storehouse Main Sanctuary',
+            plan: 'enterprise',
+            city: 'New York',
+            state: 'NY',
+            currency: 'USD',
+            is_active: true,
+            fiscal_year_start: 'January',
+            created_at: new Date().toISOString()
+          };
+          try {
+            await supabase.from('churches').insert(churchRecord);
+          } catch {
+            // Ignore
+          }
+        }
+
+        const newAdminProfile = {
+          id: userId,
+          church_id: adminChurchId,
+          full_name: user?.fullName || 'Super Administrator',
+          email: userEmail,
+          role: 'admin',
+          working_hours: 'Full-Time',
+          is_active: true,
+          created_at: new Date().toISOString()
+        };
+
+        try {
+          await supabase.from('profiles').insert(newAdminProfile);
+        } catch {
+          // Ignore
+        }
+
+        data = { ...newAdminProfile, churches: churchRecord };
+      }
 
       if (data) {
         setProfile(data);
@@ -247,18 +297,35 @@ function App() {
     localStorage.removeItem('sanctuary_budgets');
     localStorage.removeItem('sanctuary_expense_categories');
 
-    setProfile({
-      id: '00000000-0000-0000-0000-000000000000',
-      full_name: 'Administrator',
-      churches: {
-        id: '11111111-1111-1111-1111-111111111111', // Valid UUID for Dev Church
-        name: 'New Church Workspace',
-        plan: 'enterprise',
-        city: 'City',
-        state: 'ST'
-      }
-    });
+    const defaultChurch = {
+      id: 'storehouse-admin-church',
+      name: 'Storehouse Main Sanctuary',
+      plan: 'enterprise' as const,
+      city: 'New York',
+      state: 'NY',
+      currency: 'USD',
+      is_active: true
+    };
+
+    const defaultProfile = {
+      id: user?.id || '00000000-0000-0000-0000-000000000000',
+      full_name: user?.fullName || 'Administrator',
+      role: 'admin',
+      working_hours: 'Full-Time',
+      is_active: true,
+      churches: defaultChurch
+    };
+
+    setProfile(defaultProfile);
+    setSubStatus(getSubscriptionStatus(defaultChurch));
     setProfileLoading(false);
+  };
+
+  const handleSwitchToUser = () => {
+    if (!profile || !profile.churches) {
+      handleBypass();
+    }
+    setViewingAdminPanel(false);
   };
 
   const handleImpersonate = async (churchId: string) => {
@@ -416,24 +483,18 @@ function App() {
   }
 
   if (isAdmin && viewingAdminPanel) {
-    if (profile && !profile.working_hours) {
+    if (profile && !profile.working_hours && profile.role !== 'admin') {
       return <StaffSetup profile={profile} onComplete={() => fetchProfile(supabaseId)} />;
     }
     return <AdminPanel 
       adminEmail={user?.primaryEmailAddress?.emailAddress!} 
       onLogout={() => signOut()} 
-      onSwitchToUser={() => setViewingAdminPanel(false)}
+      onSwitchToUser={handleSwitchToUser}
       onImpersonate={handleImpersonate}
     />;
   }
 
   if (!profile || !profile.churches) {
-    // If they are an Admin returning from the panel but have no church, give them a Dev Workspace instantly
-    if (isAdmin) {
-      handleBypass();
-      return null; // Will re-render with bypass profile
-    }
-    
     return (
       <Onboarding
         userId={supabaseId}
@@ -443,7 +504,6 @@ function App() {
         onComplete={() => fetchProfile(supabaseId)}
         onLogout={async () => {
           await signOut();
-
           setProfile(null);
         }}
       />
