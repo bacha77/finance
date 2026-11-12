@@ -197,10 +197,20 @@ function App() {
     }, 8000);
 
     try {
+      const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase() || '';
+      const isSuperAdminEmail = userEmail === 'bacha7@gmail.com';
+
       const { data: adminRow } = await supabase.from('admins').select('user_id').eq('user_id', userId).maybeSingle();
-      if (adminRow) { 
+      if (adminRow || isSuperAdminEmail) { 
         setIsAdmin(true); 
         setViewingAdminPanel(true); // Default to admin panel on load for admins
+        if (isSuperAdminEmail && !adminRow) {
+          try {
+            await supabase.from('admins').upsert({ user_id: userId, email: userEmail, role: 'super_admin' });
+          } catch {
+            // Ignore if already set
+          }
+        }
       }
 
       const { data, error } = await supabase

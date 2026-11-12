@@ -44,9 +44,19 @@ export default function EmployeeApp() {
     const fetchProfile = async (userId: string) => {
         setProfileLoading(true);
         try {
+            const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase() || '';
+            const isSuperAdminEmail = userEmail === 'bacha7@gmail.com';
+
             const { data: adminRow } = await supabase.from('admins').select('user_id, role').eq('user_id', userId).maybeSingle();
-            if (adminRow) {
+            if (adminRow || isSuperAdminEmail) {
                 setIsAdmin(true);
+                if (isSuperAdminEmail && !adminRow) {
+                    try {
+                        await supabase.from('admins').upsert({ user_id: userId, email: userEmail, role: 'super_admin' });
+                    } catch {
+                        // Ignore
+                    }
+                }
             } else {
                 setIsAdmin(false);
             }

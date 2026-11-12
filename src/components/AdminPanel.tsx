@@ -393,20 +393,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ adminEmail, onLogout, onSwitchT
                 setProfiles(profileData);
             }
 
-            const { data: adminData } = await supabase.from('admins').select('user_id, role');
+            const { data: adminData } = await supabase.from('admins').select('user_id, role, email');
             if (adminData) {
                 setAdmins(adminData);
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) setMyUserId(user.id);
-                const me = adminData.filter(a => a.user_id === user?.id).map(a => a.role);
-                if (me.length > 0) {
-                    const role = me[0];
-                    setMyRole(role as any);
-                    // Default to their specific tab if they are not super_admin
-                    if (role === 'sales') setActiveTab('sales');
-                    else if (role === 'marketing') setActiveTab('marketing');
-                    else if (role === 'support') setActiveTab('support');
+                if (adminEmail?.toLowerCase() === 'bacha7@gmail.com') {
+                    setMyRole('super_admin');
+                } else {
+                    const me = adminData.filter(a => a.user_id === user?.id || a.email === adminEmail).map(a => a.role);
+                    if (me.length > 0) {
+                        const role = me[0];
+                        setMyRole(role as any);
+                        // Default to their specific tab if they are not super_admin
+                        if (role === 'sales') setActiveTab('sales');
+                        else if (role === 'marketing') setActiveTab('marketing');
+                        else if (role === 'support') setActiveTab('support');
+                    }
                 }
+            } else if (adminEmail?.toLowerCase() === 'bacha7@gmail.com') {
+                setMyRole('super_admin');
             }
 
             const { data: inviteData } = await supabase.from('system_invites').select('email, roles, job_title');
