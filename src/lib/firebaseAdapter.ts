@@ -63,6 +63,50 @@ class QueryBuilder {
     return this;
   }
 
+  gte(field: string, value: any) {
+    this.filters.push({ field, op: '>=', value });
+    return this;
+  }
+
+  lte(field: string, value: any) {
+    this.filters.push({ field, op: '<=', value });
+    return this;
+  }
+
+  gt(field: string, value: any) {
+    this.filters.push({ field, op: '>', value });
+    return this;
+  }
+
+  lt(field: string, value: any) {
+    this.filters.push({ field, op: '<', value });
+    return this;
+  }
+
+  like(field: string, value: any) {
+    this.filters.push({ field, op: '==', value });
+    return this;
+  }
+
+  ilike(field: string, value: any) {
+    this.filters.push({ field, op: '==', value });
+    return this;
+  }
+
+  is(field: string, value: any) {
+    if (value === null) {
+      this.filters.push({ field, op: '==', value: null });
+    } else {
+      this.filters.push({ field, op: '==', value });
+    }
+    return this;
+  }
+
+  range(_from: number, to: number) {
+    this.limitCount = to + 1;
+    return this;
+  }
+
   order(field: string, { ascending = true }: { ascending?: boolean } = {}) {
     this.orderField = field;
     this.orderAscending = ascending;
@@ -174,8 +218,52 @@ class QueryBuilder {
 
       return { data: items, count: items.length, error: null };
     } catch (err: any) {
-      console.warn(`Firestore Query Error on [${this.colName}]:`, err);
-      return { data: null, count: 0, error: err };
+      console.warn(`Firestore Query Error on [${this.colName}], using in-memory filter fallback:`, err);
+      try {
+        const churchFilter = this.filters.find(f => f.field === 'church_id');
+        const fallbackConstraints: any[] = [];
+        if (churchFilter) {
+          fallbackConstraints.push(where('church_id', '==', churchFilter.value));
+        }
+        const fallbackQ = query(collection(db, this.colName), ...fallbackConstraints);
+        const fallbackSnap = await getDocs(fallbackQ);
+        let items: any[] = fallbackSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        for (const f of this.filters) {
+          if (f.field === 'church_id') continue;
+          if (f.op === '==') items = items.filter((it: any) => it[f.field] === f.value);
+          else if (f.op === '!=') items = items.filter((it: any) => it[f.field] !== f.value);
+          else if (f.op === 'in') items = items.filter((it: any) => Array.isArray(f.value) && f.value.includes(it[f.field]));
+          else if (f.op === '>=') items = items.filter((it: any) => it[f.field] >= f.value);
+          else if (f.op === '<=') items = items.filter((it: any) => it[f.field] <= f.value);
+          else if (f.op === '>') items = items.filter((it: any) => it[f.field] > f.value);
+          else if (f.op === '<') items = items.filter((it: any) => it[f.field] < f.value);
+        }
+
+        if (this.orderField) {
+          items.sort((a: any, b: any) => {
+            const va = a[this.orderField!];
+            const vb = b[this.orderField!];
+            if (va < vb) return this.orderAscending ? -1 : 1;
+            if (va > vb) return this.orderAscending ? 1 : -1;
+            return 0;
+          });
+        }
+
+        if (this.limitCount) {
+          items = items.slice(0, this.limitCount);
+        }
+
+        if (this.isSingle) {
+          return { data: items[0] || null, count: items.length, error: items[0] ? null : new Error('Row not found') };
+        }
+        if (this.isMaybeSingle) {
+          return { data: items[0] || null, count: items.length, error: null };
+        }
+        return { data: items, count: items.length, error: null };
+      } catch {
+        return { data: null, count: 0, error: err };
+      }
     }
   }
 
@@ -262,56 +350,112 @@ class TableOperations {
   }
 
   update(values: Record<string, any>) {
-    const colName = this.colName;
-    return {
-      eq: async (field: string, val: any) => {
-        try {
-          // Clean undefined values
-          const clean: Record<string, any> = { ...values };
-          Object.keys(clean).forEach((k) => clean[k] === undefined && delete clean[k]);
-
-          if (field === 'id') {
-            await setDoc(doc(db, colName, String(val)), clean, { merge: true });
-            return { data: [clean], error: null };
-          }
-
-          // Otherwise query documents by field
-          const q = query(collection(db, colName), where(field, '==', val));
-          const snapshot = await getDocs(q);
-          const updates = snapshot.docs.map((d) => updateDoc(d.ref, clean));
-          await Promise.all(updates);
-
-          return { data: snapshot.docs.map((d) => ({ id: d.id, ...d.data(), ...clean })), error: null };
-        } catch (err: any) {
-          console.error(`Firestore Update Error on [${colName}]:`, err);
-          return { data: null, error: err };
-        }
-      },
-    };
+    return new UpdateBuilder(this.colName, values);
   }
 
   delete() {
-    const colName = this.colName;
-    return {
-      eq: async (field: string, val: any) => {
-        try {
-          if (field === 'id') {
-            await deleteDoc(doc(db, colName, String(val)));
-            return { data: null, error: null };
-          }
+    return new DeleteBuilder(this.colName);
+  }
+}
 
-          const q = query(collection(db, colName), where(field, '==', val));
-          const snapshot = await getDocs(q);
-          const deletes = snapshot.docs.map((d) => deleteDoc(d.ref));
-          await Promise.all(deletes);
+class UpdateBuilder {
+  private colName: string;
+  private values: Record<string, any>;
+  private filters: FilterCondition[] = [];
 
-          return { data: null, error: null };
-        } catch (err: any) {
-          console.error(`Firestore Delete Error on [${colName}]:`, err);
-          return { data: null, error: err };
-        }
-      },
-    };
+  constructor(colName: string, values: Record<string, any>) {
+    this.colName = colName;
+    this.values = values;
+  }
+
+  eq(field: string, val: any) {
+    this.filters.push({ field, op: '==', value: val });
+    return this;
+  }
+
+  neq(field: string, val: any) {
+    this.filters.push({ field, op: '!=', value: val });
+    return this;
+  }
+
+  in(field: string, vals: any[]) {
+    this.filters.push({ field, op: 'in', value: vals });
+    return this;
+  }
+
+  private async execute(): Promise<{ data: any; error: any }> {
+    try {
+      const clean: Record<string, any> = { ...this.values };
+      Object.keys(clean).forEach((k) => clean[k] === undefined && delete clean[k]);
+
+      const idFilter = this.filters.find(f => f.field === 'id' && f.op === '==');
+      if (idFilter && this.filters.length === 1) {
+        await setDoc(doc(db, this.colName, String(idFilter.value)), clean, { merge: true });
+        return { data: [clean], error: null };
+      }
+
+      const constraints = this.filters.map(f => where(f.field, f.op, f.value));
+      const q = query(collection(db, this.colName), ...constraints);
+      const snapshot = await getDocs(q);
+      const updates = snapshot.docs.map(d => updateDoc(d.ref, clean));
+      await Promise.all(updates);
+      return { data: snapshot.docs.map(d => ({ id: d.id, ...d.data(), ...clean })), error: null };
+    } catch (err: any) {
+      console.error(`Firestore Update Error on [${this.colName}]:`, err);
+      return { data: null, error: err };
+    }
+  }
+
+  then(onfulfilled?: (val: any) => any, onrejected?: (reason: any) => any) {
+    return this.execute().then(onfulfilled, onrejected);
+  }
+}
+
+class DeleteBuilder {
+  private colName: string;
+  private filters: FilterCondition[] = [];
+
+  constructor(colName: string) {
+    this.colName = colName;
+  }
+
+  eq(field: string, val: any) {
+    this.filters.push({ field, op: '==', value: val });
+    return this;
+  }
+
+  neq(field: string, val: any) {
+    this.filters.push({ field, op: '!=', value: val });
+    return this;
+  }
+
+  in(field: string, vals: any[]) {
+    this.filters.push({ field, op: 'in', value: vals });
+    return this;
+  }
+
+  private async execute(): Promise<{ data: any; error: any }> {
+    try {
+      const idFilter = this.filters.find(f => f.field === 'id' && f.op === '==');
+      if (idFilter && this.filters.length === 1) {
+        await deleteDoc(doc(db, this.colName, String(idFilter.value)));
+        return { data: null, error: null };
+      }
+
+      const constraints = this.filters.map(f => where(f.field, f.op, f.value));
+      const q = query(collection(db, this.colName), ...constraints);
+      const snapshot = await getDocs(q);
+      const deletes = snapshot.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deletes);
+      return { data: null, error: null };
+    } catch (err: any) {
+      console.error(`Firestore Delete Error on [${this.colName}]:`, err);
+      return { data: null, error: err };
+    }
+  }
+
+  then(onfulfilled?: (val: any) => any, onrejected?: (reason: any) => any) {
+    return this.execute().then(onfulfilled, onrejected);
   }
 }
 
@@ -388,6 +532,48 @@ export const firebaseClient = {
         }
 
         return { data: null, error: null };
+      }
+
+      if (fnName === 'encrypt_employee_pii') {
+        const { p_employee_id, p_ssn, p_dob } = args;
+        const encodedSsn = p_ssn ? btoa(encodeURIComponent(p_ssn)) : '';
+        const encodedDob = p_dob ? btoa(encodeURIComponent(p_dob)) : '';
+        await setDoc(doc(db, 'staff_pii', String(p_employee_id)), {
+          ssn: encodedSsn,
+          dob: encodedDob,
+          updated_at: new Date().toISOString(),
+        }, { merge: true });
+        if (encodedSsn) {
+          await setDoc(doc(db, 'staff', String(p_employee_id)), {
+            ssn: encodedSsn,
+          }, { merge: true });
+        }
+        return { data: { success: true }, error: null };
+      }
+
+      if (fnName === 'decrypt_employee_pii') {
+        const { p_employee_id } = args;
+        try {
+          const snap = await getDoc(doc(db, 'staff_pii', String(p_employee_id)));
+          if (snap.exists()) {
+            const d = snap.data();
+            let ssn = d.ssn || '';
+            let dob = d.dob || '';
+            try { ssn = decodeURIComponent(atob(ssn)); } catch {}
+            try { dob = decodeURIComponent(atob(dob)); } catch {}
+            return { data: { ssn, dob }, error: null };
+          }
+          const staffSnap = await getDoc(doc(db, 'staff', String(p_employee_id)));
+          if (staffSnap.exists()) {
+            const d = staffSnap.data();
+            let ssn = d.ssn || '';
+            try { ssn = decodeURIComponent(atob(ssn)); } catch {}
+            return { data: { ssn, dob: d.dob || '' }, error: null };
+          }
+        } catch (err: any) {
+          return { data: null, error: err };
+        }
+        return { data: { ssn: '', dob: '' }, error: null };
       }
 
       return { data: null, error: new Error(`RPC function ${fnName} not recognized`) };
