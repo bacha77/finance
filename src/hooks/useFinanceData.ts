@@ -34,7 +34,7 @@ export const useFinanceData = (churchId: string | null) => {
             ]);
 
             setLedger(ledgerData ? ledgerData.filter((t: any) => t.category !== 'Payroll') : []);
-            setFunds(fundsData || []);
+            setFunds(fundsData ? fundsData.map((f: any) => ({ ...f, balance: typeof f.balance === 'number' ? f.balance : 0 })) : []);
             setMembers(membersData || []);
         } catch (err) {
             console.error('Error fetching finance data:', err);

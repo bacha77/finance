@@ -436,7 +436,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
                     insights.push({
                         type: 'warning',
                         title: `Critical Ceiling: ${dept.name}`,
-                        message: `Spend velocity is accelerating. Only $${(dept.budget - dept.spent).toLocaleString()} remaining in fiscal bucket.`,
+                        message: `Spend velocity is accelerating. Only $${((dept.budget || 0) - (dept.spent || 0)).toLocaleString()} remaining in fiscal bucket.`,
                         impact: 'Medium'
                     });
                 }
@@ -548,7 +548,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, churchId, userRole 
         },
         {
             label: t('members'),
-            value: financeStats.membersCount.toLocaleString(),
+            value: (financeStats?.membersCount || 0).toLocaleString(),
             change: financeStats.membersCount > 0 ? 'ACTIVE' : 'NONE',
             up: financeStats.membersCount > 0,
             icon: Users,

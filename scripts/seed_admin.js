@@ -44,6 +44,10 @@ async function seedAdmin() {
     id: `${churchId}-general`,
     church_id: churchId,
     name: 'General Operating Fund',
+    balance: 0,
+    status: 'Healthy',
+    color: '#10b981',
+    type: 'Operating',
     is_unrestricted: true,
     created_at: new Date().toISOString()
   }, { merge: true });
@@ -53,6 +57,8 @@ async function seedAdmin() {
     id: `${churchId}-general`,
     church_id: churchId,
     name: 'General Ministry',
+    annual_budget: 0,
+    spent_so_far: 0,
     created_at: new Date().toISOString()
   }, { merge: true });
 

@@ -195,7 +195,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
             await supabase.from('system_logs').insert({
                 church_id: churchId,
                 action_type: 'BUDGET_UPDATE',
-                description: `Updated budget for fiscal year ${activeYear} (Total: $${currentBudget.totalBudget.toLocaleString()})`
+                description: `Updated budget for fiscal year ${activeYear} (Total: $${(currentBudget.totalBudget || 0).toLocaleString()})`
             });
 
             alert(language === 'es' ? `¡Presupuesto para el año ${activeYear} guardado!` : `Budget for fiscal year ${activeYear} saved successfully!`);
@@ -390,7 +390,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
                                 <AlertTriangle size={20} color="var(--danger)" />
                                 <div style={{ flex: 1 }}>
                                     <p style={{ color: 'white', fontWeight: 700, fontSize: '0.9rem' }}>{t('overBudget')}: {dept?.name}</p>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{t('error')}: {dept?.name} - {spent.toLocaleString()}</p>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{t('error')}: {dept?.name} - {(spent || 0).toLocaleString()}</p>
                                 </div>
                                 <button
                                     className="btn"
@@ -487,7 +487,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
                                                 </div>
                                             </td>
                                             <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--primary-light)' }}>
-                                                ${alloc.amount.toLocaleString()}
+                                                ${(alloc.amount || 0).toLocaleString()}
                                             </td>
                                             <td>
                                                 {(() => {
@@ -590,7 +590,7 @@ const Budget: React.FC<BudgetProps> = ({ setActiveTab, churchId, userRole = 'vie
                         <div style={{ textAlign: 'right' }}>
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{t('totalPledgesBudget')}</p>
                             <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>
-                                ${totalAllocatedAmount.toLocaleString()}
+                                ${(totalAllocatedAmount || 0).toLocaleString()}
                             </h4>
                         </div>
                     </div>

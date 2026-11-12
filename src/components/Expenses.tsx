@@ -591,7 +591,7 @@ const Expenses: React.FC<ExpensesProps> = ({ setActiveTab: _setActiveTab, church
                                         <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '6px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary-light)', fontWeight: 800, textTransform: 'uppercase' }}>{exp.category}</span>
                                     </td>
                                     <td className="mobile-hide" style={{ fontSize: '0.85rem' }}>{exp.department}</td>
-                                    <td style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--danger)' }}>-${exp.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                    <td style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--danger)' }}>-${(exp?.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                     <td style={{ textAlign: 'right' }}>
                                         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                                             {canManage && (

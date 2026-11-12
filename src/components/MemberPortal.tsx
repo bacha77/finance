@@ -309,7 +309,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
         autoTable(doc, {
             startY: 120,
             head: [[t('dateLabel'), t('fundAllocation'), t('description'), t('amount')]],
-            body: donations.map(tx => [tx.date, tx.fund, tx.desc || (language === 'es' ? 'Mayordomía' : 'Stewardship'), `$${tx.amount.toLocaleString()}`]),
+            body: donations.map(tx => [tx.date, tx.fund, tx.desc || (language === 'es' ? 'Mayordomía' : 'Stewardship'), `$${(tx.amount || 0).toLocaleString()}`]),
             theme: 'striped',
             headStyles: { fillColor: [79, 70, 229], fontSize: 10, cellPadding: 4 },
             bodyStyles: { fontSize: 9, cellPadding: 3 },
@@ -1357,7 +1357,7 @@ const MemberPortal: React.FC<MemberPortalProps> = ({ memberLimit, churchId, user
                                                     <span style={{ backgroundColor: '#eef2ff', color: '#4f46e5', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>{tx.fund}</span>
                                                 </td>
                                                 <td style={{ padding: '1.25rem 0', color: '#64748b' }}>{tx.desc}</td>
-                                                <td style={{ padding: '1.25rem 0', textAlign: 'right', fontWeight: 800 }}>${tx.amount.toLocaleString()}</td>
+                                                <td style={{ padding: '1.25rem 0', textAlign: 'right', fontWeight: 800 }}>${(tx.amount || 0).toLocaleString()}</td>
                                             </tr>
                                         ))}
                                         {getMemberDonations(selectedMember.name).length === 0 && (

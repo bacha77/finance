@@ -109,7 +109,14 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                     .select('*')
                     .eq('church_id', churchId);
 
-                setFunds(fundData || []);
+                const safeFunds = (fundData || []).map((f: any) => ({
+                    ...f,
+                    balance: typeof f.balance === 'number' ? f.balance : 0,
+                    status: f.status || 'Active',
+                    color: f.color || '#6366f1',
+                    type: f.type || 'Unrestricted'
+                }));
+                setFunds(safeFunds);
 
                 // Auto-seed General Fund if none exist
                 if (!fundData || fundData.length === 0) {
@@ -831,7 +838,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                         <div key={i} style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: item.matched ? '1px solid var(--success)' : (matchingRecords[item.id] ? '1px solid var(--primary)' : '1px solid var(--border)'), position: 'relative' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>{item.date}</span>
-                                                <span style={{ fontWeight: 800, color: item.amount > 0 ? 'var(--success)' : 'white' }}>${Math.abs(item.amount).toLocaleString()}</span>
+                                                <span style={{ fontWeight: 800, color: (item.amount || 0) > 0 ? 'var(--success)' : 'white' }}>${Math.abs(item.amount || 0).toLocaleString()}</span>
                                             </div>
                                             <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white' }}>{item.desc}</p>
                                             
@@ -923,7 +930,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                         {fund.name}
                                     </h3>
                                     <p style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.75rem', color: 'white' }}>
-                                        ${fund.balance.toLocaleString()}
+                                        ${(fund.balance || 0).toLocaleString()}
                                     </p>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--success)', fontWeight: 700 }}>
                                         <ArrowUpRight size={14} /> {t('accountStatus')}: {fund.status}
@@ -983,7 +990,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                                 </td>
                                                 <td><span style={{ fontSize: '0.7rem', padding: '4px 12px', borderRadius: '6px', background: 'rgba(168, 85, 247, 0.1)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.2)', fontWeight: 800 }}>{tx.fund}</span></td>
                                                 <td style={{ textAlign: 'right', fontSize: '1rem', fontWeight: 800, color: tx.type === 'in' ? 'var(--success)' : 'var(--danger)' }}>
-                                                    {tx.amount >= 0 ? '+' : ''}{tx.amount.toLocaleString()}
+                                                    {(tx.amount || 0) >= 0 ? '+' : ''}{(tx.amount || 0).toLocaleString()}
                                                 </td>
                                                 <td style={{ textAlign: 'right' }}>
                                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -1252,7 +1259,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                     <div style={{ padding: '1.25rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '16px', marginBottom: '2rem', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
                                         <div style={{ fontSize: '0.65rem', color: '#60a5fa', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>Bank Transaction</div>
                                         <div style={{ fontWeight: 800, color: 'white' }}>{bankItems.find(i => i.id === linkingBankId)?.desc}</div>
-                                        <div style={{ color: 'white', fontWeight: 900, marginTop: '4px', fontSize: '1.2rem' }}>${bankItems.find(i => i.id === linkingBankId)?.amount.toLocaleString()}</div>
+                                        <div style={{ color: 'white', fontWeight: 900, marginTop: '4px', fontSize: '1.2rem' }}>${(bankItems.find(i => i.id === linkingBankId)?.amount || 0).toLocaleString()}</div>
                                     </div>
                                     <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Select the ledger entry to link with this statement line:</p>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '350px', overflowY: 'auto', paddingRight: '8px' }}>
@@ -1271,7 +1278,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                                     <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{tx.description || t('noDescription')}</div>
                                                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>{tx.date} • {tx.fund}</div>
                                                 </div>
-                                                <div style={{ fontWeight: 900, color: '#10b981' }}>${Math.abs(tx.amount).toLocaleString()}</div>
+                                                <div style={{ fontWeight: 900, color: '#10b981' }}>${Math.abs(tx.amount || 0).toLocaleString()}</div>
                                             </button>
                                         ))}
                                         {ledger.filter(tx => !tx.reconciled).length === 0 && (
@@ -1297,7 +1304,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                     <div style={{ padding: '1.25rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '16px', marginBottom: '1.5rem', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
                                         <div style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>Bank Transaction Scan</div>
                                         <div style={{ fontWeight: 800, color: 'white' }}>{recordingBankItem.desc}</div>
-                                        <div style={{ color: 'white', fontWeight: 900, marginTop: '4px', fontSize: '1.2rem' }}>${recordingBankItem.amount.toLocaleString()} ({recordingBankItem.date})</div>
+                                        <div style={{ color: 'white', fontWeight: 900, marginTop: '4px', fontSize: '1.2rem' }}>${(recordingBankItem.amount || 0).toLocaleString()} ({recordingBankItem.date})</div>
                                     </div>
 
                                     <form onSubmit={handleQuickRecord} autoComplete="off">
@@ -1389,7 +1396,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                                             <div style={{ textAlign: 'right' }}>
                                                 <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>STATEMENT TOTAL</div>
                                                 <div style={{ fontSize: '1rem', fontWeight: 900, color: 'white' }}>
-                                                    ${Math.abs(recordingBankItem.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                    ${Math.abs(recordingBankItem?.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                                 </div>
                                             </div>
                                         </div>

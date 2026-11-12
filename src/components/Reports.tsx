@@ -483,7 +483,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId, userRole = 'viewer' }) => {
                                         <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px' }}><c.icon size={20} color={c.up ? '#10b981' : '#ef4444'} /></div>
                                         <ArrowUpRight size={14} color={c.up ? '#10b981' : '#ef4444'} />
                                     </div>
-                                    <div style={{ fontSize: '2rem', fontWeight: 900 }}>${Math.abs(c.val).toLocaleString()}</div>
+                                    <div style={{ fontSize: '2rem', fontWeight: 900 }}>${Math.abs(c.val || 0).toLocaleString()}</div>
                                     <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '6px' }}>{c.label}</div>
                                 </div>
                             ))}
@@ -533,11 +533,11 @@ const Reports: React.FC<ReportsProps> = ({ churchId, userRole = 'viewer' }) => {
                                <div style={{ marginTop: '4rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                                    <div style={{ border: '1px solid #e2e8f0', padding: '2rem', borderRadius: '8px' }}>
                                        <h4 style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Consolidated Revenue</h4>
-                                       <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#0f172a' }}>${metrics.income.toLocaleString()}</div>
+                                       <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#0f172a' }}>${(metrics?.income || 0).toLocaleString()}</div>
                                    </div>
                                    <div style={{ border: '1px solid #e2e8f0', padding: '2rem', borderRadius: '8px' }}>
                                        <h4 style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Operating Surplus</h4>
-                                       <div style={{ fontSize: '2.5rem', fontWeight: 900, color: metrics.net >= 0 ? '#10b981' : '#ef4444' }}>${metrics.net.toLocaleString()}</div>
+                                       <div style={{ fontSize: '2.5rem', fontWeight: 900, color: (metrics?.net || 0) >= 0 ? '#10b981' : '#ef4444' }}>${(metrics?.net || 0).toLocaleString()}</div>
                                    </div>
                                </div>
 
@@ -547,7 +547,7 @@ const Reports: React.FC<ReportsProps> = ({ churchId, userRole = 'viewer' }) => {
                                        {funds.map((f, i) => (
                                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid #f1f5f9' }}>
                                                <span style={{ fontWeight: 700 }}>{f.name}</span>
-                                               <span style={{ fontWeight: 800 }}>${f.balance.toLocaleString()}</span>
+                                               <span style={{ fontWeight: 800 }}>${(f.balance || 0).toLocaleString()}</span>
                                            </div>
                                        ))}
                                    </div>
