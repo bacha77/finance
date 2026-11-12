@@ -7,6 +7,45 @@
     <title>Storehouse Finance — Church Financial Management, Reimagined</title>
     <meta name="description"
         content="The all-in-one financial operating system for modern churches. Manage funds, payroll, members, budgets, and giving — all in one beautifully simple platform." />
+        
+    <!-- OpenGraph / Social Media Meta Tags -->
+    <meta property="og:title" content="Storehouse Finance — Church Financial Management, Reimagined" />
+    <meta property="og:description" content="The all-in-one financial operating system for modern churches." />
+    <meta property="og:image" content="https://storehousefinance.net/dashboard-real.png" />
+    <meta property="og:url" content="https://storehousefinance.net" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Storehouse Finance" />
+    <meta name="twitter:description" content="The all-in-one financial operating system for modern churches." />
+    <meta name="twitter:image" content="https://storehousefinance.net/dashboard-real.png" />
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GMXXKKE38F"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+    
+      gtag('config', 'G-GMXXKKE38F');
+    </script>
+    
+    <!-- Sentry Error Monitoring (Placeholder) -->
+    <!-- TODO: Replace YOUR_SENTRY_DSN with your actual Sentry DSN -->
+    <script
+        src="https://browser.sentry-cdn.com/7.108.0/bundle.tracing.min.js"
+        integrity="sha384-XXXXX"
+        crossorigin="anonymous"
+    ></script>
+    <script>
+        // Uncomment and initialize once you have your DSN
+        /*
+        Sentry.init({
+            dsn: "YOUR_SENTRY_DSN",
+            integrations: [new Sentry.BrowserTracing()],
+            tracesSampleRate: 1.0,
+        });
+        */
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
@@ -540,9 +579,12 @@
         /* ============ PRICING ============ */
         .pricing-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
-            align-items: start;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            max-width: 1180px;
+            margin: 0 auto;
+            justify-content: center;
+            gap: 2rem;
+            align-items: stretch;
         }
 
         .pricing-card {
@@ -552,6 +594,12 @@
             padding: 2.5rem;
             transition: all 0.3s;
             position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pricing-card .btn {
+            margin-top: auto;
         }
 
         .pricing-card.popular {
@@ -860,6 +908,40 @@
         }
 
         /* ============ RESPONSIVE ============ */
+        .nav-ctas {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .lang-switch {
+            display: flex;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 2px;
+            margin-right: 0.5rem;
+        }
+
+        .lang-btn {
+            padding: 2px 4px;
+            border: none;
+            background: none;
+            color: var(--text-muted);
+            font-size: 0.55rem;
+            font-weight: 800;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .lang-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
         @media (max-width: 900px) {
             nav {
                 padding: 1rem 1.5rem;
@@ -921,8 +1003,12 @@
             <li><a href="#faq">FAQ</a></li>
         </ul>
         <div class="nav-ctas">
-            <a href="/finance/" class="btn btn-ghost">Sign In</a>
-            <a href="/finance/" class="btn btn-gold">Start Free Trial</a>
+            <div class="lang-switch">
+                <button class="lang-btn active" onclick="setLang('en')">EN</button>
+                <button class="lang-btn" onclick="setLang('es')">ES</button>
+            </div>
+            <a href="/finance/" class="btn btn-ghost" data-en="Sign In" data-es="Iniciar Sesión">Sign In</a>
+            <a href="/finance/" class="btn btn-gold" data-en="Start Free Trial" data-es="Prueba Gratis">Start Free Trial</a>
         </div>
     </nav>
 
@@ -934,15 +1020,24 @@
             <img src="logo.png" alt="Storehouse Finance" />
         </div>
 
-        <div class="hero-badge"><span class="dot"></span> Purpose-built for churches</div>
+        <div class="hero-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 6px;"><path d="m12 22-8-4.5v-7.5l8-4.5 8 4.5v7.5z"/><path d="m9 12 2 2 4-4"/></svg>
+            <span data-en="Professional Church Financial Management" data-es="Gestión Financiera Profesional de la Iglesia">Professional Church Financial Management</span>
+        </div>
 
-        <h1>Institutional-Grade<br /><span class="gradient-text">Church Stewardship</span></h1>
+        <h1>
+            <span data-en="Manage Church Finances" data-es="Administre las Finanzas de la Iglesia">Manage Church Finances</span><br />
+            <span style="color: #60A5FA" data-en="with Total Confidence." data-es="con Total Confianza.">with Total Confidence.</span>
+        </h1>
 
-        <p>The irrefutable financial operating system for modern ministries. Manage <b>Forensic Vaults</b>, PDF Statement Intelligence, and Neural Budget Alarms — all in one beautifully elite platform.</p>
+        <p data-en="A comprehensive, secure, and transparent system designed specifically for modern churches. Track tithes, manage expenses, and generate professional reports effortlessly." 
+           data-es="Un sistema integral, seguro y transparente diseñado específicamente para iglesias modernas. Rastree diezmos, gestione gastos y genere informes profesionales sin esfuerzo.">
+           A comprehensive, secure, and transparent system designed specifically for modern churches. Track tithes, manage expenses, and generate professional reports effortlessly.
+        </p>
 
         <div class="hero-ctas">
-            <a href="/finance/" class="btn btn-gold btn-large">🚀 Start Free 30-Day Trial</a>
-            <a href="#features" class="btn btn-outline btn-large">See How It Works</a>
+            <a href="/finance/" class="btn btn-primary btn-large" data-en="Access System &rsaquo;" data-es="Acceder al Sistema &rsaquo;">Access System &rsaquo;</a>
+            <a href="#features" class="btn btn-outline btn-large" data-en="Explore Features" data-es="Explorar Características">Explore Features</a>
         </div>
 
         <div class="hero-proof">
@@ -953,44 +1048,45 @@
 
         <div class="hero-mockup">
             <div class="mockup-glow"></div>
-            <img src="dashboard-preview.png"
+            <img src="dashboard-real.png"
                 alt="Storehouse Finance Dashboard Preview" loading="lazy" />
         </div>
     </section>
 
-    <!-- LOGOS -->
-    <div class="logos-strip">
-        <p>Trusted by growing churches across the nation</p>
-        <div class="logos-row">
-            <span class="church-logo">Grace Fellowship</span>
-            <span class="church-logo">Kingdom Life Church</span>
-            <span class="church-logo">New Hope Ministry</span>
-            <span class="church-logo">Cornerstone Church</span>
-            <span class="church-logo">Living Word</span>
-            <span class="church-logo">Faith Community</span>
-        </div>
-    </div>
-
-    <!-- STATS -->
-    <section class="stats-section">
+    <!-- AI SHOWCASE -->
+    <section class="ai-showcase" style="background: linear-gradient(180deg, rgba(124, 58, 237, 0.03) 0%, transparent 100%); border-top: 1px solid rgba(124,58,237,0.15); border-bottom: 1px solid rgba(124,58,237,0.05);">
         <div class="container">
-            <div class="stats-grid">
-                <div>
-                    <div class="stat-number">$2.4M+</div>
-                    <div class="stat-label">Tithes Tracked Monthly</div>
+            <div class="section-header centered" style="margin-bottom: 2rem;">
+                <div class="section-label" style="color: #c084fc; display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(124,58,237,0.15); padding: 0.35rem 0.85rem; border-radius: 100px; border: 1px solid rgba(124,58,237,0.3);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    Industry First
                 </div>
-                <div>
-                    <div class="stat-number">500+</div>
-                    <div class="stat-label">Churches On Platform</div>
+                <h2 class="section-title" style="margin-top: 1.5rem;">Meet the <span style="background: linear-gradient(to right, #c084fc, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">AI Smartboard</span></h2>
+                <p class="section-subtitle">No other church management software has this. Get instant answers to your complex financial questions, generate reports with natural language, and let AI do the heavy lifting.</p>
+            </div>
+            
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 24px; padding: 3rem; text-align: center; max-width: 900px; margin: 0 auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(124,58,237,0.2); position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at center, rgba(124,58,237,0.08) 0%, transparent 50%); pointer-events: none;"></div>
+                
+                <div style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2.5rem; position: relative; z-index: 1;">
+                    <div style="background: rgba(255,255,255,0.03); padding: 1.25rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); text-align: left; max-width: 380px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #a78bfa; font-weight: 800; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            You Ask
+                        </div>
+                        <div style="font-size: 1rem; color: #e2e8f0; font-weight: 500; font-style: italic;">"Who gave over $5,000 to the building fund last year?"</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.03); padding: 1.25rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); text-align: left; max-width: 380px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #a78bfa; font-weight: 800; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            You Ask
+                        </div>
+                        <div style="font-size: 1rem; color: #e2e8f0; font-weight: 500; font-style: italic;">"Are we over budget for youth ministry this month?"</div>
+                    </div>
                 </div>
-                <div>
-                    <div class="stat-number">99.9%</div>
-                    <div class="stat-label">Platform Uptime</div>
-                </div>
-                <div>
-                    <div class="stat-number">40hrs</div>
-                    <div class="stat-label">Saved per Month, per Church</div>
-                </div>
+
+                <h3 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 1rem; position: relative; z-index: 1;">Your Data, Instantly Understood.</h3>
+                <p style="color: var(--text-secondary); line-height: 1.7; position: relative; z-index: 1; max-width: 700px; margin: 0 auto; font-size: 1.05rem;">While legacy competitors force you to dig through complex menus and build custom reports manually, Storehouse Finance includes an embedded AI assistant. Just type your question in plain English, and the AI Smartboard instantly analyzes your ledgers, giving history, and budgets to provide the exact data you need in seconds.</p>
             </div>
         </div>
     </section>
@@ -999,63 +1095,43 @@
     <section id="features">
         <div class="container">
             <div class="section-header centered">
-                <div class="section-label">Everything You Need</div>
-                <h2 class="section-title">One platform. Every financial<br /><span class="gradient-text-purple">need
-                        your church has.</span></h2>
-                <p class="section-subtitle">Stop juggling spreadsheets and disconnected tools. Storehouse Finance brings
-                    your entire ministry's finances into one beautifully simple system.</p>
+                <div class="section-label" data-en="Everything You Need" data-es="Todo lo que Necesita">Everything You Need</div>
+                <h2 class="section-title">
+                    <span data-en="One platform. Every financial" data-es="Una plataforma. Cada necesidad">One platform. Every financial</span><br />
+                    <span class="gradient-text-purple" data-en="need your church has." data-es="financiera de su iglesia.">need your church has.</span>
+                </h2>
+                <p class="section-subtitle" data-en="Stop juggling spreadsheets and disconnected tools. Storehouse Finance brings your entire ministry's finances into one beautifully simple system." data-es="Deje de hacer malabarismos con hojas de cálculo y herramientas desconectadas. Storehouse Finance reúne todas las finanzas de su ministerio en un sistema maravillosamente simple.">Stop juggling spreadsheets and disconnected tools. Storehouse Finance brings your entire ministry's finances into one beautifully simple system.</p>
             </div>
             <div class="features-grid">
                 <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(99,102,241,0.1); color: #818cf8;">🔒
-                    </div>
-                    <h3>The Forensic Vault</h3>
-                    <p>Total accountability. Every transaction, edit, or void is tracked in a permanent, cryptographically-secured audit log for your board and elders.</p>
+                    <div class="feature-icon" style="background: rgba(124,58,237,0.1); color: var(--primary-light);">🏛️</div>
+                    <h3 data-en="Designated Fund Accounting" data-es="Contabilidad de Fondos Designados">Designated Fund Accounting</h3>
+                    <p data-en="Segregate Tithes, Building Campaign, Missions, and Youth funds independently. Enforces unrestricted vs. restricted balance integrity with real-time ledger sync." data-es="Segregue diezmos, fondos de construcción, misiones y jóvenes de forma independiente con integridad de saldos en tiempo real.">Segregate Tithes, Building Campaign, Missions, and Youth funds independently. Enforces unrestricted vs. restricted balance integrity with real-time ledger sync.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(16,185,129,0.1); color: #34d399;">📜</div>
-                    <h3>Annual Tax Compliance</h3>
-                    <p>Members can generate <b>IRS-Compliant Annual Tax Receipts</b> with one click. Automated fiscal-year rollups ensure total peace of mind for your congregation.</p>
+                    <div class="feature-icon" style="background: rgba(16,185,129,0.1); color: #34d399;">📥</div>
+                    <h3 data-en="Sunday Batch Offering Count Sheets" data-es="Lote de Ofrendas Dominicales">Sunday Batch Offering Count Sheets</h3>
+                    <p data-en="Dual-verified offering counting sheet with denomination bill & coin counter, envelope ledger matching, and 1-click printable bank deposit slips for your counters." data-es="Hoja de conteo de ofrendas con doble verificación, contador de billetes y monedas, registro de sobres y comprobante de depósito bancario imprimible.">Dual-verified offering counting sheet with denomination bill & coin counter, envelope ledger matching, and 1-click printable bank deposit slips for your counters.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(245,158,11,0.1); color: var(--gold-light);">📋
-                    </div>
-                    <h3>Payroll & Compliance</h3>
-                    <p>Pay your staff with speed. Includes built-in federal tax withholding and <b>IRS compliance tracking</b> for both ministers and contractors across any pay cycle.</p>
+                    <div class="feature-icon" style="background: rgba(59,130,246,0.1); color: #60a5fa;">📜</div>
+                    <h3 data-en="IRS 501(c)(3) Giving Statements" data-es="Declaraciones de Donaciones IRS">IRS 501(c)(3) Giving Statements</h3>
+                    <p data-en="Automatically generate one-click end-of-year donor tax statements with required statutory disclosure clauses ('No goods or services provided') for donors and audits." data-es="Genere automáticamente declaraciones de donaciones para fin de año con las cláusulas requeridas por el IRS con un solo clic.">Automatically generate one-click end-of-year donor tax statements with required statutory disclosure clauses ('No goods or services provided') for donors and audits.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(239,68,68,0.1); color: #f87171;">🧠</div>
-                    <h3>AI Strategic Foresight</h3>
-                    <p>Stop overspending before it happens. Our <b>Neural Prediction Engine</b> calculates your burn-rate and alerts you if a budget is on a trajectory to be exceeded.</p>
+                    <div class="feature-icon" style="background: rgba(245,158,11,0.1); color: var(--gold-light);">📋</div>
+                    <h3 data-en="Clergy Payroll & Ministerial Housing (§107)" data-es="Nómina Clerical y Subsidio de Vivienda">Clergy Payroll & Ministerial Housing (§107)</h3>
+                    <p data-en="Specialized payroll honoring ministerial dual-tax status, IRC §107 housing allowance exemptions, federal tax withholdings, and automated W-2 (Box 14) / 1099-NEC contractor filings." data-es="Nómina especializada que contempla el estado fiscal dual ministerial, subsidio de vivienda §107, retenciones y formularios W-2 y 1099-NEC.">Specialized payroll honoring ministerial dual-tax status, IRC §107 housing allowance exemptions, federal tax withholdings, and automated W-2 (Box 14) / 1099-NEC contractor filings.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(6,182,212,0.1); color: #22d3ee;">📄</div>
-                    <h3>PDF Hub Intelligence</h3>
-                    <p>Upload your actual <b>Bank PDF Statement</b>. Our intelligent OCR hub scans the document, extracts transactions, and auto-matches them to your ledger in seconds.</p>
+                    <div class="feature-icon" style="background: rgba(6,182,212,0.1); color: #22d3ee;">🏦</div>
+                    <h3 data-en="Smart Bank Reconciliation Hub" data-es="Conciliación Bancaria Inteligente">Smart Bank Reconciliation Hub</h3>
+                    <p data-en="Import bank PDF and CSV statements with automated multi-allocation matching for Zelle, checks, tithe deposits, and debit card disbursements." data-es="Importe estados bancarios en PDF y CSV con coincidencia inteligente de múltiples asignaciones para Zelle, cheques y depósitos.">Import bank PDF and CSV statements with automated multi-allocation matching for Zelle, checks, tithe deposits, and debit card disbursements.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(167,139,250,0.1); color: var(--primary-light);">🛡️</div>
-                    <h3>Native Spanish Support</h3>
-                    <p>Reach your entire congregation. One click toggles the entire platform, member statements, and reports between <b>English and Spanish</b> seamlessly.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(245,158,11,0.1); color: var(--gold-light);">📈
-                    </div>
-                    <h3>Financial Reports</h3>
-                    <p>Generate balance sheets, income statements, giving reports, and tax forms on demand. Export to
-                        PDF in one click for board meetings and audits.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(16,185,129,0.1); color: #34d399;">🔐</div>
-                    <h3>Bank-Grade Security</h3>
-                    <p>Role-based access control, end-to-end encryption, and real-time audit logs ensure your
-                        congregation's financial data stays protected at all times.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(6,182,212,0.1); color: #22d3ee;">⚡</div>
-                    <h3>Real-Time Sync</h3>
-                    <p>All data updates instantly across every device. Multiple admins can work simultaneously — no more
-                        stale data or overwritten records.</p>
+                    <div class="feature-icon" style="background: rgba(239,68,68,0.1); color: #f87171;">📈</div>
+                    <h3 data-en="GAAP Statements & Board Reports" data-es="Informes GAAP y Juntas Directivas">GAAP Statements & Board Reports</h3>
+                    <p data-en="Generate GAAP-compliant Statements of Financial Position (Balance Sheet) and Activities (P&L) on demand, with board-ready presentation PDFs." data-es="Genere balances generales y estados de actividades conformes a GAAP bajo demanda, listos para la junta directiva y asambleas.">Generate GAAP-compliant Statements of Financial Position (Balance Sheet) and Activities (P&L) on demand, with board-ready presentation PDFs.</p>
                 </div>
             </div>
         </div>
@@ -1065,144 +1141,130 @@
     <section id="pricing" style="background: rgba(255,255,255,0.01);">
         <div class="container">
             <div class="section-header centered">
-                <div class="section-label">Transparent Pricing</div>
-                <h2 class="section-title">Simple plans for every<br /><span class="gradient-text">size of
-                        congregation</span></h2>
-                <p class="section-subtitle">No hidden fees. No surprise charges. Just powerful tools at a fair monthly
-                    price. Start free for 30 days.</p>
+                <div class="section-label" data-en="Transparent Pricing" data-es="Precios Transparentes">Transparent Pricing</div>
+                <h2 class="section-title">
+                    <span data-en="Simple plans for every" data-es="Planes simples para cada">Simple plans for every</span><br />
+                    <span class="gradient-text" data-en="size of congregation" data-es="tamaño de congregación">size of congregation</span>
+                </h2>
+                <p class="section-subtitle" data-en="No hidden fees. No surprise charges. Just powerful tools at a fair monthly price. Start free for 30 days." data-es="Sin tarifas ocultas ni sorpresas. Herramientas potentes a un precio mensual justo. Comience gratis por 30 días.">No hidden fees. No surprise charges. Just powerful tools at a fair monthly price. Start free for 30 days.</p>
             </div>
             <div class="pricing-grid">
                 <!-- Starter -->
                 <div class="pricing-card">
-                    <div class="pricing-plan">Starter</div>
+                    <div class="pricing-plan" data-en="Starter" data-es="Inicial">Starter</div>
                     <div class="pricing-price">
                         <span class="currency">$</span>
-                        <span class="amount">99</span>
+                        <span class="amount">199</span>
                         <span class="period">.99&nbsp;/ month</span>
                     </div>
-                    <p class="pricing-desc">Perfect for small congregations just getting started with digital finance
-                        management.</p>
+                    <p class="pricing-desc" data-en="Perfect for small congregations just getting started with digital finance management." data-es="Perfecto para congregaciones pequeñas que inician su gestión financiera digital.">Perfect for small congregations just getting started with digital finance management.</p>
                     <hr class="pricing-divider" />
                     <ul class="pricing-features">
-                        <li><span class="check">✓</span> Up to 100 members</li>
-                        <li><span class="check">✓</span> Fund accounting</li>
-                        <li><span class="check">✓</span> Expense tracking</li>
-                        <li><span class="check">✓</span> Basic giving reports</li>
-                        <li><span class="check">✓</span> Email & chat support</li>
-                        <li><span class="check">✓</span> Monthly reports</li>
-                        <li><span class="cross" style="color:var(--text-muted)">✗</span> <span
-                                style="color:var(--text-muted)">Payroll automation</span></li>
-                        <li><span class="cross" style="color:var(--text-muted)">✗</span> <span
-                                style="color:var(--text-muted)">Custom domain</span></li>
+                        <li><span class="check">✓</span> <span data-en="Up to 200 members" data-es="Hasta 200 miembros">Up to 200 members</span></li>
+                        <li><span class="check">✓</span> <span data-en="Fund Accounting & Ledger" data-es="Contabilidad de Fondos y Libro Mayor">Fund Accounting & Ledger</span></li>
+                        <li><span class="check">✓</span> <span data-en="Sunday Batch Offering count sheets" data-es="Conteo de ofrendas dominicales">Sunday Batch Offering count sheets</span></li>
+                        <li><span class="check">✓</span> <span data-en="IRS Giving Statements" data-es="Declaraciones de donaciones IRS">IRS Giving Statements</span></li>
+                        <li><span class="check">✓</span> <span data-en="Smart Bank Reconciliation" data-es="Conciliación bancaria inteligente">Smart Bank Reconciliation</span></li>
+                        <li><span class="check">✓</span> <span data-en="Email & Chat Support" data-es="Soporte por correo y chat">Email & Chat Support</span></li>
                     </ul>
-                    <a href="/finance/" class="btn btn-outline" style="width:100%; justify-content:center;">Get Started →</a>
+                    <a href="/finance/" class="btn btn-outline" style="width:100%; justify-content:center;" data-en="Get Started →" data-es="Comenzar →">Get Started →</a>
                 </div>
 
                 <!-- Growth (Popular) -->
                 <div class="pricing-card popular">
-                    <div class="popular-badge">⭐ Most Popular</div>
-                    <div class="pricing-plan">Growth</div>
+                    <div class="popular-badge" data-en="⭐ Most Popular" data-es="⭐ Más Popular">⭐ Most Popular</div>
+                    <div class="pricing-plan" data-en="Growth" data-es="Crecimiento">Growth</div>
                     <div class="pricing-price">
                         <span class="currency">$</span>
-                        <span class="amount"
-                            style="background: linear-gradient(135deg, var(--gold-light), var(--primary-light)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;">149</span>
+                        <span class="amount" style="background: linear-gradient(135deg, var(--gold-light), var(--primary-light)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;">399</span>
                         <span class="period">.99&nbsp;/ month</span>
                     </div>
-                    <p class="pricing-desc">For growing churches that need the complete system including payroll and
-                        neural strategic projections.</p>
+                    <p class="pricing-desc" data-en="For growing churches that need the complete system including clergy payroll, AI Smartboard, and GAAP reports." data-es="Para iglesias en crecimiento que necesitan nómina pastoral, AI Smartboard e informes GAAP.">For growing churches that need the complete system including clergy payroll, AI Smartboard, and GAAP reports.</p>
                     <hr class="pricing-divider" />
                     <ul class="pricing-features">
-                        <li><span class="check">✓</span> Up to 500 members</li>
-                        <li><span class="check">✓</span> Everything in Starter</li>
-                        <li><span class="check">✓</span> Full payroll automation</li>
-                        <li><span class="check">✓</span> Neural Projections</li>
-                        <li><span class="check">✓</span> Budget planning</li>
-                        <li><span class="check">✓</span> Advanced analytics</li>
-                        <li><span class="check">✓</span> Priority support</li>
-                        <li><span class="check">✓</span> Custom departments</li>
+                        <li><span class="check">✓</span> <span data-en="Unlimited members" data-es="Miembros ilimitados">Unlimited members</span></li>
+                        <li><span class="check">✓</span> <span data-en="Everything in Starter" data-es="Todo lo incluido en Starter">Everything in Starter</span></li>
+                        <li><span class="check">✓</span> <span data-en="Full Clergy Payroll & Housing (§107)" data-es="Nómina Clerical y Vivienda (§107)">Full Clergy Payroll & Housing (§107)</span></li>
+                        <li><span class="check">✓</span> <span data-en="Automated W-2 & 1099-NEC" data-es="Formularios W-2 y 1099-NEC">Automated W-2 & 1099-NEC</span></li>
+                        <li><span class="check">✓</span> <span data-en="AI Smartboard Natural Language" data-es="AI Smartboard en Lenguaje Natural">AI Smartboard Natural Language</span></li>
+                        <li><span class="check">✓</span> <span data-en="Board-ready GAAP Presentation PDFs" data-es="Informes GAAP listos para juntas">Board-ready GAAP Presentation PDFs</span></li>
+                        <li><span class="check">✓</span> <span data-en="Dedicated Priority Support" data-es="Soporte prioritario dedicado">Dedicated Priority Support</span></li>
                     </ul>
-                    <a href="/finance/" class="btn btn-gold" style="width:100%; justify-content:center;">Start Free Trial →</a>
+                    <a href="/finance/" class="btn btn-gold" style="width:100%; justify-content:center;" data-en="Start Free Trial →" data-es="Iniciar Prueba Gratis →">Start Free Trial →</a>
                 </div>
 
                 <!-- Enterprise -->
                 <div class="pricing-card">
-                    <div class="pricing-plan">Enterprise</div>
+                    <div class="pricing-plan" data-en="Enterprise" data-es="Empresarial">Enterprise</div>
                     <div class="pricing-price">
                         <span class="currency">$</span>
-                        <span class="amount">300</span>
-                        <span class="period">&nbsp;/ month</span>
+                        <span class="amount" data-en="Custom" data-es="A Medida">Custom</span>
                     </div>
-                    <p class="pricing-desc">For large & mega churches and multi-campus organizations that need unlimited scale.</p>
+                    <p class="pricing-desc" data-en="For multi-campus ministries and regional dioceses requiring custom governance." data-es="Para ministerios multicampus y diócesis regionales con requisitos personalizados.">For multi-campus ministries and regional dioceses requiring custom governance.</p>
                     <hr class="pricing-divider" />
                     <ul class="pricing-features">
-                        <li><span class="check">✓</span> Unlimited members</li>
-                        <li><span class="check">✓</span> Everything in Growth</li>
-                        <li><span class="check">✓</span> Dedicated account manager</li>
-                        <li><span class="check">✓</span> Custom integrations</li>
-                        <li><span class="check">✓</span> On-site training</li>
-                        <li><span class="check">✓</span> SLA guarantee</li>
-                        <li><span class="check">✓</span> Unlimited admin users</li>
-                        <li><span class="check">✓</span> 24/7 phone & chat support</li>
+                        <li><span class="check">✓</span> <span data-en="Unlimited members & campuses" data-es="Miembros y sedes ilimitadas">Unlimited members & campuses</span></li>
+                        <li><span class="check">✓</span> <span data-en="Everything in Growth" data-es="Todo en Growth">Everything in Growth</span></li>
+                        <li><span class="check">✓</span> <span data-en="Dedicated Account Manager" data-es="Gerente de cuenta dedicado">Dedicated Account Manager</span></li>
+                        <li><span class="check">✓</span> <span data-en="Hands-on Historical Data Migration" data-es="Migración de datos personalizada">Hands-on Historical Data Migration</span></li>
+                        <li><span class="check">✓</span> <span data-en="Custom SLA & 24/7 Phone Support" data-es="SLA y soporte telefónico 24/7">Custom SLA & 24/7 Phone Support</span></li>
                     </ul>
-                    <a href="/finance/" class="btn btn-outline" style="width:100%; justify-content:center;">Contact Sales →</a>
+                    <a href="mailto:hello@storehousefinance.com" class="btn btn-outline" style="width:100%; justify-content:center;" data-en="Contact Sales →" data-es="Contactar Ventas →">Contact Sales →</a>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- TESTIMONIALS -->
-    <section id="testimonials">
+    <section id="testimonials" style="border-top: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06); padding: 5rem 0;">
         <div class="container">
             <div class="section-header centered">
-                <div class="section-label">What Pastors Say</div>
-                <h2 class="section-title">Trusted by church leaders<br /><span class="gradient-text-purple">across the
-                        country</span></h2>
+                <div class="section-label" data-en="Trusted by Ministries" data-es="Confiado por Ministerios">Trusted by Ministries</div>
+                <h2 class="section-title">
+                    <span data-en="Built with church leaders," data-es="Construido con líderes,">Built with church leaders,</span><br />
+                    <span class="gradient-text" data-en="loved by treasurers." data-es="amado por tesoreros.">loved by treasurers.</span>
+                </h2>
+                <p class="section-subtitle" data-en="Hear how churches are simplifying their financial stewardship and saving dozens of hours every month." data-es="Vea cómo las iglesias simplifican su mayordomía financiera y ahorran horas cada mes.">Hear how churches are simplifying their financial stewardship and saving dozens of hours every month.</p>
             </div>
             <div class="testimonials-grid">
                 <div class="testimonial-card">
                     <div class="stars">★★★★★</div>
-                    <p class="testimonial-text">"Storehouse Finance completely transformed how we handle our church
-                        finances. What used to take our treasurer half a day now takes 20 minutes. The real-time sync is
-                        a game changer."</p>
+                    <p class="testimonial-text" data-en="“Sunday counting used to take our deacons two hours after service. With Storehouse Finance’s batch counter, dual verification and bank slip PDFs, we finish in 15 minutes with zero errors.”" data-es="“El conteo dominical solía tomar dos horas. Con Storehouse Finance, la doble verificación y los comprobantes bancarios, terminamos en 15 minutos.”">“Sunday counting used to take our deacons two hours after service. With Storehouse Finance’s batch counter, dual verification and bank slip PDFs, we finish in 15 minutes with zero errors.”</p>
                     <div class="testimonial-author">
-                        <div class="author-avatar">PT</div>
+                        <div class="author-avatar">EP</div>
                         <div>
-                            <div class="author-name">Pastor Thomas Reed</div>
-                            <div class="author-role">Senior Pastor, Grace Fellowship</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="testimonial-card" style="border-color: rgba(245,158,11,0.2);">
-                    <div class="stars">★★★★★</div>
-                    <p class="testimonial-text">"The payroll automation alone is worth every penny. Our staff gets paid
-                        on time every single time, and the tax reporting makes our accountant's life so much easier."
-                    </p>
-                    <div class="testimonial-author">
-                        <div class="author-avatar"
-                            style="background: linear-gradient(135deg, var(--gold), #d97706); color:#1a0a00;">ML</div>
-                        <div>
-                            <div class="author-name">Minister Linda Cross</div>
-                            <div class="author-role">Finance Director, Kingdom Life</div>
+                            <div style="font-weight: 800; color: white;">Elder Patrick M.</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Head Deacon & Trustee, Grace Tabernacle</div>
                         </div>
                     </div>
                 </div>
                 <div class="testimonial-card">
                     <div class="stars">★★★★★</div>
-                    <p class="testimonial-text">"Our congregation trusts us more now because we can show them exactly
-                        where every dollar goes. The transparency Storehouse Finance brings to our church is truly
-                        priceless."</p>
+                    <p class="testimonial-text" data-en="“Clergy tax and housing allowances were always a headache with standard payroll software. Storehouse handles ministerial exemptions and generates accurate W-2s and 1099s effortlessly.”" data-es="“Los impuestos pastorales y el subsidio de vivienda siempre eran un dolor de cabeza. Storehouse maneja las exenciones ministeriales y W-2 sin esfuerzo.”">“Clergy tax and housing allowances were always a headache with standard payroll software. Storehouse handles ministerial exemptions and generates accurate W-2s and 1099s effortlessly.”</p>
                     <div class="testimonial-author">
-                        <div class="author-avatar" style="background: linear-gradient(135deg, #10b981, #059669);">RJ
-                        </div>
+                        <div class="author-avatar" style="background: linear-gradient(135deg, #10b981, #059669);">SR</div>
                         <div>
-                            <div class="author-name">Rev. James Obinna</div>
-                            <div class="author-role">Lead Pastor, New Hope Ministry</div>
+                            <div style="font-weight: 800; color: white;">Sarah R., CPA</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Church Treasurer, Faith Community Fellowship</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="stars">★★★★★</div>
+                    <p class="testimonial-text" data-en="“The AI Smartboard is a game changer for board meetings. In seconds I can see exactly where our building fund stands and export a GAAP report for the elders with one click.”" data-es="“El Smartboard de IA ha transformado nuestras reuniones de junta. En segundos sé el estado del fondo de construcción y exporto informes GAAP.”">“The AI Smartboard is a game changer for board meetings. In seconds I can see exactly where our building fund stands and export a GAAP report for the elders with one click.”</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar" style="background: linear-gradient(135deg, #f59e0b, #d97706);">DJ</div>
+                        <div>
+                            <div style="font-weight: 800; color: white;">Pastor David J.</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Senior Pastor, Hope City Church</div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
+
+
 
     <!-- FAQ -->
     <section id="faq" style="background: rgba(255,255,255,0.01);">
@@ -1287,8 +1349,8 @@
             <ul class="footer-links">
                 <li><a href="#features">Features</a></li>
                 <li><a href="#pricing">Pricing</a></li>
-                <li><a href="#">Privacy Policy</a></li>
-                <li><a href="#">Terms of Service</a></li>
+                <li><a href="javascript:void(0)" onclick="showLegal('privacy')" data-en="Privacy Policy" data-es="Política de Privacidad">Privacy Policy</a></li>
+                <li><a href="javascript:void(0)" onclick="showLegal('terms')" data-en="Terms of Service" data-es="Términos de Servicio">Terms of Service</a></li>
                 <li><a href="mailto:hello@storehousefinance.com">Contact</a></li>
             </ul>
         </div>
@@ -1322,6 +1384,142 @@
             }
             observer.observe(el);
         });
+    </script>
+    <script>
+        function setLang(lang) {
+            // Update buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.innerText.toLowerCase() === lang);
+            });
+
+            // Update elements
+            document.querySelectorAll('[data-en]').forEach(el => {
+                const text = el.getAttribute('data-' + lang);
+                if (text) {
+                    if (el.tagName === 'INPUT') {
+                        el.placeholder = text;
+                    } else {
+                        el.innerHTML = text;
+                    }
+                }
+            });
+
+            // Persist
+            localStorage.setItem('language', lang);
+            document.documentElement.lang = lang;
+        }
+
+        // Initialize from storage
+        const savedLang = localStorage.getItem('language') || 'en';
+        if (savedLang === 'es') setLang('es');
+
+        const legalData = {
+          en: {
+            termsTitle: "Professional Terms of Service",
+            privacyTitle: "Comprehensive Privacy & Security Policy",
+            close: "Close Agreement",
+            lastUpdated: "Last Formal Update",
+            t1: "1. Strategic Service Scope & Authorized Ecclesiastical Use", 
+            c1: "Storehouse Finance delivers a highly specialized, cloud-native financial stewardship environment engineered specifically for the distinct operational requirements of ecclesiastical organizations. By accessing this platform, you certify that you represent an authorized church body and will maintain the integrity of its financial records. Our services provide unified fund accounting, automated payroll distribution, and precision budgeting tools designed to support your organization’s mission with absolute transparency.",
+            t2: "2. Account Stewardship & Advanced Security Protocols", 
+            c2: "Primary church administrators and financial officers bear the sole responsibility for the vigilant protection of their access credentials. This includes the secure management of passwords and the active use of Multi-Factor Authentication (MFA) where available. You must immediately notify our technical response team of any suspected security irregularities. The user organization remains strictly accountable for all activities conducted within its encrypted workspace.",
+            t3: "3. Sovereign Data Stewardship & Irrevocable Ownership", 
+            c3: "Your ecclesiastical organization retains absolute, perpetual sovereignty over all financial data, member registries, and recorded transactions stored within our infrastructure. Storehouse Finance serves as a secure, technical steward, utilizing geographically redundant systems and real-time synchronization to ensure your records are always accessible. We solemnly commit to never utilizing your sensitive organizational data for any secondary purposes without explicit authorization.",
+            t4: "4. Global Regulatory Compliance & Temporal Financial Governance", 
+            c4: "The managing organization is solely responsible for ensuring that its use of Storehouse Finance aligns with all applicable local, regional, and national tax regulations, including 501(c)(3) status compliance in the United States or equivalent charitable governance frameworks globally. While we provide the technical infrastructure for accurate stewardship, the final responsibility for legal tax filing and ecclesiastical transparency lies with your church administration.",
+            p1: "1. Financial Data Integrity & Military-Grade 256-Bit Protection", 
+            pc1: "We utilize advanced bank-grade, 256-bit AES encryption for all data at rest and in transit. Your sanctuary’s tithes, restricted offerings, and confidential payroll records are shielded by multi-layered cryptographic defenses. We maintain a zero-tolerance policy regarding unauthorized data access, ensuring that the sacred trust between your congregation and its financial records remains impeccably protected from third-party interference.",
+            p2: "2. Personal Privacy & Confidential Ministerial Data Usage", 
+            pc2: "Member profiles, contact information, and specific donation histories are classified as highly sensitive ministerial records. This data is utilized exclusively for generating tax-compliant documentation and facilitating internal ministry engagement. We implement 'Secret-Access' logic, ensuring that sensitive donor information is only viewable by staff members who have been specifically cleared by your church’s primary administrator.",
+            p3: "3. redundant Infrastructure & Immutable Audit Tracking", 
+            pc3: "Your data is mirrored across multiple high-security data centers featuring 24/7 physical monitoring and predictive threat detection. We maintain comprehensive, unalterable system logs of every administrative action and access request to provide a transparent audit trail. Our infrastructure is engineered for 99.99% reliability, ensuring that your financial leadership has constant access to the critical insights required for mission success.",
+            p4: "4. Absolute Transparency & Immediate Data Portability", 
+            pc4: "We are committed to total transparency in our role as your technical steward. You have the inherent right to export your congregation’s complete history in industry-standard spreadsheet or PDF formats at any time. We believe that your church should never be locked into a platform; you maintain total control over your records, ensuring that your financial legacy is portable and permanent, regardless of future technology shifts."
+          },
+          es: {
+            termsTitle: "Términos Profesionales de Servicio",
+            privacyTitle: "Política Integral de Privacidad y Seguridad",
+            close: "Cerrar Contrato",
+            lastUpdated: "Última Actualización Formal",
+            t1: "1. Alcance Estratégico y Uso Eclesiástico Autorizado", 
+            c1: "Storehouse Finance ofrece un entorno de mayordomía financiera especializado, diseñado específicamente para los requisitos operativos de las organizaciones eclesiásticas. Al acceder a esta plataforma, usted certifica que representa a un cuerpo eclesiástico autorizado y que mantendrá la integridad de sus registros financieros. Nuestros servicios proporcionan contabilidad unificada, distribución automatizada de nómina y herramientas de presupuesto de precisión para apoyar su misión.",
+            t2: "2. Mayordomía de Cuentas y Protocolos de Seguridad Avanzada", 
+            c2: "Los administradores principales y los oficiales financieros de la iglesia tienen la responsabilidad única de la protección vigilante de sus credenciales de acceso. Esto incluye la gestión segura de contraseñas y el uso activo de la autenticación de múltiples factores. Debe notificar inmediatamente a nuestro equipo de respuesta técnica sobre cualquier irregularidad de seguridad sospechosa. La organización sigue siendo estrictamente responsable de todas las actividades.",
+            t3: "3. Mayordomía Soberana de Datos y Propiedad Irrevocable", 
+            c3: "Su organización eclesiástica conserva la soberanía absoluta y perpetua sobre todos los datos financieros y registros de miembros almacenados en nuestra infraestructura. Storehouse Finance actúa como un administrador técnico seguro, utilizando sistemas redundantes y sincronización en tiempo real para garantizar que sus registros estén siempre accesibles. Nos comprometemos solemnemente a nunca utilizar sus datos organizativos para fines secundarios.",
+            t4: "4. Cumplimiento Regulatorio Global y Gobernanza Financiera Temporal", 
+            c4: "La organización gestora es la única responsable de garantizar que el uso de Storehouse Finance se alinee con todas las regulaciones fiscales locales, regionales y nacionales aplicables, incluyendo el estatus 501(c)(3) en los Estados Unidos o marcos equivalentes. Aunque proporcionamos la infraestructura técnica, la responsabilidad final de la transparencia eclesiástica recae en la administración de su iglesia.",
+            p1: "1. Integridad de Datos y Protección de Grado Militar de 256 bits", 
+            pc1: "Utilizamos cifrado avanzado AES de 256 bits para todos los datos. Los diezmos, las ofrendas restringidas y los registros de nómina confidenciales de su santuario están protegidos por defensas criptográficas de múltiples capas. Mantenemos una política de tolerancia cero con respecto al acceso no autorizado a los datos, asegurando que la confianza sagrada entre su congregación y sus registros permanezca impecablemente protegida.",
+            p2: "2. Privacidad Personal y Uso de Datos Ministeriales Confidenciales", 
+            pc2: "Los perfiles de los miembros y los historiales de donaciones se clasifican como registros ministeriales altamente sensibles. Estos datos se utilizan exclusivamente para generar documentación que cumple con los impuestos y facilitar el compromiso ministerial interno. Implementamos una lógica de 'Acceso Secreto', asegurando que la información sensible de los donantes solo sea visible para el personal autorizado por el administrador.",
+            p3: "3. Infraestructura Redundante y Seguimiento de Auditoría Inmutable", 
+            pc3: "Sus datos se reflejan en múltiples centros de datos de alta seguridad con monitoreo físico las 24 horas y detección predictiva de amenazas. Mantenemos registros de sistema completos e inalterables de cada acción administrativa para proporcionar una pista de auditoría transparente. Nuestra infraestructura está diseñada para una confiabilidad del 99.99%, asegurando que su liderazgo financiero tenga acceso constante.",
+            p4: "4. Transparencia Absoluta y Portabilidad Inmediata de Datos", 
+            pc4: "Estamos comprometidos con la transparencia total en nuestra función como su administrador técnico. Usted tiene el derecho inherente de exportar el historial completo de su congregación en formatos de hoja de cálculo o PDF estándar en cualquier momento. Creemos que su iglesia nunca debería estar bloqueada en una plataforma; usted mantiene el control total sobre sus registros, asegurando que su legado financiero sea portátil y permanente."
+          }
+        };
+
+        function showLegal(type) {
+          const lang = localStorage.getItem('language') || 'en';
+          const data = legalData[lang] || legalData['en'];
+          const isTerms = type === 'terms';
+          
+          const title = isTerms ? data.termsTitle : data.privacyTitle;
+          const section1 = isTerms ? data.t1 : data.p1;
+          const content1 = isTerms ? data.c1 : data.pc1;
+          const section2 = isTerms ? data.t2 : data.p2;
+          const content2 = isTerms ? data.c2 : data.pc2;
+          const section3 = isTerms ? data.t3 : data.p3;
+          const content3 = isTerms ? data.c3 : data.pc3;
+          const section4 = isTerms ? data.t4 : data.p4;
+          const content4 = isTerms ? data.c4 : data.pc4;
+
+          const modal = document.createElement('div');
+          modal.style = "position:fixed; inset:0; z-index:10000; background:rgba(2,6,23,0.95); backdrop-filter:blur(16px); display:flex; align-items:center; justify-content:center; padding:1rem;";
+          modal.id = "legal-modal";
+          modal.innerHTML = `
+            <div style="width:95%; max-width:640px; max-height:85vh; background:#0f172a; border:1px solid rgba(255,255,255,0.1); border-radius:24px; box-shadow:0 30px 60px -12px rgba(0,0,0,0.7); overflow:hidden; display:flex; flex-direction:column; animation: modalFadeIn 0.3s ease-out;">
+              <style>
+                @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+                .legal-content::-webkit-scrollbar { width: 6px; }
+                .legal-content::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+                .legal-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+              </style>
+              <div style="padding:2rem; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+                <div>
+                  <h2 style="color:white; font-size:1.5rem; font-weight:900; letter-spacing:-0.02em; margin:0;">${title}</h2>
+                  <p style="color:#64748b; font-size:0.85rem; font-weight:500; margin-top:4px; margin-bottom:0;">${data.lastUpdated}: March 2026</p>
+                </div>
+                <button onclick="document.getElementById('legal-modal').remove()" style="width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.04); border:none; color:#94a3b8; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.2rem;">&times;</button>
+              </div>
+              <div class="legal-content" style="padding:2rem; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:2rem;">
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🛡️</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section1}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content1}</p></div>
+                </div>
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🔒</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section2}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content2}</p></div>
+                </div>
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">📜</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section3}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content3}</p></div>
+                </div>
+                <div style="display:flex; gap:1.5rem;">
+                  <div style="min-width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:1.2rem;">🏢</div>
+                  <div style="flex:1;"><h3 style="color:white; font-size:1.05rem; font-weight:700; margin-top:0; margin-bottom:0.5rem; letter-spacing:-0.01em;">${section4}</h3><p style="color:#94a3b8; font-size:0.82rem; line-height:1.75; margin:0;">${content4}</p></div>
+                </div>
+              </div>
+              <div style="padding:1.5rem 2rem; border-top:1px solid rgba(255,255,255,0.05); text-align:right; flex-shrink:0; background: rgba(255,255,255,0.02);">
+                <button onclick="document.getElementById('legal-modal').remove()" style="padding:0.8rem 2.5rem; border-radius:14px; background:linear-gradient(135deg, #2563eb, #1d4ed8); color:white; border:none; font-weight:800; font-family:'Inter', sans-serif; cursor:pointer; font-size:0.9rem; letter-spacing:0.02em; box-shadow:0 8px 20px -4px rgba(37,99,235,0.4);">
+                  ${data.close}
+                </button>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(modal);
+        }
     </script>
 </body>
 
