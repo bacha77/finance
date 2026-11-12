@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-
+import { ErrorBoundary } from './ErrorBoundary'
 import { LanguageProvider } from './contexts/LanguageContext';
 
 // TODO: Replace YOUR_SENTRY_DSN with your actual Sentry DSN
@@ -30,10 +30,12 @@ if (!PUBLISHABLE_KEY) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
-      <LanguageProvider>
-        <App />
-      </LanguageProvider>
-    </ClerkProvider>
+    <ErrorBoundary>
+      <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
+        <LanguageProvider>
+          <App />
+        </LanguageProvider>
+      </ClerkProvider>
+    </ErrorBoundary>
   </StrictMode>
 )

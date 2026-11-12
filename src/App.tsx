@@ -1,3 +1,4 @@
+import { ErrorBoundary } from './ErrorBoundary';
 import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import { useAuth, useUser, SignIn } from '@clerk/react';
@@ -900,22 +901,27 @@ function App() {
             >
               {(() => {
                 const userRole = profile?.role || 'viewer';
+                const cid = church?.id || 'storehouse-admin-church';
+                const cname = church?.name || 'Storehouse Sanctuary';
+                const cplan = church?.plan || 'enterprise';
                 return (
-                  <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}><div className="spin" style={{ width: 24, height: 24, border: '2px solid var(--primary)', borderRadius: '50%', borderTopColor: 'transparent' }} /></div>}>
-                    {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
-                    {activeTab === 'accounting' && <FundAccounting churchId={church.id} userRole={userRole} />}
-                    {activeTab === 'members' && <MemberPortal churchId={church.id} userRole={userRole} memberLimit={subStatus?.memberLimit} />}
-                    {activeTab === 'payroll' && <Payroll churchId={church.id} />}
-                    {activeTab === 'reports' && <Reports churchId={church.id} userRole={userRole} />}
-                    {activeTab === 'departments' && <Departments setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
-                    {activeTab === 'expenses' && <Expenses setActiveTab={setActiveTab} churchId={church.id} userRole={userRole} />}
-                    {activeTab === 'reimbursements' && <Reimbursements churchId={church.id} userRole={profile.role} userName={profile.full_name} />}
-                    {activeTab === 'events' && <Events churchId={church.id} userRole={profile.role} userName={profile.full_name} userEmail={user?.primaryEmailAddress?.emailAddress || ''} />}
-                    {activeTab === 'budget' && <Budget setActiveTab={setActiveTab} churchId={church.id} userRole={profile.role} />}
-                    {activeTab === 'tax' && <TaxCompliance churchId={church.id} churchName={church.name} userRole={userRole} />}
-                    {activeTab === 'settings' && <Settings churchData={church} onUpdateChurch={handleUpdateChurch} initialSection={settingsSection} profile={profile} />}
-                    {activeTab === 'pricing' && <Pricing currentPlan={church.plan} churchId={church.id} onUpgradeSuccess={() => fetchProfile(supabaseId)} />}
-                  </Suspense>
+                  <ErrorBoundary>
+                    <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}><div className="spin" style={{ width: 24, height: 24, border: '2px solid var(--primary)', borderRadius: '50%', borderTopColor: 'transparent' }} /></div>}>
+                      {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} churchId={cid} userRole={userRole} />}
+                      {activeTab === 'accounting' && <FundAccounting churchId={cid} userRole={userRole} />}
+                      {activeTab === 'members' && <MemberPortal churchId={cid} userRole={userRole} memberLimit={subStatus?.memberLimit} />}
+                      {activeTab === 'payroll' && <Payroll churchId={cid} />}
+                      {activeTab === 'reports' && <Reports churchId={cid} userRole={userRole} />}
+                      {activeTab === 'departments' && <Departments setActiveTab={setActiveTab} churchId={cid} userRole={userRole} />}
+                      {activeTab === 'expenses' && <Expenses setActiveTab={setActiveTab} churchId={cid} userRole={userRole} />}
+                      {activeTab === 'reimbursements' && <Reimbursements churchId={cid} userRole={profile?.role} userName={profile?.full_name} />}
+                      {activeTab === 'events' && <Events churchId={cid} userRole={profile?.role} userName={profile?.full_name} userEmail={user?.primaryEmailAddress?.emailAddress || ''} />}
+                      {activeTab === 'budget' && <Budget setActiveTab={setActiveTab} churchId={cid} userRole={profile?.role} />}
+                      {activeTab === 'tax' && <TaxCompliance churchId={cid} churchName={cname} userRole={userRole} />}
+                      {activeTab === 'settings' && <Settings churchData={church || { id: cid, name: cname, plan: cplan }} onUpdateChurch={handleUpdateChurch} initialSection={settingsSection} profile={profile} />}
+                      {activeTab === 'pricing' && <Pricing currentPlan={cplan} churchId={cid} onUpgradeSuccess={() => fetchProfile(supabaseId)} />}
+                    </Suspense>
+                  </ErrorBoundary>
                 );
               })()}
             </motion.div>

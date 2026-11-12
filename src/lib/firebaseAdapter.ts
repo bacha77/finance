@@ -396,10 +396,59 @@ export const firebaseClient = {
     }
   },
 
+  channel(_name: string) {
+    const channelObj = {
+      on(_event: string, _config: any, _callback?: (...args: any[]) => void) {
+        return channelObj;
+      },
+      subscribe(callback?: (status: string) => void) {
+        if (callback) callback('SUBSCRIBED');
+        return channelObj;
+      },
+      unsubscribe() {
+        return Promise.resolve();
+      },
+    };
+    return channelObj;
+  },
+
+  removeChannel(_channel: any) {
+    return Promise.resolve();
+  },
+
+  removeAllChannels() {
+    return Promise.resolve([]);
+  },
+
+  getChannels() {
+    return [];
+  },
+
+  functions: {
+    async invoke(fnName: string, _options?: any) {
+      console.log(`Firebase function invoke [${fnName}]`);
+      return { data: { success: true }, error: null };
+    },
+  },
+
   auth: {
     async getUser() {
       const user = auth.currentUser;
       return { data: { user: user ? { id: user.uid, email: user.email } : null }, error: null };
+    },
+    async getSession() {
+      const user = auth.currentUser;
+      return { data: { session: user ? { user: { id: user.uid, email: user.email } } : null }, error: null };
+    },
+    onAuthStateChange(callback: (event: string, session: any) => void) {
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        callback(user ? 'SIGNED_IN' : 'SIGNED_OUT', user ? { user: { id: user.uid, email: user.email } } : null);
+      });
+      return { data: { subscription: { unsubscribe } } };
+    },
+    async updateUser(attributes: Record<string, any>) {
+      console.log('Firebase auth.updateUser:', attributes);
+      return { data: { user: auth.currentUser }, error: null };
     },
     async signInWithOtp({ email }: { email: string; options?: any }) {
       console.log(`Firebase: OTP requested for ${email}`);
