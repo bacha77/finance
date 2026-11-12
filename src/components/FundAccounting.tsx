@@ -12,13 +12,15 @@ import {
     AlertCircle,
     RefreshCw,
     Edit2,
-    Download
+    Download,
+    Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { logActivity } from '../lib/audit';
 import { generateFinancialStatement } from '../lib/financialPdfGenerator';
 import { useLanguage } from '../contexts/LanguageContext';
+import { SundayBatchModal } from './SundayBatchModal';
 
 interface Fund {
     id: string;
@@ -66,6 +68,7 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
     const canManage = isAdmin || isAssistant;
     const { t, language } = useLanguage();
     const [showNewTxModal, setShowNewTxModal] = useState(false);
+    const [showBatchModal, setShowBatchModal] = useState(false);
     const [selectedTxForAudit, setSelectedTxForAudit] = useState<Transaction | null>(null);
     const [showReconcile, setShowReconcile] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -787,9 +790,18 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                         </>
                     )}
                     {canManage && (
-                        <button className="btn btn-primary" onClick={() => setShowNewTxModal(true)}>
-                            <Plus size={18} /> {t('recordDeposit')}
-                        </button>
+                        <>
+                            <button 
+                                className="btn btn-accent" 
+                                onClick={() => setShowBatchModal(true)}
+                                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}
+                            >
+                                <Layers size={18} /> Sunday Batch Offering
+                            </button>
+                            <button className="btn btn-primary" onClick={() => setShowNewTxModal(true)}>
+                                <Plus size={18} /> {t('recordDeposit')}
+                            </button>
+                        </>
                     )}
                 </div>
             </header>
@@ -1416,6 +1428,21 @@ const FundAccounting: React.FC<FundAccountingProps> = ({ churchId, userRole = 'v
                     </AnimatePresence>,
                     document.body
                 )}
+
+                <SundayBatchModal
+                    isOpen={showBatchModal}
+                    onClose={() => setShowBatchModal(false)}
+                    churchId={churchId}
+                    churchName={t('churchName') || 'Storehouse Sanctuary'}
+                    funds={funds}
+                    members={members}
+                    onBatchSubmitted={async () => {
+                        const { data: updatedFunds } = await supabase.from('funds').select('*').eq('church_id', churchId);
+                        if (updatedFunds) setFunds(updatedFunds);
+                        const { data: updatedLedger } = await supabase.from('ledger').select('*').eq('church_id', churchId).order('date', { ascending: false });
+                        if (updatedLedger) setLedger(updatedLedger);
+                    }}
+                />
         </div>
     );
 };
